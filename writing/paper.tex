@@ -1,0 +1,124 @@
+\documentclass[10pt,twocolumn]{confpaper}
+
+%%%%%%%%%%%%%%%%%%%%  INCLUDES  %%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\definecolor{darkgreen}{rgb}{0.0, 0.65, 0.0}
+
+\ifthenelse{\equal{\COMMENTS}{yes}}{%
+\newcommand{\mcnote}[1]{\textit{\textcolor{blue}{[marco]: #1}}} % Marco's comments
+\newcommand{\lv}[1]{\textcolor{red}{(\textit{\textcolor{red}{LV:#1}} )}}
+\newcommand{\rmnote}[1]{\textit{\textcolor{darkgreen}{[robert]: #1}}} % Robert's comments
+\newcommand{\rbnote}[1]{\textit{\textcolor{orange}{[rudy]: #1}}} % Rudy's comments
+\newcommand{\nf}[1]{\textcolor{red}{(\textit{\textcolor{red}{NF: #1}} )}}
+}{
+\newcommand{\mcnote}[1]{}
+\newcommand{\lv}[1]{}
+\newcommand{\rmnote}[1]{}
+\newcommand{\rbnote}[1]{}
+\newcommand{\nf}[1]{}
+}
+
+
+\newcommand{\supsym}[1]{\raisebox{4pt}{{\footnotesize #1}}}
+\newcommand{\et}{\supsym{$\dag$}}
+\newcommand{\ucl}{\supsym{$\diamond$}}
+\newcommand{\ptn}{\supsym{$\star$}}
+\newcommand{\ceq}{\supsym{$\ddag$}}
+
+
+\usepackage{listing}
+\usepackage[]{algorithm2e}
+
+\renewcommand{\baselinestretch}{1.005} 
+
+
+\definecolor{steel_blue}{RGB}{70, 130, 180}
+
+\lstset{
+basicstyle=\footnotesize\ttfamily\small,
+frame=none,
+language=Python,
+numbers=none,
+breaklines=true,
+xleftmargin=0pt
+}
+
+
+\lstdefinelanguage{Pyretic}
+{keywords={>>, >+, +, &, push, if_, elif_, else, pop, match, fwd, modify, set, mod, drop, $\triangleleft$, announce, withdraw}, 
+  sensitive=true, alsoletter={-,>>,+,&,|,_},comment=[l][\footnotesize\sffamily\textbf]{\!}
+}
+
+\lstset{emph={View1, CA, CA-IN, as-path, med, no-prepend},
+  keywordstyle=\color{steel_blue}\textbf}
+\lstset{language=Pyretic}
+
+
+%%%%%%%%%%%%%%%%%%%%  LOCALS  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\system}{iSDX\xspace}
+
+%%%%%%%%%%%%%%%%%%%%  TITLE/AUTHORS  %%%%%%%%%%%%%%%%%%%%%
+
+
+\date{}
+\title{
+{Concise Encoding and Querying of Sequences in Packet Headers}}
+\author{
+{Robert MacDavid\ptn, R\"udiger Birkner\et,} 
+{Jennifer Rexford\ptn, Nick Feamster\ptn}\\
+\ptn\normalsize{Princeton University}~~~\et\normalsize{ETH Z\"{u}rich}\\
+}
+
+%%%%%%%%%%%%%%%%%%%%  START OF DOCUMENT  %%%%%%%%%%%%%%%%%
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+%\AcmCopyright
+%\ToAppear
+
+%\begin{sloppypar}
+
+\input{abstract}
+
+\ifthenelse{\equal{\onlyAbstract}{no}}{% !onlyAbstract
+
+
+
+\input{introduction}
+\input{encoding_problem}
+\input{encoding_formal}
+\input{ordering}
+\input{evaluation}
+\input{related_work}
+\input{Conclusion}
+
+%\end{sloppypar}
+
+%\vspace{-0.01in}
+%\section*{Acknowledgments}
+% Comments for people we need to acknowledge in the final version.
+\noindent \textbf{Acknowledgments.}
+Fill me in
+%\pagebreak
+%\small
+%\setlength{\bibsep}{0pt}
+%\setlength{\parskip}{-1pt}
+%\setlength{\itemsep}{-1pt}
+% \footnotesize % SPACE
+\balance
+\bibliography{paper}
+\bibliographystyle{acm}
+%\bibliographystyle{abbrvnat_noaddr} % SPACE
+%\theendnotes % ENDNOTES
+}{% onlyAbstract
+}
+
+%\pagebreak
+%\input{appendix}
+
+\end{document}
+
+%%%%%%%%%%%%%%%%%%%%  END OF DOCUMENT  %%%%%%%%%%%%%%%%%%%%

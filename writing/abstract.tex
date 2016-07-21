@@ -1,0 +1,6 @@
+\abstract{
+Network devices such as routers, switches, and firewalls forward traffic based on entries in their local forwarding tables. Although these forwarding tables conventionally make decisions based on a packet header field such as a destination address, rules that match on a sequence or a set and make forwarding decisions based on elements in that set can enable richer network policies. For example, devices at the edge of a network could add a tag to each packet that encodes a set of middleboxes to traverse, a set of egress locations, or a set of anycast destinations; simpler devices in the core of the network could then forward packets based on this tag. 
+
+Unfortunately, naive construction of these tags can create forwarding tables that grow quadratically with the number of elements in the set or sequence--prohibitive for commodity network devices. In this paper, we present a compression algorithm that makes such encodings practical. The compression algorithm encodes sequences or sets (e.g., middlebox service chains, lists of next-hop network devices) in a compact tag that fits in a small packet header field. Our evaluation shows that the compression technique can encode common forwarding sequences for large networks using only a few bits and that the number of forwarding rules grows linearly with the number of elements in the set or sequence.
+}
+
