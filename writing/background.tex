@@ -1,0 +1,46 @@
+\section{Background}
+
+In the introduction, we briefly mentioned existing index tagging schemes and their limitations. We will refer to these schemes as \textit{flat tagging} schemes, because each tag can be thought of as a single, unstructured index.  We will now go into a more detailed explanation of such schemes. A flow of packets is defined by a combination of header fields that each of the packets has in common. Each combination of header fields can imply a set of attributes which are revealed by classification, such as a set of routes the flow may take, network nodes the flow must traverse, or characteristics of the sending/receiving hosts. As an example, look at figure FIGURE\_NOT\_FOUND. This excellent figure should make everything clear.
+
+Network switches may be interested in reading these attributes to implement network policies.
+For example, flows which have received the "suspicious" attribute during classification may be rerouted through a deep packet inspector. If this attribute can only be revealed during classification, it would be grossly inefficient for each switch which wants to check for this attribute to re-perform packet classification, as the mapping of headers to attributes can be very complex and take a large amount of switch memory. 
+
+One solution for avoiding re-classification is to compile the results of classification into a short \textit{digest} and attach this digest to each packet as a tag. Switches may then read these tags to discover the attributes. To construct a simple digest format, we can maintain global knowledge of every distinct set of attributes seen in the network in an array. We can then use the array indices as packet tags and provide each switch with the index-to-attributes mapping. Switches can then recover all attributes by reading the tag. 
+
+%However, a good format for these digests which minimizes both the digest size and read operation complexity is unclear. 
+
+Index tagging optimally minimizes the tag width, but it comes at the cost of attribute reading complexity. If a switch wishes to make a decision based only upon attribute $x$, it must compare each tag to the indices of every set that contains attribute $x$. If $x$ appears in $N$ sets, the switch requires $N$ operations to confirm the absence of $x$. If the number of equivalence classes is large enough, this may barely improve upon performing re-classification at every switch!
+
+%Flat tagging is a format which optimally minimizes digest size at the cost of read complexity. The result of every classification is a set of indirect attributes, which has an exponential number of possibilities, but for many applications only a small number of unique sets are seen. 
+
+
+
+% to attach the result of classification as a digest to the headers of every packet in the flow. 
+
+%assign a t, after classifying a flow, to attach a tag to each packet in the flow which contains the indirect attributes. 
+
+
+\subsection{Attribute-Carrying Tags}
+
+Attribute reading need not be so complex, though. We can sacrifice the optimality of the tag width to decrease the cost of reading. A simple example would be to use bitfields as digests, where each bit corresponds to a single attribute. The bit is 1 if the attribute is true, and 0 otherwise. This requires each attribute be binary, but it is simple enough to convert an attribute with $N$ possible values into $N$ binary attributes.
+To check the value of any attribute, only one read of a bit or set of bits is required, resulting in optimal memory usage by network nodes that wish to read attributes. 
+
+ It is interesting to note that when each bitfield tag is viewed as an integer, it can still be thought of as an index into a implicit table of equivalence classes. The table will contain all possible attribute sets, and two flows with identical attribute sets receive identical indices. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\subsection{Motivating Applications}
+There are many situations where a forwarding equivalence class is characterized by a distinct set of attributes, and where the switches could benefit from being able to read these sets using a small amount of memory. To motivate our solution, we will present three/four such settings. 
+
+\subsubsection{Software-Defined Internet Exchange Points}
+Consider the example of an Internet Exchange Point (IXP) with support for SDN policies. At such an IXP, connected networks may wish to apply SDN policies to their traffic as it enters the exchange point. If these policies were not present, all traffic from some network $P$  to some destination IP prefix $d$ would be directed to the BGP default next-hop for $d$ as decided by $P$. In the presence of SDN policies, however, traffic may be redirected to take a next-hop which differs from the BGP default next-hop. For correctness, this redirection must be to a next-hop which has announced a route to $d$ , and $P$'s policies must take this into account. If it were possible to attach to each packet leaving $P$ the set of next-hops which have advertised $d$ to $P$, policies could check for the presence of a next-hop in the set before rerouting the packet to that next-hop. 
+
+\subsubsection{Service Chaining}
+For another example, network operators often desire that network traffic be directed through a series of middleboxes, such as load balancers or firewalls. Such middleboxes can provide security and performance guarantees for the network's users. However, each flow may need to be directed through a different chain of middleboxes. In this case, the set of attributes which define an equivalence class would be a chain of middleboxes. Switches could check for the presence of a middlebox attribute in the FEC tag and, if present, forward that flow towards the nearest matching middlebox. This could be accomplished with an MPLS label stack, but middleboxes do not necessarily understand or preserve MPLS labels. 
+
+\subsubsection{Host Attributes for Network Policies}
+
+
+\subsubsection{Multicast and Anycast}
+For another example, consider the case of anycast. In traditional anycast, many receivers are identified by the same address, and each anycast packet simply chooses the nearest receiver according to some distance metric. There is no flexibility for selecting arbitrary subsets of hosts without applying the same identifier to the subset of receivers. We envision the potential for a more flexible local area network anycast, where each packet can be mapped to an arbitrary subset of hosts, regardless of their addresses. If it were possible to tag each packet during classification with a list of host identifiers, switches could read this list and pick the nearest for forwarding.
