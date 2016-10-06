@@ -1,15 +1,24 @@
 \section{Background}
 
-In the introduction, we briefly mentioned existing index tagging schemes and their limitations. We will refer to these schemes as \textit{flat tagging} schemes, because each tag can be thought of as a single, unstructured index.  We will now go into a more detailed explanation of such schemes. A flow of packets is defined by a combination of header fields that each of the packets has in common. Each combination of header fields can imply a set of attributes which are revealed by classification, such as a set of routes the flow may take, network nodes the flow must traverse, or characteristics of the sending/receiving hosts. As an example, look at figure FIGURE\_NOT\_FOUND. This excellent figure should make everything clear.
+\begin{figure}[t!] 
+\begin{minipage}{1\linewidth}
+\begin{subfigure}[c]{0.96\linewidth}
+\includegraphics[trim={0 12cm 19cm 0}, clip, width=\linewidth]{figures/mbox_path_example3}
+\end{subfigure} 
+\end{minipage} 
+\caption{In this example, we have a policy that defines traffic which must flow through subsets of five middleboxes. The first table shows which header fields trigger each middlebox, and the second table shows some combinations we may see in network traffic. }
+\label{fig:mbox_policies}
+\end{figure}
 
-Network switches may be interested in reading these attributes to implement network policies.
-For example, flows which have received the "suspicious" attribute during classification may be rerouted through a deep packet inspector. If this attribute can only be revealed during classification, it would be grossly inefficient for each switch which wants to check for this attribute to re-perform packet classification, as the mapping of headers to attributes can be very complex and take a large amount of switch memory. 
+In the introduction, we briefly mentioned existing index tagging schemes and their limitations. We will refer to these schemes as \textit{flat tagging} schemes, because each tag can be thought of as a single, unstructured index.  We will now go into a more detailed explanation of such schemes. A flow of packets is defined by a combination of header fields that each of the packets has in common. Each combination of header fields can imply a set of attributes which are revealed by classification, such as a set of routes the flow may take, network nodes the flow must traverse, or characteristics of the sending/receiving hosts. Figure \ref{fig:mbox_policies} shows the concrete example of service chains. Each flow has a set of middleboxes it must traverse, and this set is determined by the classification rules in the first table.
 
-One solution for avoiding re-classification is to compile the results of classification into a short \textit{digest} and attach this digest to each packet as a tag. Switches may then read these tags to discover the attributes. To construct a simple digest format, we can maintain global knowledge of every distinct set of attributes seen in the network in an array. We can then use the array indices as packet tags and provide each switch with the index-to-attributes mapping. Switches can then recover all attributes by reading the tag. 
+Network nodes must be aware of these attributes to correctly implement a policy. In our example, not all flows should traverse the NAT. To determine which flows to route to the NAT, each node could re-perform classification. However, the number of rules may be prohibitively large to install on each node. 
+
+One solution for avoiding re-classification is to compile the results of classification into a short \textit{tag} and attach this tag to each packet. Switches may then read these tags to discover the attributes. If we maintained global knowledge of every distinct set of attributes seen in the network in an array, we could then use the array indices as packet tags and provide each switch with the index-to-attributes mapping. This mapping is shown in the second table of figure \ref{fig:mbox_policies}. Switches can then recover all attributes by reading the tag. 
 
 %However, a good format for these digests which minimizes both the digest size and read operation complexity is unclear. 
 
-Index tagging optimally minimizes the tag width, but it comes at the cost of attribute reading complexity. If a switch wishes to make a decision based only upon attribute $x$, it must compare each tag to the indices of every set that contains attribute $x$. If $x$ appears in $N$ sets, the switch requires $N$ operations to confirm the absence of $x$. If the number of equivalence classes is large enough, this may barely improve upon performing re-classification at every switch!
+This tagging scheme is optimal in tag width, because it uses the minimum number of bits required to convey which attribute set is attached to the flow. However, optimal width comes at the cost of attribute reading complexity. If a switch wishes to make a decision based only upon attribute $x$, it must compare each tag to the indices of every set that contains attribute $x$. In our example, the Load Balancing middlebox is present in three tags, so switches must compare the packet's tag to each of the three tags to determine if the middlebox is in the attribute set. In general, if the number of attribute sets is large enough, this tagging scheme may barely improve upon the memory used by performing re-classification at every switch!
 
 %Flat tagging is a format which optimally minimizes digest size at the cost of read complexity. The result of every classification is a set of indirect attributes, which has an exponential number of possibilities, but for many applications only a small number of unique sets are seen. 
 
@@ -22,11 +31,17 @@ Index tagging optimally minimizes the tag width, but it comes at the cost of att
 
 \subsection{Attribute-Carrying Tags}
 
-Attribute reading need not be so complex, though. We can sacrifice the optimality of the tag width to decrease the cost of reading. A simple example would be to use bitfields as digests, where each bit corresponds to a single attribute. The bit is 1 if the attribute is true, and 0 otherwise. This requires each attribute be binary, but it is simple enough to convert an attribute with $N$ possible values into $N$ binary attributes.
-To check the value of any attribute, only one read of a bit or set of bits is required, resulting in optimal memory usage by network nodes that wish to read attributes. 
+\begin{figure}[t!] 
+\begin{minipage}{1\linewidth}
+\begin{subfigure}[c]{0.96\linewidth}
+\includegraphics[trim={0 0 19cm 19.5cm}, clip, width=\linewidth]{figures/mbox_path_example3}
+\end{subfigure} 
+\end{minipage} 
+\caption{A simple attribute-carrying tag format for the service chaining example. Each middlebox is mapped to a bit in the tag, and that bit is 1 if the middlebox must be traversed.}
+\label{fig:att_tags}
+\end{figure}
 
- It is interesting to note that when each bitfield tag is viewed as an integer, it can still be thought of as an index into a implicit table of equivalence classes. The table will contain all possible attribute sets, and two flows with identical attribute sets receive identical indices. 
-
+Attribute reading need not be so complex, though. If we do not require optimal tag width, we can construct tags such that the attributes are more quickly read. Figure \ref{fig:att_tags} shows such a construction for service chains, with tags as bitfields. Each attribute can be read using a single wildcard match, but the tag width is equal to the number of middleboxes. It is interesting to note that when each bitfield tag is viewed as an integer, it can still be thought of as an index into a implicit table of all possible attribute sets. 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
