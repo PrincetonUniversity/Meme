@@ -24,8 +24,8 @@ class RCode:
             self.codeLen = len(code)
 
         def addKids(self):
-            self.left = RCode._BTNode(self.code + '0')
-            self.right = RCode._BTNode(self.code + '1')
+            self.left = RCode._BTNode('0' + self.code)
+            self.right = RCode._BTNode('1' + self.code)
 
         def assign(self, rcode, index):
             self.ssIndex = index
@@ -34,8 +34,8 @@ class RCode:
 
 
     def __init__(self, supersets, maxWidth, ruleCounts = {}):
-        self.supersets = [set(superset) for superset in supersets]
-        self.codes = ["" for _ in supersets]
+        self.supersets = removeSubsets(supersets)
+        self.codes = ["" for _ in self.supersets]
         self.maxWidth = maxWidth
         self.ruleCounts = ruleCounts
         self.codeTree = self._BTNode("")
@@ -61,8 +61,17 @@ class RCode:
 
         return self.codes[ssIndex] + mask
 
+    def tagWidth(self):
+        if not self.codeBuilt:
+            self._buildCode()
+
+        return len(supersets[0]) + len(codes[0])
+
 
     def _buildCode(self):
+        self.supersets = removeSubsets(self.supersets)
+        self.codes = [""] * len(self.supersets)
+
         # figure out what minimum width is needed for tags via solving Kraft's inequality
         kraftSum = sum(2**len(superset) for superset in self.supersets)
         tagWidth = math.ceil(math.log(kraftSum, 2.0))
@@ -98,6 +107,81 @@ class RCode:
                 treeNode.addKids()
                 nextTreeLevel.extend([treeNode.left, treeNode.right])
             thisTreeLevel = nextTreeLevel
+            currCodeLen += 1
 
         self.codeBuilt = True
+
+    # returns True if the set was successfully added, and False otherwise
+    def addSet(self, newSet):
+        if getSupersetIndex(newSet, self.supersets) != -1:
+            return True
+
+        if not self.codeBuilt:
+            self.supersets.append(newSet)
+            self.codes.append("")
+            return True
+
+        currWidth = self.tagWidth()
+        excessBits = self.maxWidth - currWidth
+        if excessBits == 0:
+            return False
+
+
+        minIncrease = float("inf")
+        bestIndex = -1
+        for (i, superset) in enumerate(self.supersets):
+            union = superset.union(newSet)
+            if len(union) - len(superset) > excessBits:
+                continue
+            newElements = union.difference(superset)
+            increase = sum(self.ruleCounts[element] for element in newElements)
+            if increase < minIncrease:
+                minIncrease = increase
+                bestIndex = i
+
+        if bestIndex != -1:
+            self.supersets[bestIndex].update(newSet)
+            return True
+
+        # if we hit here, no superset could be expanded, so we need a new one
+        self.codeBuilt = False
+        self.supersets.append(set(newSet))
+        self.codes.append("")
+        newIndex = len(self.codes) - 1
+
+        kraftSum = sum(2**len(superset) for superset in self.supersets)
+        kraftSum += 2**len(newSet)
+        newTagWidth = math.ceil(math.log(kraftSum, 2.0))
+
+        if newTagWidth > self.tagWidth():
+            # TODO: write code to widen the IDs
+            pass
+
+        else:  # if we hit here its cause the current code has enough redundancy that we need not widen the IDs
+            goalCodeLen = newTagWidth - len(newSet)
+
+            thisTreeLevel = [self.codeTree.left, self.codeTree.right]
+            currCodeLen = 1
+
+            while(len(thisTreeLevel) > 0):
+                if currCodeLen == goalCodeLen:
+                    treeNode = thisTreeLevel.pop()
+                    treeNode.assign(self, newIndex)
+                    self.codeBuilt = True
+                    return True
+                else:
+                    nextTreeLevel = []
+                    for treeNode in thisTreeLevel:
+                        if treeNode.assigned:
+                            continue
+                        if treeNode.left == None:
+                            treeNode.addKids()
+                            nextTreeLevel.append(treeNode.left)
+                        else:
+                            nextTreeLevel.extend([treeNode.left, treeNode.right])
+                    thisTreeLevel = nextTreeLevel
+                    currCodeLen += 1
+
+            raise Exception("Couldn't find a free codeword but kraft said there was one. Wat")
+
 
