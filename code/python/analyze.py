@@ -1,6 +1,7 @@
 import math
 
 def isSubsetOfSuperset(subset, supersets):
+
     for superset in supersets:
         if (set(superset)).issuperset(subset):
             return True
