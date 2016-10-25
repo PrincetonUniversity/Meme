@@ -1,6 +1,5 @@
 import math
 from analyze import bitsRequiredFixedID
-from analyze
 
 def removeSubsets(supersets):
     """ Removes all subsets from a list of (super)sets.
@@ -8,7 +7,7 @@ def removeSubsets(supersets):
     final_answer = []
     # defensive copy
     supersets = [set(superset) for superset in supersets]
-    sets.sort(key=len, reverse=True)
+    supersets.sort(key=len, reverse=True)
     i = 0
     while i < len(supersets):
         final_answer.append(supersets[i])
@@ -137,7 +136,7 @@ def minimizeFixedWidthGreedy(supersets):
 
         # merge the two best sets
         bestSet1.update(bestSet2)
-        peerSets.remove(bestSet2)
+        supersets.remove(bestSet2)
         # update the mask size if necessary
         maxLength = max(len(bestSet1), maxLength)
 
@@ -176,7 +175,7 @@ def minimizeFixedWidthGreedy(supersets):
 
         # merge the two best sets
         bestSet1.update(bestSet2)
-        peerSets.remove(bestSet2)
+        supersets.remove(bestSet2)
         # update the mask size if necessary
         maxLength = max(len(bestSet1), maxLength)
         tagWidth = bitsRequiredFixedID(supersets)
@@ -193,7 +192,7 @@ def minimizeRulesGreedy(supersets, ruleCounts, maxBits):
     # defensive copy
     supersets = [set(superset) for superset in supersets]
     # smallest sets first
-    peerSets.sort(key=len, reverse=True)
+    supersets.sort(key=len, reverse=True)
 
     # build the set of all participants
     participants = set()
@@ -206,12 +205,12 @@ def minimizeRulesGreedy(supersets, ruleCounts, maxBits):
 
 
     # the longest superset determines the current mask size
-    maxLength = max([len(prefix) for prefix in peerSets])
+    maxLength = max([len(prefix) for prefix in supersets])
 
-    while (len(peerSets) > 1):
-        m = len(peerSets)
+    while (len(supersets) > 1):
+        m = len(supersets)
 
-        bits = bitsRequired(peerSets)
+        bits = bitsRequiredFixedID(supersets)
 
         # if M is 1 + 2^X for some X, logM will decrease after a merge
         if ((m - 1) & (m - 2)) == 0:
@@ -224,8 +223,8 @@ def minimizeRulesGreedy(supersets, ruleCounts, maxBits):
         bestSet2 = None
 
         # for every pair of sets
-        for set1 in peerSets:
-            for set2 in peerSets:
+        for set1 in supersets:
+            for set2 in supersets:
                 if (set1 == set2):
                     continue
 
@@ -264,13 +263,13 @@ def minimizeRulesGreedy(supersets, ruleCounts, maxBits):
             break
         # merge the two best sets
         bestSet1.update(bestSet2)
-        peerSets.remove(bestSet2)
+        supersets.remove(bestSet2)
         # update the mask size if necessary
         maxLength = max(len(bestSet1), maxLength)
 
-    return peerSets
+    return supersets
 
-
+"""
 def bestSupersetToExpand(supersets, ruleCounts, newSet, currTagWidth):
     minIncrease = float("inf")
     bestIndex = -1
@@ -278,4 +277,5 @@ def bestSupersetToExpand(supersets, ruleCounts, newSet, currTagWidth):
         union = superset.union(newSet)
         currMaskWidth = len(superset)
         if currTagWidth - currMaskWidth + len(union) >
+"""
 
