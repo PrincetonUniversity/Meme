@@ -1,5 +1,5 @@
 from optimize import removeSubsets, minimizeVariableWidthGreedy
-from analyze import getSupersetIndex
+from analyze import getSupersetIndex, bitsRequiredVariableID
 import math
 
 
@@ -220,23 +220,21 @@ class RCode:
 
 
     def buildCode(self):
-        """ Rebuilds everything. Sets codeBuilt to True.
+        """ Rebuilds all identifiers. Sets codeBuilt to True.
         """
         self.logger("Building encoding... ")
         self.supersets = removeSubsets(self.supersets)
         self.codes = [""] * len(self.supersets)
 
-        # figure out what minimum width is needed for tags by solving Kraft's inequality
-        kraftSum = sum(2**len(superset) for superset in self.supersets)
-        minWidth = math.ceil(math.log(kraftSum, 2.0))
+        minWidth = bitsRequiredVariableID(self.supersets)
         # indices of supersets that have no codes yet
         uncodedIndices = range(len(self.supersets))
         # sort it in descending order of available code widths
         uncodedIndices.sort(key = lambda index: minWidth - len(self.supersets[index]), reverse = True)
         codeLens = [minWidth - len(self.supersets[i]) for i in uncodedIndices]
 
-        freeCodes = ['0', '1']
-        currDepth = 1
+        freeCodes = ['']
+        currDepth = 0
 
         while len(uncodedIndices) > 0:
             if codeLens[-1] == currDepth:
