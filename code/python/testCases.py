@@ -1,6 +1,8 @@
 from RSets import RCode
 import json
 
+
+
 def printAllSupersets(supersets, rcode):
     for (i, superset) in enumerate(supersets):
         print "Set %d" %i, str(rcode.bitString(superset))
@@ -56,3 +58,18 @@ print "After memory optimization: ", json.dumps(rcode.allSupersets())
 rcode.optimizeMemory()
 rcode.buildCode()
 print "After padding optimization: ", json.dumps(rcode.allSupersets())
+
+
+print "----Running test case 4----"
+sets = [[3,4,5,6], [6,7,8,9], [12,13,14]]
+rcode = RCode(sets, 13, isOrdered=True, elementOrdering={i:i for i in range(18)})
+rcode.buildCode()
+print "Before additions: ", json.dumps(rcode.allSupersets())
+rcode.addSet([1,2,3,4,5])
+print "After addition 1: ", json.dumps(rcode.allSupersets())
+rcode.addSet([10,11])
+print "After addition 2: ", json.dumps(rcode.allSupersets())
+rcode.addSet([15,16,17])
+print "After addition 3: ", json.dumps(rcode.allSupersets())
+
+

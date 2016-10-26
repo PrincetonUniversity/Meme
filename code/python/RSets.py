@@ -50,7 +50,7 @@ class RCode:
         if isOrdered:
             # what elements were we given an ordering for?
             orderedElements = set(elementOrdering.keys())
-            maxIndex = 0 if len(elementOrdering) > 0 else max(index for index in elementOrdering.keys())
+            maxIndex = 0 if len(elementOrdering) == 0 else max(index for index in elementOrdering.keys())
 
             # generate an ordering for any elements we weren't given an order for (could be none)
             unorderedElements = allElements.difference(orderedElements)
@@ -70,6 +70,12 @@ class RCode:
         # add the weights we generated to the weights we were given
         self.elementWeights = elementWeights.copy()
         self.elementWeights.update(newWeights)
+
+    def indexOfSuperset(self, superset):
+        for (i, superset2) in enumerate(self.supersets):
+            if set(superset) == set(superset2):
+                return i
+        return -1
 
     def allMatchStrings(self):
         """ Returns every match string in the encoding. If the elements are [1,2,3],
@@ -101,7 +107,8 @@ class RCode:
             WARNING: wipes out an existing code!
         """
         self.codeBuilt = False
-        self.supersets = minimizeVariableWidthGreedy(self.supersets)
+        supersets = minimizeVariableWidthGreedy(self.supersets)
+        self.supersets = [list(superset) for superset in supersets]
 
 
     def optimizeMemory(self, padding = 0):
@@ -164,17 +171,15 @@ class RCode:
         """
         if not self.codeBuilt:
             self.buildCode()
-
+        superset = list(superset)
         if self.isOrdered:
-            superset = set(superset)
-        else:
-            superset = list(superset)
-        index = self.supersets.index(superset)
+            superset = self._orderSuperset(superset)
+
+        index = self.indexOfSuperset(superset)
         if index == -1:
             self.logger("Cannot generate relevant match strings for a superset cause we can't find it:", superset)
             return {}
-        if self.isOrdered:
-            supereset = self._orderSuperset(superset)
+
 
         strings = {}
 
@@ -225,7 +230,7 @@ class RCode:
         """ Rebuilds all identifiers. Sets codeBuilt to True.
         """
         self.logger("Building encoding... ")
-        self.supersets = removeSubsets(self.supersets)
+        self.supersets = [list(superset) for superset in removeSubsets(self.supersets)]
         self.codes = [""] * len(self.supersets)
 
         minWidth = bitsRequiredVariableID(self.supersets)
