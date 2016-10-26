@@ -269,13 +269,3 @@ def minimizeRulesGreedy(supersets, ruleCounts, maxBits):
 
     return supersets
 
-"""
-def bestSupersetToExpand(supersets, ruleCounts, newSet, currTagWidth):
-    minIncrease = float("inf")
-    bestIndex = -1
-    for (i, superset) in enumerate(supersets):
-        union = superset.union(newSet)
-        currMaskWidth = len(superset)
-        if currTagWidth - currMaskWidth + len(union) >
-"""
-
