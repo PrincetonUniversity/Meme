@@ -1,4 +1,4 @@
-from optimize import removeSubsets, minimizeVariableWidthGreedy
+from optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy
 from analyze import getSupersetIndex, bitsRequiredVariableID
 import math
 
@@ -73,7 +73,7 @@ class RCode:
 
     def allMatchStrings(self):
         """ Returns every match string in the encoding. If the elements are [1,2,3],
-            the return value will look like {1:["0*1*"], 2:["0**1", "1*1*"], 3:["1**1"]}.
+            the return value will something look like {1:["0*1*"], 2:["0**1", "1*1*"], 3:["1**1"]}.
         """
         allElements = self.elementWeights.keys()
         allStrings = {}
@@ -104,12 +104,14 @@ class RCode:
         self.supersets = minimizeVariableWidthGreedy(self.supersets)
 
 
-    def optimizeMemory(self):
+    def optimizeMemory(self, padding = 0):
         """ Attempts to minimize the amount of dataplane memory this encoding will take.
             WARNING: wipes out an existing code!
         """
         self.codeBuilt = False
-        pass # TODO: this
+        supersets = minimizeRulesGreedy(self.supersets, self.elementWeights, self.maxWidth - padding)
+        self.supersets = [list(superset) for superset in supersets]
+
 
     def memoryRequired(self):
         return sum(sum(self.elementWeights[element] for element in superset) for superset in self.supersets)

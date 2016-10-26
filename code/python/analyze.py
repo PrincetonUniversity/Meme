@@ -31,17 +31,8 @@ def bitsRequiredVariableID(supersets):
     """ How many bits are needed to represent any set in this superset grouping?
         Assumes optimal variable-width superset identifiers.
     """
-    maxS = max(len(superset) for superset in supersets) + 1
-
-    inequality = sum(0.5**(maxS - len(superset)) for superset in supersets)
-
-    depth = 0
-    while (inequality > 1.0):
-        depth += 1
-        inequality *= 0.5
-
-
-    return int(maxS + depth)
+    kraftSum = sum(2**len(superset) for superset in supersets)
+    return math.ceil(math.log(kraftSum, 2.0))
 
 
 def rulesRequired(supersets, ruleCounts):

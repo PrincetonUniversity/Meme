@@ -1,5 +1,5 @@
 import math
-from analyze import bitsRequiredFixedID
+from analyze import bitsRequiredFixedID, bitsRequiredVariableID
 
 def removeSubsets(supersets):
     """ Removes all subsets from a list of (super)sets.
@@ -183,6 +183,7 @@ def minimizeFixedWidthGreedy(supersets):
     return supersets
 
 
+
 def minimizeRulesGreedy(supersets, ruleCounts, maxBits):
     """ Given a list of supersets, the number of rules needed regarding
         each participant in an outbound policy, and an upper bound
@@ -191,8 +192,6 @@ def minimizeRulesGreedy(supersets, ruleCounts, maxBits):
     """
     # defensive copy
     supersets = [set(superset) for superset in supersets]
-    # smallest sets first
-    supersets.sort(key=len, reverse=True)
 
     # build the set of all participants
     participants = set()
@@ -204,18 +203,10 @@ def minimizeRulesGreedy(supersets, ruleCounts, maxBits):
         return [participants]
 
 
-    # the longest superset determines the current mask size
-    maxLength = max([len(prefix) for prefix in supersets])
+    kraftSum = sum(2**len(superset) for superset in supersets)
+    widthRequired = math.ceil(math.log(kraftSum, 2.0))
 
     while (len(supersets) > 1):
-        m = len(supersets)
-
-        bits = bitsRequiredFixedID(supersets)
-
-        # if M is 1 + 2^X for some X, logM will decrease after a merge
-        if ((m - 1) & (m - 2)) == 0:
-            bits = bits - 1
-
 
         # bestSet1 and bestSet2 are our top choices for merging
         bestImpact = 0
@@ -228,10 +219,11 @@ def minimizeRulesGreedy(supersets, ruleCounts, maxBits):
                 if (set1 == set2):
                     continue
 
-                unionSize = len(set1.union(set2))
+                # how would a merge alter kraft's inequality?
+                kraftImpact = 2**len(set1.union(set2)) - (2**len(set1) + 2**len(set2))
 
                 # if the merge would cause us to exceed the bit limit
-                if bits + max(0, unionSize - maxLength) > maxBits:
+                if math.ceil(math.log(kraftSum + kraftImpact, 2.0)) > maxBits:
                     continue
 
 
@@ -264,8 +256,6 @@ def minimizeRulesGreedy(supersets, ruleCounts, maxBits):
         # merge the two best sets
         bestSet1.update(bestSet2)
         supersets.remove(bestSet2)
-        # update the mask size if necessary
-        maxLength = max(len(bestSet1), maxLength)
 
     return supersets
 
