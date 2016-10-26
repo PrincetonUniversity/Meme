@@ -32,4 +32,6 @@ printAllSupersets(sets1, rcode)
 print "medium set: ", rcode.bitString(mediumSet)
 print "medium set changes: ", json.dumps(changes)
 
+print "Encoding in full:", json.dumps(rcode.allSupersets())
+
 

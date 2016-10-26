@@ -71,6 +71,30 @@ class RCode:
         self.elementWeights = elementWeights.copy()
         self.elementWeights.update(newWeights)
 
+    def allMatchStrings(self):
+        """ Returns every match string in the encoding. If the elements are [1,2,3],
+            the return value will look like {1:["0*1*"], 2:["0**1", "1*1*"], 3:["1**1"]}.
+        """
+        allElements = self.elementWeights.keys()
+        allStrings = {}
+        for element in allElements:
+            allStrings[element] = self.matchStrings(element)
+
+        return allStrings
+
+    def allSupersets(self):
+        """ Returns a dictionary where keys are codewords and values are supersets.
+            Cool for debugging.
+        """
+        all = {}
+        for (i,superset) in enumerate(self.supersets):
+            if self.isOrdered:
+                all[self.codes[i]] = self._orderSuperset(superset)
+            else:
+                all[self.codes[i]] = superset
+
+        return all
+
 
     def optimizeWidth(self):
         """ Attempts to minimize the number of bits this encoding will take.
@@ -80,11 +104,15 @@ class RCode:
         self.supersets = minimizeVariableWidthGreedy(self.supersets)
 
 
-    def optimizeRules(self):
+    def optimizeMemory(self):
         """ Attempts to minimize the amount of dataplane memory this encoding will take.
             WARNING: wipes out an existing code!
         """
         self.codeBuilt = False
+        pass # TODO: this
+
+    def memoryRequired(self):
+        return sum(sum(self.elementWeights[element] for element in superset) for superset in self.supersets)
 
 
     def _orderSuperset(self, superset):
