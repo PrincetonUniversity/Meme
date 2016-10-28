@@ -1,8 +1,7 @@
 \section{aTag Enhancements}
 We have demonstrated a tag format consisting of an attribute superset identifier and an bitmask, and presented algorithms for constructing such tags from an input list of attribute sets. However, we can do better.
 
-\subsection{Encoding Non-Binary Attributes}
-
+%\subsection{Encoding Non-Binary Attributes}
 
 
 \subsection{Variable Length Identifiers}
@@ -11,28 +10,41 @@ It is unlikely that all attribute supersets will be the same width, causing diff
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
 \begin{subfigure}[c]{0.96\linewidth}
-\includegraphics[trim={0 10cm 0 0}, clip, width=\linewidth]{figures/variable_identifiers}
+\includegraphics[trim={0 7cm 18cm 0}, clip, width=\linewidth]{figures/variable_identifiers}
 \end{subfigure} 
 \end{minipage} 
-\caption{(a) shows example supersets with fixed-length identifiers. (b) shows the same supersets with variable-length identifiers. With variable length identifiers, the maximum tag width is reduced from 6 to 5 bits. }
+\caption{(a) shows example supersets with fixed-length identifiers. (b) shows variable-length identifiers for the same supersets. With variable length identifiers, the maximum tag width is reduced from 6 to 5 bits. (c) shows how variable-length identifiers can be built from the leaves of a binary tree.}
 \label{fig:variable_id}
 \end{figure}
 
-Figure \ref{fig:variable_id}(a) shows an example list of supersets, where the tag width is determined by one large superset. If the largest superset had a smaller identifier, the tag width could be decreased. We can accomplish this with the use of prefix codes. A prefix code is a set of (not necessarily equal-length) identifiers such that no identifier is a prefix of any other identifier. Figure \ref{fig:variable_id}(b) shows an example prefix code identifier assignment, which decreases the overall tag width from 6 bits to 5 bits.
-
+Figure \ref{fig:variable_id}(a) shows an example list of supersets, where the tag width is determined by one large superset. If the largest superset had a smaller identifier than the other supersets, the tag width could be decreased. However, if each tag has a different length identifier, then it unclear where the boundary between the identifier and the mask lies in any given tag. We can circumvent this with the use of prefix codes. A prefix code is a set of codewords such that no codeword is a prefix of any other codeword. Figure \ref{fig:variable_id}(b) shows an example prefix code identifier assignment, which decreases the overall tag width from 6 bits to 5 bits. Figure \ref{fig:variable_id}(c) shows how these codewords can be built from the leaves of a binary tree. To read a codeword from left to right, you begin at the root of the tree and go to the left child if you read a $0$ and right if you read a $1$. Once a leaf node is reached, the identifier has been fully read.
 
 
 
 
 
 \subsection{Encoding Total and Partial Orderings}
-In the design of our tag format, we assumed that the attribute sets to encode have no ordering: no attribute is greater or less than any other attribute. In many cases, this is true, as in the example of encoding lists of next-hops, but this is not true for all applications. For the example of encoding paths of middleboxes, the middleboxes must be traversed in the order originally specified. As our scheme currently stands, this ordering is lost after the sequence is converted to a tag. 
+In the design of our tag format, we assumed that the attribute sets to encode have no ordering: no attribute is greater or less than any other attribute. In many cases, this is true, as in the example of encoding lists of next-hops, but this is not true for all applications. For encoding paths of middleboxes, the middleboxes must be traversed in the order originally specified. As our scheme currently stands, this ordering is lost after the sequence is converted to a tag. 
 
 \subsubsection{Total Ordering}
-It is possible to impose an ordering upon the elements encoded by the tags. If the forwarding table entries which test for element membership were prioritized such that testing for element $X$ always has higher priority than testing for element $Y$, then this imposes the ordering $X > Y$ on the pair. Forwarding tables return the highest priority match, so if both $X$ and $Y$ are present in the sequence, then the test for $X$ will be the test that returns true. We can use this idea to support element ordering, so long as the element set is \textit{totally ordered}.
+\begin{figure}
+    \begin{tabular}{| l | l | l |}
+    \hline
+    Attribute & Unordered Match & Ordered Match\\ \hline
+    A & $1011**$ & $1011**$ \\ \hline
+    B & $101*1*$ & $10101*$ \\ \hline
+    C & $101**1$ & $101001$ \\
+    \hline
+    \end{tabular}
+    \caption{This table shows how the wildcard strings differ for ordered versus unordered attributes, using the example superset $(A,B,C)$ with identifier $101$. In the unordered case, the string matches if the target attribute bit is 1, and does not depend upon the bits of other attributes. In the ordered case, the string only matches if the target attribute bit is 1 and all bits for attributes preceding the target attribute are 0. This ensures only matching on the attribute earliest in the ordering succeeds.} 
+    \label{tab:ordering}
+\end{figure}
+It is possible to impose an ordering upon the elements encoded by the tags. Figure \ref{tab:ordering} shows how the wildcard strings can be modified to impose an ordering upon the elements. If the ordering dictates that $X$ must appear before $Y$, then any wildcard string for decoding $X$ must check that the $X$ bit is 1 and the $Y$ bit is 0. This causes the wildcard string to only successfully match if no other attributes that come before $X$ appear in the set.
+
+However, this only works if all sequences are drawn from a \textit{total ordering}. That is, if attribute $X$ appears before $Y$ in any sequence, then $X$ must appear before $Y$ in all sequences. If we have the two sequences $(X, Y)$ and $(Y, X)$, this approach immediately breaks.
 
 \subsubsection{Partial Ordering}
-It may not always be the case that the attributes have a total ordering, but it may be nearly the case for some applications. If, across all sequences, there are a few pairs of attributes $X$ and $Y$ such that $X$ appears before $Y$ in some sequences and $Y$ appears before $X$ in others, then $X$ and $Y$ are incomparable and we say that the universe is \textit{partially ordered}. It is still possible to encode such a list of sequences using our scheme, but at the cost of slightly larger tags.
+It may not always be the case that the attributes have a total ordering, but it may be \textit{almost} the case for some applications. If attribute $X$ appears before $Y$ in some sequences, but $Y$ appears before $X$ in others, then $X$ and $Y$ are an \textit{incomparable} pair. If there are only a few incomparable pairs, then the universe is \textit{partially ordered}. It is still possible to encode such a list of sequences using our scheme, but at the cost of increased tag width.
 
 Support for partial orderings is possible with one key observation: for a sequence to be ordered, switches must be able to perform ordered membership testing. If we have elements $[X,Y,Z]$ with $X > Y > Z$, then membership of $X$ is tested first by checking for for the $X$ bit, then $Y$, and finally $Z$. If however, we had to encode the two paths $XYZ$ and $YXZ$, this approach fails when each element is mapped to only one bit. Were we to map $X$ to two bits, one before $Y$ and one after $Y$, then $XYZ$ could be encoded as $1101$ and $YXZ$ would be $0111$. The bits could be tested in order from left to right, and both paths would be recreated correctly. 
 
