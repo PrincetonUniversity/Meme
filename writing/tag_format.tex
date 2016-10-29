@@ -1,11 +1,11 @@
 
 
-\section{Sequence Encoding}
-We have mentioned that, for flat tags, the number of forwarding table entries required for a single membership test can be large. 
+\section{Set Encoding}
+We have mentioned that, for flat tags, the number of forwarding table entries required for a single attribute test can be large. 
 To understand the problem, let us consider a simple example for the case of attaching lists of anycast hosts to a packet. Say that there is a local area network with five hosts $H = \{h_1, h_2, h_3, h_4, h_5\}$, and each packet that arrives will be classified as anycasting to one of four possible host sets: $s_1 = \{h_1, h_2\}$, $s_2 = \{h_1, h_2, h_3\}$, $s_3 = \{h_1, h_3\}$, or $s_4 = \{h_3, h_4, h_5\}$. In a flat tagging solution to this problem, each unique set will be assigned a single tag, and thus a packet which can be forwarded to the $i^{th}$ set will receive the $i^{th}$ tag. Now, for an intermediate switch to determine, using exact tag matches, if a packet can be forwarded to host $h_1$, it must check whether the packet has been assigned to $s_1, s_2,$ or $s_3$. The number of entries required is proportional to the number of sets which contain $h_1$, in this case 3. In the worst case $h_1$ would be a member of almost every group, and testing for $h_1$ would required a number of checks linear in the number of tags. 
 
 
-\subsection{Sequence Bitmasks}
+\subsection{Set Bitmasks}
 
 For the sake of explanation, assume that it is possible to attach an arbitrary
 amount of metadata to each packet the moment it is classified,
