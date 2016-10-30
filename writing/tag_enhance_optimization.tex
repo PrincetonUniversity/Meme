@@ -1,5 +1,5 @@
 \section{Optimizing the aTag Enhancements}
-We have specified several improvements to our encoding scheme. We will not present methods for optimizing the memory usage and width of the scheme.
+We have specified the format of our attribute encoding scheme, but we have not yet presented any methods for deciding how to make optimal use of this format. In this section, we will go over algorithms which attempt to minimize both the width of the attribute encoding tags, as well as the memory usage. 
 
 \subsection{Width with Variable Length Identifiers}
 We discussed the used of prefix codes to take advantage of the variable amount of space available for superset identifiers. We can determine the optimal width possible from using a prefix free code with Kraft's Inequality. Kraft's inequality states that, given a requirement of $N$ codewords where each codeword has a limited width of $L_i$, then it is possible to construct a prefix code if the following equation is satisfied:
@@ -28,9 +28,10 @@ Recall that the tag width $W_min$ for a list of supersets is given by the equati
 
 \subsection{Partial to Total Ordering}
 The encoding scheme is primarily used for encoding unordered sets of attributes, but some applications may have orderings. For the case of service chaining, it may not make sense to visit network middleboxes in an arbitrary order. 
-Unfortunately, converting a partially ordered universe to a totally ordered universe is not straightforward. There can potentially be sets of incomparable elements, rather than just pairs, making it unclear which elements to split to resolve incomparabilities with the least number of additional bits. In the worst case where every pair of elements is incomparable, 
+Unfortunately, converting a partially ordered universe to a totally ordered universe is not straightforward. There can be many pairs of incomparable attributes, and it is not trivial which minimal set of attribute splits will simultaneously resolve all incomparabilities. 
 
- Figure \ref{fig:ordering} shows one algorithm for doing so at a high level. For a concrete example, we are given four input sequences we wish to encode, shown in \ref{fig:ordering}(a). We assume that these sequences \textit{almost} follow an underlying ordering, but that there are a few incomparable sets of elements. In this example, $B$ is incomparable with $C$ because $B$ appears both before and after $C$. 
+
+ Figure \ref{fig:ordering} shows a heuristic for choosing a set of attributes to split which attempts to minimize the number of splits. For a concrete example, we are given four input sequences we wish to encode, shown in \ref{fig:ordering}(a). We assume that these sequences \textit{almost} follow an underlying ordering, but that there are a few incomparable sets of elements. In this example, $B$ is incomparable with $C$ because $B$ appears both before and after $C$. 
 
 To systematically identify these incomparable elements, we construct the sequence graph, shown in \ref{fig:ordering}(b). In the sequence graph, element $u$'s node has an edge to element $v$'s node if $u$ appears before $v$ in any sequence. We then run an algorithm for finding Strongly Connected Components (SCCs) on this graph. A strongly connected component is a set of nodes such that for every pair of nodes $u$ and $v$ in the set, $u$ has a path to $v$ and vice versa. In this context, every SCC corresponds to a set of incomparable elements. Figure \ref{fig:conflict_res} shows the process for determining which elements to split to create a new, totally ordered universe. Figure \ref{fig:ordering}(d) and (e) shows the result of using this new ordering to modify each sequence. 
 

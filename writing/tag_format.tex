@@ -21,7 +21,7 @@ Of course, we cannot attach arbitrary metadata to packets. Rather, we can repurp
 \subsection{Multiple Masked Sets}
 
  As our scheme currently stands, we are assigning a single bit of the metadata bitmask to every
-attribute in the universe of attribute. If we have more attributes than bits in the header field used for tagging, this approach immediately fails.
+attribute in the universe of attributes. If we have more attributes than bits in the header field used for tagging, this approach immediately fails.
 
 The purpose of the metadata bitmask attached to each packet is to concisely convey whether each attribute is attached to that flow or not. The bitmask can be thought of as recovering the desired list of attributes by masking some \textit{superset} which contains all possible attributes. 
 
