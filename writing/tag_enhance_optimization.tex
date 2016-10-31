@@ -4,7 +4,7 @@ We have specified the format of our attribute encoding scheme, but we have not y
 \subsection{Width with Variable Length Identifiers}
 We discussed the used of prefix codes to take advantage of the variable amount of space available for superset identifiers. We can determine the optimal width possible from using a prefix free code with Kraft's Inequality. Kraft's inequality states that, given a requirement of $N$ codewords where each codeword has a limited width of $L_i$, then it is possible to construct a prefix code if the following equation is satisfied:
 $$ \sum_{i = 0}^{N}{2^{-L_i} \le 1} $$
-Where $width_i$ is the maximum width available for the $i^{th}$ superset's identifying codeword. We can use this inequality to determine the smallest tag width possible, denoted by $W_{min}$, for a given list of supersets. Note that, for the $i^{th}$ superset, the space available for the identifying codeword will be $L_i = W_{min} - |superset_i|$. Using this, we can solve for $W_{min}$.\\
+Where, in our case, $L_i$ is the maximum width available for the $i^{th}$ superset's identifying codeword. We can use this inequality to determine the smallest tag width possible, denoted by $W_{min}$, for a given list of supersets. Note that, for the $i^{th}$ superset, the space available for the identifying codeword will be $L_i = W_{min} - |superset_i|$. Using this, we can solve for $W_{min}$.\\
 
 \begin{equation} \label{eq1}
  \begin{split}
@@ -15,11 +15,11 @@ Where $width_i$ is the maximum width available for the $i^{th}$ superset's ident
 \end{split}
  \end{equation}
  
- The left hand side is straightforward to solve, giving us the minimum width possible for the input list of supersets. We can then use this value to find each $width_i$, or the width available for the identifier of the $i^{th}$ superset.
+ The left hand side is straightforward to solve, giving us the minimum width possible for the input list of supersets. We can then use this value to find each $L_i$, or the width available for the identifier of the $i^{th}$ superset.
  
  Once all the identifier widths are known, finding an actual prefix code can be accomplished by building a binary code tree. Figure \ref{fig:variable_id}(c) shows such a code tree. Each node $n$ in the tree is associated with a binary string $s$. The left child of $n$ will have string $s + '0'$, and the right child will have $s + '1'$. The root of the tree corresponds to the empty string. A consequence of this is that node in the tree is a prefix of all of its children. To construct a prefix code, only leaf nodes may be codewords. 
  
- The code is built with a level-by-level tree construction. We begin with level 0, the root node. Two children are added to the root to create level 1, corresponding to strings $'0'$ and $'1'$, the length 1 binary strings. The construction proceeds as follows:  After creating the $k^th$ level of the tree, if there exists an $i$ such that $width_i = k$, we assign an arbitrary node in the current level to be the $i^th$ codeword. After all such codewords are assigned, the next level is constructed. Child node are added for each node in the current level that was not assigned as a codeword, and the construction proceeds until all codewords are assigned.
+ The code is built with a level-by-level tree construction. We begin with level 0, the root node. Two children are added to the root to create level 1, corresponding to strings $'0'$ and $'1'$, the length 1 binary strings. The construction proceeds as follows:  After creating the $k^th$ level of the tree, if there exists an $i$ such that $L_i = k$, we assign an arbitrary node in the current level to be the $i^th$ codeword. After all such codewords are assigned, the next level is constructed. Child node are added for each node in the current level that was not assigned as a codeword, and the construction proceeds until all codewords are assigned.
  
 \subsubsection{Minimizing Kraft to Decrease Tag Width}
 We've shown how to find a prefix code which optimally minimizes the tag width for a fixed list of supersets, but the problem becomes more interesting if we are permitted to modify the list of supersets. 
