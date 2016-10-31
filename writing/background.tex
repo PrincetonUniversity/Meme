@@ -41,7 +41,7 @@ In order to understand how our result came to be, we must first explain what fea
 
 \subsection{Forwarding Equivalence Class Tagging}
   
-In the introduction, we briefly mentioned existing index tagging schemes and their limitations. We will refer to these schemes as \textit{flat tagging} schemes, because each tag can be thought of as a single, unstructured index.  We will now go into a more detailed explanation of such schemes. A flow of packets is defined by a combination of header fields that each of the packets has in common. Each combination of header fields can imply a set of attributes which are revealed by classification, such as a set of routes the flow may take, network nodes the flow must traverse, or characteristics of the sending/receiving hosts. 
+In the introduction, we briefly mentioned existing index tagging schemes and their limitations. We refer to these schemes as \textit{flat tagging} schemes, because each tag can be thought of as a single, unstructured index.  We will now go into a more detailed explanation of such schemes. A flow of packets is defined by a combination of header fields that each of the packets has in common. Each combination of header fields can imply a set of attributes which are revealed by classification, such as a set of routes the flow may take, network nodes the flow must traverse, or characteristics of the sending/receiving hosts. 
 Figure MISSING shows the concrete example of service chains. Each flow has a set of middleboxes it must traverse, and this set is determined by the classification rules in the first table.
 
 Network nodes must be aware of these attributes to correctly implement a policy. In our example, not all flows should traverse the NAT. To determine which flows to route to the NAT, each node could re-perform classification. However, the number of rules may be prohibitively large to install on each node. 
@@ -72,12 +72,20 @@ This tagging scheme is optimal in tag width, because it uses the minimum number 
 \end{figure}
 
 Attribute reading need not be so complex, though. If we do not require optimal tag width, we can construct tags such that the attributes are more quickly read. Figure \ref{fig:att_tags} shows such a construction for service chains, with tags as bitfields. Each attribute can be read using a single wildcard match, but the tag width is equal to the number of middleboxes. It is interesting to note that when each bitfield tag is viewed as an integer, it can still be thought of as an index into a implicit table of all possible attribute sets. 
+
+In general, any tagging scheme must simultaneously minimize three different metrics:
+\begin{itemize}
+\item{\textbf{Tag Width:} Tags should not be too many bits, so they are able to handle large real-world applications without significant header space overhead. Tags should be able to either be inserted into small repurposed header fields or contribute little size to custom packet headers. }
+\item{textbf{Switch Memory:} The amount of memory required to decode attributes from any tag should be able to easily fit in modern commodity switches.}
+\item{textbf{Churn:} No network event should cause the encoding scheme to generate too many control messages.}
+\end{itemize}
+It is these metrics by which we will evaluate our solution. 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \subsection{Motivating Applications}
 There are many applications where a forwarding equivalence class is characterized by a distinct set of attributes, and where the switches could benefit from being able to read these sets using a small amount of memory. To motivate our solution, we will present four such applications. 
-
+ 
 \subsubsection{Software-Defined Internet Exchange Points}
 Consider the example of an Internet Exchange Point (IXP) with support for SDN policies. At such an IXP, connected networks may wish to apply SDN policies to their traffic as it enters the exchange point. If these policies were not present, all traffic from some network $P$  to some destination IP prefix $d$ would be directed to the BGP default next-hop for $d$ as decided by $P$. In the presence of SDN policies, however, traffic may be redirected to take a next-hop which differs from the BGP default next-hop. For correctness, this redirection must be to a next-hop which has announced a route to $d$ , and $P$'s policies must take this into account. If it were possible to attach to each packet leaving $P$ the set of next-hops which have advertised $d$ to $P$, policies could check for the presence of a next-hop in the set before rerouting the packet to that next-hop. 
 
@@ -85,6 +93,7 @@ Consider the example of an Internet Exchange Point (IXP) with support for SDN po
 For another example, network operators often desire that network traffic be directed through a series of middleboxes, such as load balancers or firewalls. Such middleboxes can provide security and performance guarantees for the network's users. However, each flow may need to be directed through a different chain of middleboxes. In this case, the set of attributes which define an equivalence class would be a chain of middleboxes. Switches could check for the presence of a middlebox attribute in the FEC tag and, if present, forward that flow towards the nearest matching middlebox. This could be accomplished with an MPLS label stack, but middleboxes do not necessarily understand or preserve MPLS labels. 
 
 \subsubsection{Host Attributes for Network Policies}
+Network policies may require knowledge of properties of the sending or receiving hosts in order to be applied correctly. As an example, users in the Computer Science department may be blocked from communicating with users in the Plasma Physics lab, because they are chumps. Since this information is not attached to the packets directly, it must be inferred from the source and destination addresses.
 
 
 \subsubsection{Multicast and Anycast}
