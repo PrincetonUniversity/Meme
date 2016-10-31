@@ -1,14 +1,29 @@
-\section{Background}
+\section{Background} \label{sec:background}
 
-\begin{figure}[t!] 
-\begin{minipage}{1\linewidth}
-\begin{subfigure}[c]{0.96\linewidth}
-\includegraphics[trim={0 12cm 19cm 0}, clip, width=\linewidth]{figures/mbox_path_example3}
-\end{subfigure} 
-\end{minipage} 
-\caption{In this example, we have a policy that defines traffic which must flow through subsets of five middleboxes. The first table shows which header fields trigger each middlebox, and the second table shows some combinations we may see in network traffic. }
-\label{fig:mbox_policies}
+%\begin{figure}[t!] 
+%\begin{minipage}{1\linewidth}
+%\begin{subfigure}[c]{0.96\linewidth}
+%\includegraphics[trim={0 12cm 19cm 0}, clip, width=\linewidth]{figures/mbox_path_example3}
+%\end{subfigure} 
+%\end{minipage} 
+%\caption{In this example, we have a policy that defines traffic which must flow through subsets of five middleboxes. The first table shows which header fields trigger each middlebox, and the second table shows some combinations we may see in network traffic. }
+%\label{fig:mbox_policies}
+%\end{figure}
+
+\begin{figure}
+    \begin{tabular}{| p{2.5cm} | p{2cm} | p{2cm} |}
+    \hline
+    Tagging Application & FEC-Defining Attributes & Ordered Attributes?\\ \hline
+    SDN-Enabled IXP & Advertising Peers & No \\ \hline
+    Service Chaining & Middleboxes& Yes \\ \hline
+    Policy Enforcement & Host Permissions & No \\ \hline
+    Multicast/Anycast & Destination Hosts & Maybe \\
+    \hline
+    \end{tabular}
+    \caption{Four applications of our encoding scheme, and their relevant properties. } 
+    \label{tab:applications}
 \end{figure}
+
 
 We mentioned flat index labels and their applications in the introduction. In this section, we will discuss flat labeling schemes, their implementation in commodity switches, and their limitations. We will use these limitations as motivations for new labeling schemes which take advantage of recent changes in commodity switches.
 
@@ -22,15 +37,16 @@ In order to understand how our result came to be, we must first explain what fea
   
   Until recently, switches have been designed with a single matching type in mind for each supported field. For the vast majority of fields, this matching type is exact matching, with the notable exception of longest-prefix matching for IPv4 address fields. Consequently, any innovation in networking research which repurposes a less-used packet field for carrying information across the network is forced to treat a single field as a single piece of information. If the researcher wishes to carry multiple pieces of information, either multiple fields must be used, or these pieces must somehow be multiplexed into a single value. The former approach is undesirable, as researchers often have a hard enough time choosing even a single field to repurpose. We will discuss the latter approach in more depth in the next section. 
   
-  However, with recent changes to commodity switches, such as new features supported by OpenFlow 1.3 switches[cite:OF13] and flexible protocol-independent switches[cite:P4], we are no longer forced to work within the constraints of how hardware vendors have expected packet headers to be used. Specifically, we are able to define our own fields and apply longest-prefix or wildcard matching to fields which have previously only supported exact matches. If researchers wish to attach multiple dimensions of information to a packet, multiplexing into a single field.... PAUSING FOR READING GROUP
+  However, with recent changes to commodity switches, such as new features supported by OpenFlow 1.3 switches[cite:OF13] and flexible protocol-independent switches[cite:P4], we are no longer forced to work within the constraints of hardware vendors' expectations. Specifically, we are able to define our own fields and apply longest-prefix or wildcard matching to fields which have previously only supported exact matches. This opens up a wide variety of encoding opportunities.
 
 \subsection{Forwarding Equivalence Class Tagging}
   
-In the introduction, we briefly mentioned existing index tagging schemes and their limitations. We will refer to these schemes as \textit{flat tagging} schemes, because each tag can be thought of as a single, unstructured index.  We will now go into a more detailed explanation of such schemes. A flow of packets is defined by a combination of header fields that each of the packets has in common. Each combination of header fields can imply a set of attributes which are revealed by classification, such as a set of routes the flow may take, network nodes the flow must traverse, or characteristics of the sending/receiving hosts. Figure \ref{fig:mbox_policies} shows the concrete example of service chains. Each flow has a set of middleboxes it must traverse, and this set is determined by the classification rules in the first table.
+In the introduction, we briefly mentioned existing index tagging schemes and their limitations. We will refer to these schemes as \textit{flat tagging} schemes, because each tag can be thought of as a single, unstructured index.  We will now go into a more detailed explanation of such schemes. A flow of packets is defined by a combination of header fields that each of the packets has in common. Each combination of header fields can imply a set of attributes which are revealed by classification, such as a set of routes the flow may take, network nodes the flow must traverse, or characteristics of the sending/receiving hosts. 
+Figure MISSING shows the concrete example of service chains. Each flow has a set of middleboxes it must traverse, and this set is determined by the classification rules in the first table.
 
 Network nodes must be aware of these attributes to correctly implement a policy. In our example, not all flows should traverse the NAT. To determine which flows to route to the NAT, each node could re-perform classification. However, the number of rules may be prohibitively large to install on each node. 
 
-One solution for avoiding re-classification is to compile the results of classification into a short \textit{tag} and attach this tag to each packet. Switches may then read these tags to discover the attributes. If we maintained global knowledge of every distinct set of attributes seen in the network in an array, we could then use the array indices as packet tags and provide each switch with the index-to-attributes mapping. This mapping is shown in the second table of figure \ref{fig:mbox_policies}. Switches can then recover all attributes by reading the tag. 
+One solution for avoiding re-classification is to compile the results of classification into a short \textit{tag} and attach this tag to each packet. Switches may then read these tags to discover the attributes. If we maintained global knowledge of every distinct set of attributes seen in the network in an array, we could then use the array indices as packet tags and provide each switch with the index-to-attributes mapping. This mapping is shown in the second table of figure MISSING. Switches can then recover all attributes by reading the tag. 
 
 %However, a good format for these digests which minimizes both the digest size and read operation complexity is unclear. 
 
@@ -44,8 +60,6 @@ This tagging scheme is optimal in tag width, because it uses the minimum number 
 
 %assign a t, after classifying a flow, to attach a tag to each packet in the flow which contains the indirect attributes. 
 
-
-\subsection{Attribute-Carrying Tags}
 
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
@@ -62,7 +76,7 @@ Attribute reading need not be so complex, though. If we do not require optimal t
 
 
 \subsection{Motivating Applications}
-There are many situations where a forwarding equivalence class is characterized by a distinct set of attributes, and where the switches could benefit from being able to read these sets using a small amount of memory. To motivate our solution, we will present three/four such settings. 
+There are many applications where a forwarding equivalence class is characterized by a distinct set of attributes, and where the switches could benefit from being able to read these sets using a small amount of memory. To motivate our solution, we will present four such applications. 
 
 \subsubsection{Software-Defined Internet Exchange Points}
 Consider the example of an Internet Exchange Point (IXP) with support for SDN policies. At such an IXP, connected networks may wish to apply SDN policies to their traffic as it enters the exchange point. If these policies were not present, all traffic from some network $P$  to some destination IP prefix $d$ would be directed to the BGP default next-hop for $d$ as decided by $P$. In the presence of SDN policies, however, traffic may be redirected to take a next-hop which differs from the BGP default next-hop. For correctness, this redirection must be to a next-hop which has announced a route to $d$ , and $P$'s policies must take this into account. If it were possible to attach to each packet leaving $P$ the set of next-hops which have advertised $d$ to $P$, policies could check for the presence of a next-hop in the set before rerouting the packet to that next-hop. 
