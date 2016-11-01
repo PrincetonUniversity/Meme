@@ -127,16 +127,16 @@
 }
 
 
-
 @misc{ris,
    author = "{RIPE Routing Information Service (RIS)}",
-   note = "{\url{http://www.ripe.net/ris}}"
+   note = "{\url{http://www.ripe.net/ris}}",
  }
 
  
-@misc{isdx-repo,
-   author = "{iSDX Gihub Repo}",
-   note = "{\url{https://github.com/sdn-ixp/iSDX}}"
+ 
+@misc{rsets-repo,
+	author = "{RSets GitHub Repo}",
+	note = "{\url{https://github.com/ADDTHIS}}",
  }
  
 @misc{coursera15,
@@ -187,11 +187,12 @@
   publisher={ACM}
 }
 
-@misc{repo,
-  key = "repo",
-  title  = "{SDX Repository}",
-  howpublished = "\url{https://sites.google.com/site/sdxrepo/home/sdx-repository}",
+@Misc{of13,
+  key =    {OpenFlow 1.3},
+  howpublished = {\url{http://bit.ly/1eyrkxY}},
+  title =    {OpenFlow 1.3 Specifications},
 }
+
 
 @misc{sdn-amsix,
   key = "sdn-amsix",
@@ -199,44 +200,6 @@
   howpublished = "\url{www.nanog.org/sites/default/files/wed.general.pels_.arpmitigation.20(1).pdf}",
 }
 
-@misc{sdx-github,
-  key = "sdx-github",
-  title  = "{SDX Open Source Code Release}",
-  howpublished = "\url{github.com/sdn-ixp/sdx}",
-}
-
-@inproceedings{ihm2010wide,
-  title={Wide-area Network Acceleration for the Developing World.},
-  author={Ihm, Sunghwan and Park, KyoungSoo and Pai, Vivek S},
-  booktitle={USENIX Annual Technical Conference},
-  year={2010}
-}
-
-@incollection{gupta2014peering,
-  title="{Peering at the Internet’s Frontier: A First Look at ISP Interconnectivity in Africa}",
-  author={Gupta, Arpit and Calder, Matt and Feamster, Nick and Chetty, Marshini and Calandro, Enrico and Katz-Bassett, Ethan},
-  booktitle={Passive and Active Measurement},
-  pages={204--213},
-  year={2014},
-  month = mar,
-  address = "Los Angeles, CA",
-}
-
-@inproceedings{gupta2014sdx,
-    author = {Gupta, Arpit and Vanbever, Laurent and Shahbaz, Muhammad and Donovan, Sean Patrick and Schlinker, Brandon and Feamster, Nick and Rexford, Jennifer and Shenker, Scott and Clark, Russ and Katz-Bassett, Ethan},
-    title = "{SDX: A Software Defined Internet Exchange}",
-    booktitle = {ACM SIGCOMM},
-    year = {2014},
-    isbn = {978-1-4503-2836-4},
-    address = {Chicago, IL},
-    pages = {579--580},
-    numpages = {2},
-    url = {http://doi.acm.org/10.1145/2619239.2631473},
-    doi = {10.1145/2619239.2631473},
-    acmid = {2631473},
-    publisher = {ACM},
-    keywords = {BGP, internet exchange point (IXP), software defined networking (SDN)},
-}
 
 @misc{nildata,
   key = "OpenFlow for IXP",
@@ -251,8 +214,6 @@
   key = {amsix},
   year = 2013
 }
-
-
 
 @inproceedings{B4,
  author = {Jain, Sushant and Kumar, Alok and Mandal, Subhashree and Ong, Joon and Poutievski, Leon and Singh, Arjun and Venkata, Subbaiah and Wanderer, Jim and Zhou, Junlan and Zhu, Min and Zolla, J. and H{\"o}lzle, Urs and Stuart, S. and Vahdat, Amin },
@@ -272,17 +233,80 @@
 @article{arp-sponge,
   title={Minimizing ARP traffic in the AMS-IX switching platform using OpenFlow},
   author={Boteanu, Victor and Bagheri, Hanieh and Pels, Martin},
-  year={2013}
+  year={2013},
+}
+
+@inproceedings{isdx,
+ author = {Gupta, Arpit and MacDavid, Robert and Birkner, R\"{u}diger and Canini, Marco and Feamster, Nick and Rexford, Jennifer and Vanbever, Laurent},
+ title = {An Industrial-scale Software Defined Internet Exchange Point},
+ booktitle = {Proceedings of the 13th Usenix Conference on Networked Systems Design and Implementation},
+ series = {NSDI'16},
+ year = {2016},
+ isbn = {978-1-931971-29-4},
+ location = {Santa Clara, CA},
+ pages = {1--14},
+ numpages = {14},
+ url = {http://dl.acm.org/citation.cfm?id=2930611.2930612},
+ acmid = {2930612},
+ publisher = {USENIX Association},
+ address = {Berkeley, CA, USA},
+}
+
+@inproceedings{sdx,
+ author = {Gupta, Arpit and Vanbever, Laurent and Shahbaz, Muhammad and Donovan, Sean P. and Schlinker, Brandon and Feamster, Nick and Rexford, Jennifer and Shenker, Scott and Clark, Russ and Katz-Bassett, Ethan},
+ title = {SDX: A Software Defined Internet Exchange},
+ booktitle = {Proceedings of the 2014 ACM Conference on SIGCOMM},
+ series = {SIGCOMM '14},
+ year = {2014},
+ isbn = {978-1-4503-2836-4},
+ location = {Chicago, Illinois, USA},
+ pages = {551--562},
+ numpages = {12},
+ url = {http://doi.acm.org/10.1145/2619239.2626300},
+ doi = {10.1145/2619239.2626300},
+ acmid = {2626300},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ keywords = {BGP, internet exchange point (IXP), software defined networking (SDN)},
 }
 
 
 
-@Misc{of13,
-  key =    {OpenFlow 1.3},
-  howpublished = {\url{http://bit.ly/1eyrkxY}},
-  title =    {OpenFlow 1.3 Specifications},
+@article{P4,
+ author = {Bosshart, Pat and Daly, Dan and Gibb, Glen and Izzard, Martin and McKeown, Nick and Rexford, Jennifer and Schlesinger, Cole and Talayco, Dan and Vahdat, Amin and Varghese, George and Walker, David},
+ title = {P4: Programming Protocol-independent Packet Processors},
+ journal = {SIGCOMM Comput. Commun. Rev.},
+ issue_date = {July 2014},
+ volume = {44},
+ number = {3},
+ month = jul,
+ year = {2014},
+ issn = {0146-4833},
+ pages = {87--95},
+ numpages = {9},
+ url = {http://doi.acm.org/10.1145/2656877.2656890},
+ doi = {10.1145/2656877.2656890},
+ acmid = {2656890},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ keywords = {p4, protocol-independent, reconfigurability, sdn},
 }
 
+@inproceedings{flowtags,
+ author = {Fayazbakhsh, Seyed Kaveh and Chiang, Luis and Sekar, Vyas and Yu, Minlan and Mogul, Jeffrey C.},
+ title = {Enforcing Network-wide Policies in the Presence of Dynamic Middlebox Actions Using Flowtags},
+ booktitle = {Proceedings of the 11th USENIX Conference on Networked Systems Design and Implementation},
+ series = {NSDI'14},
+ year = {2014},
+ isbn = {978-1-931971-09-6},
+ location = {Seattle, WA},
+ pages = {533--546},
+ numpages = {14},
+ url = {http://dl.acm.org/citation.cfm?id=2616448.2616497},
+ acmid = {2616497},
+ publisher = {USENIX Association},
+ address = {Berkeley, CA, USA},
+} 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -320,19 +344,4 @@ author={RIPE},
 title={RIS Raw Data},
 note={\url{https://www.ripe.net/analyse/internet-measurements/routing-information-service-ris/ris-raw-data}},
 year=2015
-}
-
-
-@inproceedings{isdx,
- author = {Gupta, Arpit and MacDavid, Robert and Birkner, R{\"u}diger and Canini, Marco and Feamster, Nick and Rexford, Jen and Vanbever, Laurent },
- title = {An Industrial-Scale Software Defined Internet Exchange Point},
- booktitle = {NSDI},
- year = {2016},
-}
-
-@inproceedings{sdx,
- author = {Gupta, Arpit and Vanbever, Laurent and Shahbaz, Muhammad and Donovan, Sean P. and Schlinker, Brandon and Feamster, Nick and Rexford, Jen and Shenker, Scott and Clark, Russ and Katz-Bassett, Ethan },
- title = {{SDX}: A Software Defined Internet Exchange},
- booktitle = {SIGCOMM},
- year = {2014},
 }
