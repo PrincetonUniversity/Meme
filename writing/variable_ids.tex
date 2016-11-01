@@ -7,11 +7,10 @@ In this format, every superset identifier is simply a unique $X$-bit integer, wh
 
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
-
-	\includegraphics[trim={2cm 7cm 18cm 10cm}, clip, width=\linewidth]{figures/variable_identifiers}
+\includegraphics[trim={0 10cm 0 0}, clip, width=\linewidth]{figures/code_tree}
 \end{minipage} 
-\caption{(a) shows example supersets with fixed-length identifiers. (b) shows variable-length identifiers for the same supersets. With variable length identifiers, the maximum tag width is reduced from 6 to 5 bits. (c) shows how variable-length identifiers can be built from the leaves of a binary tree.}
-\label{fig:variable_id}
+\caption{An example prefix code tree, based upon the prefix code identifiers shown in Figure \ref{fig:variable_ids} which are used to identify the attribute sets $[C,D]$, $[E,F]$, $[A,B,C]$, and $[W,X,Y,Z]$. This figure shows how reading a codeword corresponds to traversing a binary tree, starting at the root. By using such a code, larger sets are able to receive smaller identifiers, improving worst-case tag width.}
+\label{fig:code_tree}
 \end{figure}
 
 \begin{figure}[t!] 
@@ -26,14 +25,14 @@ In this format, every superset identifier is simply a unique $X$-bit integer, wh
     \hline
     \end{tabular}
 \end{minipage} 
-\caption{A prefix code tree corresponding to the prefix code given in Figure \ref{fig:variable_id}. Each leaf node corresponds to an binary codeword. The codeword is determined by the path taken from the root to the leaf. }
-\label{fig:code_tree}
+\caption{A prefix code tree corresponding to the prefix code given in Figure \ref{fig:code_tree}. Each leaf node corresponds to an binary codeword. The codeword is determined by the path taken from the root to the leaf. }
+\label{fig:variable_ids}
 \end{figure}
 
 In our current tag format, which is made of a superset identifier and mask, every superset identifier is simply a unique $X$-bit integer, where $X > \log_2(num_supersets)$. If the largest superset has $S$ attributes, the tag width used by the encoding scheme is $S + X$. However, it is unlikely that all supersets will be the same width. If there is only one superset of size $S$ and every other superset is size at most $S-K$ for some $K > 0$, then all but one tag will have $K$ unused bits. This is wasteful, and motivates us to try to account for the varying superset sizes. 
 
 
-Figure \ref{fig:variable_id}(a) shows an example list of supersets, where the tag width is determined by one large superset. If the largest superset had a smaller identifier than the other supersets, the tag width could be decreased. However, if each tag has a different length identifier, then it unclear where the boundary between the identifier and the mask lies in any given tag. We can circumvent this with the use of prefix codes. A prefix code is a set of codewords such that no codeword is a prefix of any other codeword. Figure \ref{fig:variable_id}(b) shows an example prefix code identifier assignment, which decreases the overall tag width from 6 bits to 5 bits. Figure \ref{fig:variable_id}(c) shows how these codewords can be built from the leaves of a binary tree. To read a codeword from left to right, you begin at the root of the tree and go to the left child if you read a $0$ and right if you read a $1$. Once a leaf node is reached, the identifier has been fully read.
+Figure \ref{fig:variable_ids} shows an example list of supersets, where the tag width is determined by one large superset. If the largest superset had a smaller identifier than the other supersets, the tag width could be decreased. However, if each tag has a different length identifier, then it unclear where the boundary between the identifier and the mask lies in any given tag. We can circumvent this with the use of prefix codes. A prefix code is a set of codewords such that no codeword is a prefix of any other codeword. The final column in Figure \ref{fig:variable_ids} shows an example prefix code identifier assignment, which decreases the overall tag width from 6 bits to 5 bits. Figure \ref{fig:code_tree} shows how these codewords can be built from the leaves of a binary tree. To read a codeword from left to right, you begin at the root of the tree and go to the left child if you read a $0$ and right if you read a $1$. Once a leaf node is reached, the identifier has been fully read.
 
 \subsection{Prefix Code Construction}
 We will now discuss a method for constructing a prefix code. In order to construct a code, we need to first determine how large each code should be in order for construction to be feasible. We can determine the optimal width tag possible with the use of Kraft's Inequality. Kraft's inequality states that, given a requirement of $N$ codewords where each codeword has a maximum width of $L_i$, then it is possible to construct a prefix code if the following equation is satisfied:
@@ -51,7 +50,7 @@ Where, in our case, $L_i$ is the maximum width available for the $i^{th}$ supers
  
  The left hand side is straightforward to solve, giving us the minimum width possible for the input list of supersets. We can then use this value to find each $L_i$, or the width available for the identifier of the $i^{th}$ superset.
  
- Once all the identifier widths are known, finding an actual prefix code can be accomplished by building a binary code tree. Figure \ref{fig:variable_id}(c) shows such a code tree. Each node $n$ in the tree is associated with a binary string $s$. The left child of $n$ will have string $s + '0'$, and the right child will have $s + '1'$. The root of the tree corresponds to the empty string. A consequence of this is that node in the tree is a prefix of all of its children. To construct a prefix code, only leaf nodes may be codewords. 
+ Once all the identifier widths are known, finding an actual prefix code can be accomplished by building a binary code tree. Figure \ref{fig:code_tree} shows such a code tree. Each node $n$ in the tree is associated with a binary string $s$. The left child of $n$ will have string $s + '0'$, and the right child will have $s + '1'$. The root of the tree corresponds to the empty string. A consequence of this is that node in the tree is a prefix of all of its children. To construct a prefix code, only leaf nodes may be codewords. 
  
  The code is built with a level-by-level tree construction. We begin with level 0, the root node. Two children are added to the root to create level 1, corresponding to strings $'0'$ and $'1'$, the length 1 binary strings. The construction proceeds as follows:  After creating the $k^th$ level of the tree, if there exists an $i$ such that $L_i = k$, we assign an arbitrary node in the current level to be the $i^th$ codeword. After all such codewords are assigned, the next level is constructed. Child node are added for each node in the current level that was not assigned as a codeword, and the construction proceeds until all codewords are assigned.
  

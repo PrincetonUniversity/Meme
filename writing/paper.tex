@@ -5,11 +5,12 @@
 \definecolor{darkgreen}{rgb}{0.0, 0.65, 0.0}
 
 \ifthenelse{\equal{\COMMENTS}{yes}}{%
-\newcommand{\mcnote}[1]{\textit{\textcolor{blue}{[marco]: #1}}} % Marco's comments
-\newcommand{\lv}[1]{\textcolor{red}{(\textit{\textcolor{red}{LV:#1}} )}}
-\newcommand{\rmnote}[1]{\textit{\textcolor{darkgreen}{[robert]: #1}}} % Robert's comments
-\newcommand{\rbnote}[1]{\textit{\textcolor{orange}{[rudy]: #1}}} % Rudy's comments
-\newcommand{\nf}[1]{\textcolor{red}{(\textit{\textcolor{red}{NF: #1}} )}}
+\newcommand{\nfnote}[1]{\textcolor{red}{(\textit{\textcolor{red}{[Nick]: #1}} )}} % Nick's Comments
+\newcommand{\jrnote}[1]{\textcolor{blue}{(\textit{\textcolor{blue}{[Jen]: #1}} )}} % Jen's Comments
+\newcommand{\rmnote}[1]{\textit{\textcolor{darkgreen}{[Robert]: #1}}} % Robert's comments
+\newcommand{\rbnote}[1]{\textit{\textcolor{darkgreen}{[Rudy]: #1}}} % Rudy's comments
+\newcommand{\ornote}[1]{\textit{\textcolor{orange}{[Ori]: #1}}} % Ori's comments
+\newcommand{\agnote}[1]{\textit{\textcolor{orange}{[Arpit]: #1}}} % Arpit's comments
 }{
 \newcommand{\mcnote}[1]{}
 \newcommand{\lv}[1]{}

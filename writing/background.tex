@@ -50,15 +50,13 @@ This tagging scheme is optimal in tag width, because it uses the minimum number 
 
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
-\begin{subfigure}[c]{0.96\linewidth}
-\includegraphics[trim={0 0 19cm 19.5cm}, clip, width=\linewidth]{figures/mbox_path_example3}
-\end{subfigure} 
+\includegraphics[trim={0 8cm 0 0}, clip, width=\linewidth]{figures/system_flow2}
 \end{minipage} 
-\caption{A simple attribute-carrying tag format for the service chaining example. Each middlebox is mapped to a bit in the tag, and that bit is 1 if the middlebox must be traversed.}
-\label{fig:att_tags}
+\caption{An illustration of the information flow for an attribute-encoding tagging scheme.}
+\label{fig:system_flow}
 \end{figure}
 
-Attribute reading need not be so complex, though. If we do not require optimal tag width, we can construct tags such that the attributes are more quickly read. Figure \ref{fig:att_tags} shows such a construction for service chains, with tags as bitfields. Each attribute can be read using a single wildcard match, but the tag width is equal to the number of middleboxes. It is interesting to note that when each bitfield tag is viewed as an integer, it can still be thought of as an index into a implicit table of all possible attribute sets. 
+Attribute reading need not be so complex, though. If we do not require optimal tag width, we can construct tags such that the attributes are more quickly read. Figure BLANK shows such a construction for service chains, with tags as bitfields. Each attribute can be read using a single wildcard match, but the tag width is equal to the number of middleboxes. It is interesting to note that when each bitfield tag is viewed as an integer, it can still be thought of as an index into a implicit table of all possible attribute sets. 
 
 In general, any tagging scheme must simultaneously minimize three different metrics:
 \begin{enumerate}
