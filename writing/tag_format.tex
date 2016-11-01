@@ -43,22 +43,59 @@ Consider the example in figure \ref{fig:masking}(a), where the left matrix conta
 Now, if a switch wishes to test for attribute $D$, it must simultaneously check (1) the identifier for the superset that contains $D$ and (2) the bit in the bitmask which corresponds to $D$. Thus, the check that would be generated is\\
 \noindent
 {%\footnotesize
-$\texttt{tag=1*1*} \rightarrow \texttt{action}(A)$\\
+$\texttt{tag=1*1*} \rightarrow \texttt{action}(\mathcal{A})$\\
 }
 Where the first bit in the tag match is for the superset identifier, and the
 remainder is for the mask.
 
-However, looking again at figure \ref{fig:masking}(b), the case of testing for $C$'s membership is not so simple. Since $C$ appears in both supersets, we must check whether $C$'s bit is 1 in either superset mask. For example, if we had the rule\\
+\subsection{Merging Sets To Minimize Memory}
+\begin{algorithm}
+  \caption{Greedy Memory Minimization}\label{alg:memory_min}
+  \begin{algorithmic}[1]
+    \Procedure{GreedyMin}{$S, O_W, W_{max}$}
+      \While{$|S| > 1$}
+      	\State $bestPair\gets (None, None)$
+      	\State $bestGain\gets 0$
+      	\For{$(s_i, s_j) \in S\times S$}
+      		\State $S_{temp} \gets (S-\{s_i, s_j\}) \cup \{s_i\cup s_j\}$
+      		\If{$O_W(S_{temp}) \le W_{max}$}
+      			\State $gain \gets \sum_{k \in s_i\cap s_j}q_k$
+      			\If{$gain > bestGain$}
+      				\State $bestGain \gets gain$
+      				\State $bestPair \gets (s_i, s_j)$
+      			\EndIf
+      		\EndIf
+      	\EndFor
+      	\If{$bestPair = (None, None)$}
+      		\State break
+      	\EndIf
+      	\State $(s_a, s_b) \gets bestPair$
+      	\State $S \gets (S-\{s_a, s_b\}) \cup \{s_a\cup s_b\}$
+      \EndWhile
+      \State \textbf{return} $S$
+    \EndProcedure
+  \end{algorithmic}
+\end{algorithm}
+
+This tag format allows us to test for the presence of many attribute tag using only a single matching string in switch memory.
+However, this is not true for all attributes. Looking again at figure \ref{fig:masking}(b), the case of testing for attribute $C$ is not so simple. Since $C$ appears in both supersets, we must check whether $C$'s bit is 1 in either superset mask. For example, if we had the rule\\
 \noindent
 {%\footnotesize
-$\texttt{C in tag} \rightarrow \texttt{action}(A)$\\
+$\texttt{C in tag} \rightarrow \texttt{action}(\mathcal{A})$\\
 }
 This would be augmented under our scheme to become\\
 \noindent
 {%\footnotesize
-$\texttt{metadata=0**1} \rightarrow \texttt{action}(A)$\\
-$\texttt{metadata=11**} \rightarrow \texttt{action}(A)$\\
+$\texttt{metadata=0**1} \rightarrow \texttt{action}(\mathcal{A})$\\
+$\texttt{metadata=11**} \rightarrow \texttt{action}(\mathcal{A})$\\
 }
-Therefore, depending upon the matrix construction, membership tests may still require multiple TCAM entries. If no superset is too large to fit into the mask, it is feasible to merge columns of the matrix to create new, larger supersets which can decrease the inflation factor. However, this can only be performed until the supersets of each column become too large to fit into the available bit space. For example, in figure \ref{fig:masking}(b), the two columns could be merged into $[A,B,C,D,E]$ to eliminate the inflation of $C$ rules. This would decrease the identifier size from 1 to 0 bits and increase the mask size from 3 to 5 bits. There is a 
-tradeoff to consider between the size of the superset identifier, the mask size, and the number of rules for attribute testing, and when considered formally an optimization problem arises.
+Therefore, depending upon the matrix construction, attribute tests may still require multiple forwarding table entries. We refer to this effect as inflation. In the Figure \ref{fig:masking}(b) example, we can eliminate inflation by merging the supersets $[A,B,C]$ and $[C,D,E]$ into $[A,B,C,D,E]$. No attribute will appear in multiple sets, but the tag size has increased from 4 to 5 bits (the mask went from 3 to 5, and the identifier size went from 1 to 0).
+
+In general, if an attribute $a$ is tested $q_a$ times and appears in $k_a$ supersets, there will be $q_a\cdot k_a$ match-action table entries for that attribute. If we have a set of supersets $S = \{s_1, s_2, \dots, s_N\}$, we can attempt to minimize the amount of memory we will use by replacing some pair of sets $\{s_i, s_j\}$ in $S$ with their union $s_i\cup s_j$. If we do this, note that the memory used will decrease by $\sum_{a \in s_i\cap s_j}q_a$, because every attribute $a$ in the intersection of $s_i$ and $s_j$ will appear in one less superset, eliminating $q_a$ tests from memory. We can extend this observation to a simple greedy algorithm, which repeatedly finds a pair of supersets to merge which maximally decreases overall memory usage until any merging operation would case the maximum tag width to be exceeded. 
+
+
+Algorithm \ref{alg:memory_min} shows this simple greedy memory minimization algorithm in its entirety. The algorithm takes as input a superset list $S = \{s_1, s_2, \dots, s_N\}$, a tag width oracle $O_W$ where $O_W(S)$ is the number of tag bits required by list $S$ , and a maximum tag width $W_{max}$. We use an oracle for computing the tag width consumed by our encoding because, in a later section, a further modification to our encoding scheme makes computing the tag width non-trivial. 
+
+We have not stated which superset list $S$ to use as an input to our algorithm. It suffices to begin with any list such that, for every attribute set $A_i$ in the list of sets we need to encode, there is some superset $s_j \in S$ such that $A_i \subseteq s_j$. An obvious choice for $S$ is to take the list of attribute sets we wish to reproduce as our initial superset list. Note that there may be many pairs of attribute sets $(A_i, A_j)$ such that $A_i \subseteq A_j$. There is no reason to keep $A_i$ in $S$ in this case, so we pre-process $S$ by removing any attribute set which is a subset of any other. 
+
 
