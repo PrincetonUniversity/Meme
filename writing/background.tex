@@ -114,7 +114,7 @@ scheme to generate too many control messages.  \end{enumerate}
 \begin{figure} \small \begin{center}
 \begin{tabular}{|l|c|c|} \hline \multicolumn{1}{|c|}{\bf Application} &
 \multicolumn{1}{c|}{\bf FEC Attributes} & \multicolumn{1}{c|}{\bf Ordered?}\\
-\hline SDN-enabled IXP & Advertising peers & No \\ \hline Service chaining &
+\hline SDN-based IXPs & Advertising peers & No \\ \hline Service chaining &
 Middleboxes & Yes \\ \hline Policy enforcement & Host permissions & No \\ \hline
 Multicast/anycast & Servers & Maybe \\ \hline \end{tabular} \end{center}
 \caption{Example applications and their relevant properties. }
@@ -126,20 +126,21 @@ benefit from being able to read these sets using a small amount of memory. To
 motivate our solution, we will present four such applications, which are
 summarized in Figure \ref{tab:applications}.
  
-\paragraph{Software-Defined Internet Exchange Points} Consider the example of an
-Internet Exchange Point (IXP) with $N$ members Autonomous Systems $[AS_1, AS_2,
-..., AS_N]$ and support for participants to install fine-grained forwarding
-policies on the shared fabric. At such an IXP, members may wish to enact
-\textit{Application-Specific Peering}, where traffic exchange is determined by
-header fields other than the destination IP address. Say that $AS_1$ wishes to
-send as much of their HTTP traffic to $AS_2$ as possible. $AS_2$ does not have
-routes to every HTTP destination, so it is incorrect for them to receive all
-HTTP traffic. This peering policy could be augmented to only apply if the
-packet's destination is from the set of destinations that $AS_2$ advertises, but
-this would greatly increase the memory required. If instead every packet that
-entered the exchange point was tagged with the set of IXP members that have
-routes towards the packet's destination, $AS_1$'s peering policy could easily
-check the packet header for the presence of $AS_2$ before forwarding.
+\paragraph{Fine-grained Interdomain Routing} SDN-based IXPs 
+(SDX~\cite{sdx, isdx}) enable overriding the forwarding decisions of default 
+interdomain routing protocol (BGP) with fine-grained match-action policies. 
+Such flexible routing, if done naively can create black holes in the network. 
+For example, consider an IXP with $N$ members Autonomous Systems $[AS_1, 
+AS_2,..., AS_N]$. $AS_1$ expresses a policy forwarding all the HTTPS traffic 
+to $AS_2$. If $AS_1$ forwards HTTPS traffic for prefixes that $AS_2$ never 
+advertised to $AS_1$, it will create a black hole in the network. To avoid 
+such black holes, SDX should augment the input policies to check if it can 
+forward a packet to the specified next hop. Thus for this case, the attributes 
+to encode are the set of next hops to which a packet can be forwarded. Note 
+that in this case ordering of next hop attributes is not necessary. 
+iSDX~\cite{isdx} proposed using the {\tt dMac} field for tagging. 
+Participant's border router apply the tagging before the packet enters 
+IXP's layer-2 network.
 
 \paragraph{Service Chaining} Network operators often desire that network traffic
 be directed through a series of middleboxes, such as load balancers or
