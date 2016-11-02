@@ -11,10 +11,17 @@ Routing is increasingly more sophisticated than simply directing all traffic alo
 The simplest and most common form of FEC tag is a flat tag, or \emph{index}. Historically, virtual circuit switching techniques like MPLS [cite MPLS(how?)] and VLAN [cite VLAN(how?)] follow this approach, and it is common in newer works as well~\cite{flowtags, sdx}.  Using the tag as an index worked well with traditional switches that support exact matches on a single header field, such as an MPLS label, VLAN tag, or destination MAC address.  However, index tagging solutions face two scalability challenges.  First, the size of the tag limits the number of FECs (e.g., the 12-bit VLAN tag can represent at most 4096 FECs).  Second, the number of FECs traversing a switch determines the number of forwarding rules and the churn that occurs after network events like link failures.
 %If a network node wishes to decode whether attribute $A$ is associated with a packet, it must determine whether the packet belongs to any FEC which is associated with $A$. If $A$ is associated with $N$ FECs, each of which has its own index, the switch requires $N$ rules for decoding $A$. 
 
+\begin{figure}[t!] 
+\begin{minipage}{1\linewidth}
+\includegraphics[trim={0 11.5cm 0 0}, clip, width=\linewidth]{figures/mbox_path_example}
+\end{minipage} 
+\caption{An illustration of the scaling issues of flat tagging. Each of the five switches have different middlebox functionality. Packets that enter the network are classified as needing to go through one of two chains of middlebox services, and they are tagged as such. If flat matching is used, no aggregate forwarding rules are possible.  }
+\label{fig:mbox_path}
+\end{figure}
 %%%
 %%% Matching on sequences
 %%%
-Fundamentally, the issue is that each FEC represents a \emph{collection} of attributes, yet two FECs that differ by only one attribute receive arbitrary indices. For middlebox steering policies, the FEC represents a sequence of middleboxes, and two FECs may differ in a single hop.  If the tag could represent a list of middleboxes efficiently, then switch $B$ in the example above would need just \emph{one} rule to differentiate between packets going to $C$ and $D$.
+Fundamentally, the issue is that each FEC is defined by a \emph{collection} of attributes, yet two FECs that differ by only one attribute receive arbitrary indices as tags. For middlebox steering policies, FECs are defined by sequences of middleboxes, and two FECs may differ in a single hop.  If tags are assigned such that forwarding rules can be aggregated (akin to IP prefix routing), then switches $A$ and $B$ in Figure \ref{fig:mbox_path} could forward multiple FECs with a single forwarding rule.
 %%%
 %%% Capabilities of newer switches 
 %%%
