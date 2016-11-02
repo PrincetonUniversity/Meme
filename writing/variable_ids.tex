@@ -146,11 +146,11 @@ For given supersets, after calculating $W_{v}$ as the minimal possible width ena
 \subsection{Optimizing Selection of Supersets}
 In the selection of the supersets we would like to enable the existence of a short as possible tag. By Property~\ref{property_variable_length_minimal_tag} the number of supersets and their identities should be selected such that their sizes $\ell_1, \ldots, \ell_N$ minimize the term $T = \sum_{i = 1}^{N}{2^{\ell_i}}$. 
 
-We describe a simple scheme to determine the supersets for a given (distinct) input sets $S_1, \ldots, S_N$. We first examine whether $S_i \subset S_j$ for some two sets. In this case, we can use  $S_j$ as the superset for both sets and eliminate the set $S_i$. This would decrease the value of sum. We refer to this change as redundancy elimination.
+We describe a simple scheme to determine the supersets for a given (distinct) input sets $s_1, \ldots, s_N$. We first examine whether $s_i \subset s_j$ for some two sets. In this case, we can use $s_j$ as the superset for both sets and eliminate the set $s_i$. This would decrease the value of sum. We refer to this change as redundancy elimination.
 
-Next,  we continue to examine a possible merging of pairs of supersets. Such a merging decreases the number of supersets. While considering two sets $S_i, S_j$ of 
-size $\ell_i, \ell_j$, the contribution of  a possible merging $S_i \bigcup S_j$ to $T$ is necessarily larger than  the sum of the contributions of $S_i$ and $S_j$ to $T$.
-This is because after the redundancy elimination, we must have that $|S_i \bigcup S_j| > \max(\ell_i, \ell_j)$. Accordingly,  $2^{|S_i \bigcup S_j|} > 2^{\max(\ell_i, \ell_j)} \ge 
+Next,  we continue to examine a possible merging of pairs of supersets. Such a merging decreases the number of supersets. While considering two sets $s_i, s_j$ of 
+size $\ell_i, \ell_j$, the contribution of  a possible merging $s_i \bigcup s_j$ to $T$ is necessarily larger than  the sum of the contributions of $s_i$ and $s_j$ to $T$.
+This is because after the redundancy elimination, we must have that $|s_i \bigcup s_j| > \max(\ell_i, \ell_j)$. Accordingly,  $2^{|s_i \bigcup s_j|} > 2^{\max(\ell_i, \ell_j)} \ge 
 2^{\ell_i} + s^{\ell_j}$. However, a possible merging of a pair of supersets might enable eliminating additional supersets through redundancy elimination.
 
 Accordingly, in each step of the scheme we examine for each pair of the current supersets the possible change in the value of $T$ after a potential merging of the pair and applying of the redundancy elimination. The pair that leads to a maximal reduction (or minimal increase in case no such pair exists) is selected and merged in this step and  redundancy elimination is applied. 
