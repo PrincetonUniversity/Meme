@@ -1,61 +1,163 @@
-\section{Variable Length identifiers}\label{sec:identifiers}
-We have demonstrated a tag format consisting of an attribute superset identifier and an bitmask, which can be used for easily decoding attributes associated with a flow. In this section, we will cover a more clever method for generating superset identifiers which makes more efficient use of tag space. 
+\section{Variable-length Identifiers}\label{sec:identifiers}
+\subsection{Allowing flexibility in identifiers' lengths}
+In this section, we describe an enhanced encoding technique that enables further reduction in the required tag width.  While maintaining the ability to distinguish between different supersets, we allow their distinct identifiers to be of a variable length. We describe a simple condition on the identifiers that enable such a distinction. 
 
-In this format, every superset identifier is simply a unique $X$-bit integer, where $X > \log_2(num_supersets)$. If the largest superset has $S$ attributes, the tag width used by the encoding scheme is $S + X$. However, it is unlikely that all supersets will be the same width. If there is only one superset of size $S$ and every other superset is size at most $S-K$ for some $K > 0$, then all but one tag will have $K$ unused bits. This is wasteful, and motivates us to try to account for the varying superset sizes. 
+Consider the supersets from Table~\ref{Table_variable}.\ref{Table_variable_a}, each described as a set of attributes. The largest of the $N=4$ supersets has five attributes. 
+If fixed-length identifiers of $\left \lceil \log_2(N) \right \rceil = 2$ bits 00, 01, 10 and 11 are allocated then we derive a maximal width of 2 + 5 = 7 bits, as illustrated in Table~\ref{Table_variable}.\ref{Table_variable_b}. 
+Note that the observed total width for several of the subsets is shorter than the maximal.
+In the general case, with fixed-length identifiers, given $N$ supersets of size $\ell_1, \ldots, \ell_N$ the required width is determined by the largest superset and equals 
+ $W_{f} = \left \lceil \log_2(N) \right \rceil + \max_{i \in [1,N]} \ell_i$. 
 
- causing different tags to use a different number of bits. If we are using a fixed-width field in the packet headers for the tags, then it must be at least the size of the largest tag, and all smaller tags must be padded to the size of the largest tag. This wastes space which could perhaps be used in a more clever fashion.
+In Table~\ref{Table_variable}.\ref{Table_variable_c} variable-length identifiers 0, 10, 110 and 110 are used. This enables to reduce the maximal width to only 6 bits by allocating the largest supersets shorter identifiers. 
+Notice that the identifiers are selected such that none of them is a prefix (start) of the other, i.e., the identifiers are codewords in a prefix code.
+Such a selection of the identifiers enables to distinguish between the supersets for any value of their bit masks as the second part of the tag. 
+
+
+
+%\begin{table}[t!]
+%
+%
+%\centering
+%subfigure[Supersets]{
+%\begin{tabular}{|c|}
+%\hline
+%Superset elements\\
+%\hline
+%A B C\\
+%C D\\
+%E F\\
+%W X Y Z\\
+%\hline
+%\end{tabular}
+%}\\
+%\end{table}
+
+
+
+
+
+
+
+
+\begin{table}[t!]
+\small
+
+\centering
+\begin{subtable}[t]{0.35\linewidth}
+\caption{Supersets}
+\begin{tabular}{|c|}
+\hline
+Superset elements\\
+\hline
+A B C\\
+C D\\
+E F\\
+W X Y Z\\
+\hline
+\end{tabular}
+\label{Table_variable_a}
+\end{subtable}\\
+
+
+\begin{subtable}[t]{0.49\linewidth}
+\caption{Fixed-length Identifiers}
+\begin{tabular}{|c|c|}
+\hline
+Identifier   &  Superset\\
+\hline
+00 & A B C\\
+01 &  C D\\
+10 &  E F\\
+11 &  W X Y Z\\
+\hline
+\end{tabular}
+\label{Table_variable_b}
+\end{subtable}
+\hfill
+\begin{subtable}[t]{0.49\linewidth}
+\caption{Variable-length Identifiers}
+\begin{tabular}{|c|c|}
+\hline
+Identifier   &  Superset\\
+\hline
+10 & A B C\\
+110 &  C D\\
+111 &  E F\\
+0 &  W X Y Z\\
+\hline
+\end{tabular}
+\label{Table_variable_c}
+\end{subtable}
+
+\caption{Illustration of variable-length identifiers for supersets. While with fixed-length identifiers the maximal width in (B) is 6 bits, with variable-length identifiers it is reduced in (C) to only 5 bits.
+}
+\label{Table_variable}
+\end{table}
+
+
+yeah
 
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
 \includegraphics[trim={0 10cm 0 0}, clip, width=\linewidth]{figures/code_tree}
 \end{minipage} 
-\caption{An example prefix code tree, based upon the prefix code identifiers shown in Figure \ref{fig:variable_ids} which are used to identify the attribute sets $[C,D]$, $[E,F]$, $[A,B,C]$, and $[W,X,Y,Z]$. This figure shows how reading a codeword corresponds to traversing a binary tree, starting at the root. By using such a code, larger sets are able to receive smaller identifiers, improving worst-case tag width.}
+\caption{An example prefix code tree, based upon the prefix code identifiers from Table~\ref{Table_variable}.\ref{Table_variable_c} which are used to identify the attribute sets $[A,B,C]$, $[C,D]$, $[E,F]$ and $[W,X,Y,Z]$. This figure shows how reading a codeword corresponds to traversing a binary tree, starting at the root. By using such a code, larger sets are able to receive smaller identifiers, improving maximal  tag width.}
 \label{fig:code_tree}
 \end{figure}
 
-\begin{figure}[t!] 
-\begin{minipage}{1\linewidth}
-	\begin{tabular}{| p{1.5cm} | c | p{2cm} |}
-    \hline
-    Identifier & Attribute Set & Prefix-code Identifier\\ \hline
-    $00$ & $[W,X,Y,Z]$ & $0$ \\ \hline
-    $01$ & $[A,B,C]$ & $10$ \\ \hline
-    $10$ & $[C,D]$ & $110$ \\ \hline
-    $11$ & $[E,F]$ & $111$ \\
-    \hline
-    \end{tabular}
-\end{minipage} 
-\caption{A prefix code tree corresponding to the prefix code given in Figure \ref{fig:code_tree}. Each leaf node corresponds to an binary codeword. The codeword is determined by the path taken from the root to the leaf. }
-\label{fig:variable_ids}
-\end{figure}
 
-In our current tag format, which is made of a superset identifier and mask, every superset identifier is simply a unique $X$-bit integer, where $X > \log_2(num_supersets)$. If the largest superset has $S$ attributes, the tag width used by the encoding scheme is $S + X$. However, it is unlikely that all supersets will be the same width. If there is only one superset of size $S$ and every other superset is size at most $S-K$ for some $K > 0$, then all but one tag will have $K$ unused bits. This is wasteful, and motivates us to try to account for the varying superset sizes. 
+Kraft's inequality~\cite{abramson} formally determines the existence of a prefix code with codewords of given lengths. It says that a code with $N$ codewords of lengths 
+ $L_1, L_2, \ldots, L_N$ exists 
+iff the following inequality holds:
+$$ \sum_{i = 1}^{N}{2^{-L_i}} \le 1. $$
 
+For instance, the lengths of the identifiers in Table~\ref{Table_variable}.\ref{Table_variable_c} satisfy $2^{-1} + 2^{-2} + 2^{-3} + 2^{-3} = 1$.
 
-Figure \ref{fig:variable_ids} shows an example list of supersets, where the tag width is determined by one large superset. If the largest superset had a smaller identifier than the other supersets, the tag width could be decreased. However, if each tag has a different length identifier, then it unclear where the boundary between the identifier and the mask lies in any given tag. We can circumvent this with the use of prefix codes. A prefix code is a set of codewords such that no codeword is a prefix of any other codeword. The final column in Figure \ref{fig:variable_ids} shows an example prefix code identifier assignment, which decreases the overall tag width from 6 bits to 5 bits. Figure \ref{fig:code_tree} shows how these codewords can be built from the leaves of a binary tree. To read a codeword from left to right, you begin at the root of the tree and go to the left child if you read a $0$ and right if you read a $1$. Once a leaf node is reached, the identifier has been fully read.
+This also enables us to exactly calculate the minimal width $W_{v}$ that can be achieved for a given $X$ supersets of size $\ell_1, \ldots, \ell_X$  using variable-length identifiers as described in the following property.
 
-\subsection{Prefix Code Construction}
-We will now discuss a method for constructing a prefix code. In order to construct a code, we need to first determine how large each code should be in order for construction to be feasible. We can determine the optimal width tag possible with the use of Kraft's Inequality. Kraft's inequality states that, given a requirement of $N$ codewords where each codeword has a maximum width of $L_i$, then it is possible to construct a prefix code if the following equation is satisfied:
-$$ \sum_{i = 1}^{N}{2^{-L_i} \le 1} $$
-Where, in our case, $L_i$ is the maximum width available for the $i^{th}$ superset's identifying codeword. We can use this inequality to determine the smallest tag width possible, denoted by $W_{min}$, for a given list of supersets. Note that, for the $i^{th}$ superset, the space available for the identifying codeword will be $L_i = W_{min} - |superset_i|$. Using this, we can solve for $W_{min}$.\\
-
+\begin{property}
+For given supersets of size $\ell_1, \ldots, \ell_N$ the optimal (minimal) tag width that can be derived using variable-length identifiers is given by 
+\begin{equation} \label{eq2}
+W_{v}  = \left \lceil \log_2 \sum_{i = 1}^{N}{2^{\ell_i}} \right \rceil. \nonumber 
+\end{equation}
+\label{property_variable_length_minimal_tag}
+\end{property} 
+\bp
+A width of $W_{v}$ allows assigning an identifier of length  $W_{v} - \ell_i$ to the $i$-th superset. By Kraft's inequality the width  $W_{v}$ must satisfy
 \begin{equation} \label{eq1}
- \begin{split}
-  \sum_{i = 1}^{N}{2^{-(W_{min} - |superset_i|)}}   \le  1 \\
-  \implies 2^{-W_{min}} \sum_{i = 1}^{N}{2^{|superset_i|}}   \le  1 \\
-  \implies  \sum_{i = 1}^{N}{2^{|superset_i|}}   \le  2^{W_{min}} \\
- \implies   \lceil\log_2{\sum_{i = 1}^{N}{2^{|superset_i|}}}\rceil  =  W_{min}
+\begin{split}
+1 &\ge \sum_{i = 1}^{N}{2^{-(W_{v}-\ell_i)}} = 2^{-W_{v}} \cdot \sum_{i = 1}^{N}{2^{\ell_i}}. \nonumber 
+%  \Leftrightarrow 2^{W_{v}}  &\ge \sum_{i = 1}^{N}{2^{\ell_i}}  \nonumber \\
+%  \Leftrightarrow W_{v}  &\ge \left \lceil \sum_{i = 1}^{N}{2^{\ell_i}}  \right \rceil \nonumber 
 \end{split}
- \end{equation}
- 
- The left hand side is straightforward to solve, giving us the minimum width possible for the input list of supersets. We can then use this value to find each $L_i$, or the width available for the identifier of the $i^{th}$ superset.
- 
- Once all the identifier widths are known, finding an actual prefix code can be accomplished by building a binary code tree. Figure \ref{fig:code_tree} shows such a code tree. Each node $n$ in the tree is associated with a binary string $s$. The left child of $n$ will have string $s + '0'$, and the right child will have $s + '1'$. The root of the tree corresponds to the empty string. A consequence of this is that node in the tree is a prefix of all of its children. To construct a prefix code, only leaf nodes may be codewords. 
- 
- The code is built with a level-by-level tree construction. We begin with level 0, the root node. Two children are added to the root to create level 1, corresponding to strings $'0'$ and $'1'$, the length 1 binary strings. The construction proceeds as follows:  After creating the $k^th$ level of the tree, if there exists an $i$ such that $L_i = k$, we assign an arbitrary node in the current level to be the $i^th$ codeword. After all such codewords are assigned, the next level is constructed. Child node are added for each node in the current level that was not assigned as a codeword, and the construction proceeds until all codewords are assigned.
- 
-\subsubsection{Minimizing Kraft to Decrease Tag Width}
-We've shown how to find a prefix code which optimally minimizes the tag width for a fixed list of supersets, but the problem becomes more interesting if we are permitted to modify the list of supersets. 
+\end{equation}
+Accordingly we have $2^{W_{v}}  \ge \sum_{i = 1}^{N}{2^{\ell_i}}$. Since $W_{v}$ is defined as the minimal possible width with that property the result follows.
+\ep
 
-Recall that the tag width $W_min$ for a list of supersets is given by the equation $W_{min} = \lceil\log_2{\sum_{i = 0}^{N}{2^{|superset_i|}}}\rceil$. If we can reduce the sum within the log term, we may be able to decrease the width. This can be done with a simple greedy algorithm. Consider every pair of supersets. Find the pair which, when removed and replaced by their union, maximally decreases the sum ${\sum_{i = 0}^{N}{2^{|superset_i|}}}$. If no union decreases the sum, instead choose the union that minimally increases it. If this union operation increases $W_min$, stop. Otherwise, perform the union and then repeat. [MAYBE ALGORITHM HERE?]
+%In the general case, with fixed-length identifiers, given $X$ supersets of size $\ell_1, \ldots, \ell_X$ the required width is determined by the largest superset and equals 
+% $W_{f} = \left \lceil \log_2(X) \right \rceil + \max_{i \in [1,X]} \ell_i$. 
+ 
+Since the fixed-length identifiers is a special case of the variable-length identifiers then necessarily $W_{v} \le W_{f}$. 
 
+A selection of variable-length identifiers satisfying Kraft's inequality can be described as a subset of leaves in a binary tree. 
+A path from the root node to a node corresponds to a binary string where visits of the left child or the right child of a node stand for bits of 0 and 1, respectively. 
+The path length  to a leaf corresponds to the identifier length in bits.
+Fig.~\ref{fig:code_tree} illustrates the corresponding tree for the four identifiers from Table~\ref{Table_variable}.\ref{Table_variable_c}. 
+Shorter identifiers appear more to the left in the tree.
+
+For given supersets, after calculating $W_{v}$ as the minimal possible width enabled by variable-length identifiers we can easily find identifiers that realize it. We first calculate for a superset of size $\ell_i$ the (maximal) allowed length $W_{v} - \ell_i$. We sort the identifiers in an ascending length order. We consider a binary tree and while beginning from the root node, we relate to the next identifier the most left available leaf that its depth equals the length of the current identifier. We assign as the identifier the binary string obtained by the path from the root to the leaf.
+ 
+\subsection{Optimizing Selection of Supersets}
+In the selection of the supersets we would like to enable the existence of a short as possible tag. By Property~\ref{property_variable_length_minimal_tag} the number of supersets and their identities should be selected such that their sizes $\ell_1, \ldots, \ell_N$ minimize the term $T = \sum_{i = 1}^{N}{2^{\ell_i}}$. 
+
+We describe a simple scheme to determine the supersets for a given (distinct) input sets $S_1, \ldots, S_N$. We first examine whether $S_i \subset S_j$ for some two sets. In this case, we can use  $S_j$ as the superset for both sets and eliminate the set $S_i$. This would decrease the value of sum. We refer to this change as redundancy elimination.
+
+Next,  we continue to examine a possible merging of pairs of supersets. Such a merging decreases the number of supersets. While considering two sets $S_i, S_j$ of 
+size $\ell_i, \ell_j$, the contribution of  a possible merging $S_i \bigcup S_j$ to $T$ is necessarily larger than  the sum of the contributions of $S_i$ and $S_j$ to $T$.
+This is because after the redundancy elimination, we must have that $|S_i \bigcup S_j| > \max(\ell_i, \ell_j)$. Accordingly,  $2^{|S_i \bigcup S_j|} > 2^{\max(\ell_i, \ell_j)} \ge 
+2^{\ell_i} + s^{\ell_j}$. However, a possible merging of a pair of supersets might enable eliminating additional supersets through redundancy elimination.
+
+Accordingly, in each step of the scheme we examine for each pair of the current supersets the possible change in the value of $T$ after a potential merging of the pair and applying of the redundancy elimination. The pair that leads to a maximal reduction (or minimal increase in case no such pair exists) is selected and merged in this step and  redundancy elimination is applied. 
+
+Finally,  the observed supersets having the minimal value of $T$ along the running are selected as the output supersets.
+ 

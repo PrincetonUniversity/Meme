@@ -1,6 +1,8 @@
 \documentclass[10pt,twocolumn]{confpaper}
 
 %%%%%%%%%%%%%%%%%%%%  INCLUDES  %%%%%%%%%%%%%%%%%%%%%%%%%%
+%\usepackage{subfigure}
+
 
 \definecolor{darkgreen}{rgb}{0.0, 0.65, 0.0}
 
@@ -29,12 +31,39 @@
 \newcommand{\ceq}{\supsym{$\ddag$}}
 
 
+
+\newtheorem{theorem}{Theorem}%[section]
+\newtheorem{definition}{Definition}%[section]
+\newtheorem{proposition}{Proposition}%[section]
+\newtheorem{problem}{Problem}%[section]
+\newtheorem{property}[theorem]{Property}
+\newtheorem{lemma}{Lemma}%[section]
+\newtheorem{example}{Example}%[section]
+\newtheorem{Obs}{Observation}%[section]
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}{Conjecture}
+\newtheorem{algo}{Algorithm}%[section]
+\newtheorem{claim}{Claim}%[section]
+
+\newcommand{\ep}{\end{proof}}
+\newcommand{\bp}{\begin{proof}}
+\newcommand{\bpo}{ \begin{proof}[Proof Outline] }
+
+
+
 \usepackage{listing}
 %\usepackage{algorithm}% http://ctan.org/pkg/algorithm
 %usepackage{algpseudocode}% http://ctan.org/pkg/algorithmicx
 \usepackage[ruled,vlined]{algorithm2e}
 \usepackage{bbm}
 \usepackage{amsmath}
+\usepackage{tabularx}
+%\usepackage{subfigure}
+\usepackage{gnuplot-lua-tikz}
+
+%\usepackage{amssymb}
+%\usepackage{amsthm}
+
 
 \renewcommand{\baselinestretch}{1.005} 
 
