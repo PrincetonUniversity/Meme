@@ -1,10 +1,12 @@
 \section{Encoding Ordered Attributes} 
 \label{sec:ordering}
-Until now, we have assumed every attribute set is an unordered collection: the network does not prefer any attribute over another, and does not check the attributes in any deliberate order. However, this is not true for many applications of interest, including our example of service chaining. Operators expect middleboxes to be visited in a specific order to ensure correctness or performance guarantees. In this section, we cover how our encoding scheme can be adapted to support ordered attribute \textit{sequences}.
+So far, we studied the encoding of unordered sets, i.e. there was no importance for the order of attributes of a set. 
+In some applications the order can be important, where an ordered set is described as a sequence of attributes.  For instance, in the case of service chaining, 
+operators expect middleboxes to be visited in a specific order to ensure correctness or performance guarantees. 
+In this section, we cover how our encoding scheme can be adapted to support attribute \textit{sequences}.
+Based on the required sequences the sequence graph $G$ can be constructed with nodes representing attributes. A directed edge from a node $u$ to a node $v$ exists if $u$ appears in adjacency before $v$ in one of the sequences.  
 
-
-\subsection{Total Orderings}
-\begin{figure}
+\begin{table}
     \begin{tabular}{| l | l | l |}
     \hline
     Attribute & Unordered Match & Ordered Match\\ \hline
@@ -13,27 +15,29 @@ Until now, we have assumed every attribute set is an unordered collection: the n
     C & $101**1$ & $101001$ \\
     \hline
     \end{tabular}
-    \caption{This table shows how the wildcard strings differ for ordered versus unordered attributes, using the example superset $(A,B,C)$ with identifier $101$. In the unordered case, the string matches if the target attribute bit is 1, and does not depend upon the bits of other attributes. In the ordered case, the string only matches if the target attribute bit is 1 and all bits for attributes preceding the target attribute are 0. This ensures only matching on the attribute earliest in the ordering succeeds.} 
+    \caption{Wildcard strings for ordered versus unordered attributes. %In the unordered case, the string matches if the target attribute bit is 1, and does not depend upon the bits of other attributes.
+     In the ordered case, the string only matches if the target attribute bit is 1 and all bits for attributes preceding the target attribute are 0. This ensures only matching on the next attribute in the ordering succeeds.} 
     \label{tab:ordering}
-\end{figure}
+\end{table}
 
+\subsection{Aligned Ordering Constraints}
+We first assume that the attributes follow some (partial) order. In this case there exists a sequence of all attributes such that all input sequences can be derived as a subsequence of it. 
+We refer to such a sequence as a supersequence. 
+In such a case the sequence graph $G$ is a DAG (directed acyclic graph), i.e. it has no cycles.
 
-It is possible to maintain the ordering upon the attributes encoded by the tags. Figure \ref{tab:ordering} shows how the wildcard strings can be modified to impose an ordering upon the elements. If the ordering dictates that $X$ must appear before $Y$, then any wildcard string for decoding $X$ must check that the $X$ bit is 1 and the $Y$ bit is 0. This causes the wildcard string to only successfully match if no other attributes that come before $X$ appear in the set. In other words, testing for $X$ only returns true if tests for all attributes before $X$ returns false. 
+A supersequence can be found by processing the DAG's nodes in order. Then, sequencess are selected, each as the union of some input sequences. A tag of a sequence would then include  identifier together with a mask of its attributes based on the order of the supersequence. 
+Table \ref{tab:ordering} illustrates an example of  wildcard rules imposing such an ordering for a sequence with attributes $A, B, C$ that was assigned the identifier $101$. 
+If the ordering dictates that an attribute $B$ must appear after $A$, then any wildcard rule for decoding $B$ must check that the $B$ bit is 1 and the $A$ bit is 0. This causes the wildcard rule to only successfully match if no other attributes that come before $B$ appear in the set. %In other words, testing for $X$ only returns true if tests for all attributes before $X$ returns false. 
 
-However, this only works if all attribute sequences are drawn from a \textit{total ordering}. That is, if attribute $X$ appears before $Y$ in any sequence, then $X$ must appear before $Y$ in all sequences. If we have the two sequences $(X, Y)$ and $(Y, X)$, this approach immediately breaks.
+\subsection{Not-Aligned Ordering Constraints}
+Sometimes, there does not exist a supersequence of attributes that all sequences follow its order. This is case  if for two attributes $B, A$,  $B$ appears before $A$ in some sequences, but $A$ appears before $B$ in others. Similarly, this happens when $B$ appear before $A$ in a sequence and $A$ has to appear before $B$ based on transitivity of other attributes. We refer to that as order-inconsistency.  In such cases the graph $G$ contains a cycle. We describe two approaches to deal with this scenario. 
 
-\subsubsection{Partial Ordering}
-Not all is lost if the attributes are not totally ordered. If attribute $X$ appears before $Y$ in some sequences, but $Y$ appears before $X$ in others, then $X$ and $Y$ are an \textit{incomparable} pair. If there are only a few incomparable pairs, then the universe is \textit{partially ordered}. It is still possible to encode such a list of sequences using our scheme, but at the cost of increased tag width.
+\textbf{Approach I:} The first approach begins with the input sequences. In each step, pairs of supersets are considered as long as their merging does not result in order-inconsistency. A pair is selected based on similar criterions as for the non-ordered sets. Finally, for each superset in the result, an identifier is allocated based on a potential order of the corresponding attributes.
 
-Consider the case of an incomparable pair $(X,Y)$. We can 'split' $X$ into two different attributes, $X_1$ and $X_2$. For every sequence where $X$ appears before $Y$, we replace $X$ with $X_1$. If $X$ appears after $Y$, we replace $X$ with $X_2$. The result is a new universe of attributes which has the total ordering $(X_1, Y, X_2)$. 
+\textbf{Approach II:} The first approach can sometime result in a large number of sequences that cannot be further merged. The second approach is more flexible by allowing the merging of two sequences even if this results in order-inconsistency. We solve the inconsistency by finding a supersequence with multiple appearances of some of the attributes such that merged sequences can be described as subsequences. 
 
-This fix comes at a cost, however. The number of attributes we must encode increases for every incomparable pair that must be resolved. Additionally, it is unclear how to resolve all conflicts using a minimal number of splits. In fact, if we generalize the problem slightly to allow attributes to appear more than once per sequence, the problem becomes the Shortest Common Supersequence problem. This problem is well known to be NP-Hard, even for the simple case of only two attributes! As a result, we cannot hope to optimally minimize the number of attribute splits needed to resolve all incomparabilities, but we can attempt to heuristically minimize them.
-
-\subsection{Partial to Total Ordering}
-In this section, we present a heuristic algorithm for resolving incomparabilities.
- Figure \ref{fig:ordering} shows our heuristic for choosing a set of attributes to split which attempts to minimize the number of splits. For a concrete example, we are given four input sequences we wish to encode, shown in \ref{fig:ordering}(a). We assume that these sequences \textit{almost} follow an underlying ordering, but that there are a few incomparable sets of elements. In this example, $B$ is incomparable with $C$ because $B$ appears both before and after $C$. 
-
-To systematically identify these incomparable elements, we construct the sequence graph, shown in \ref{fig:ordering}(b). In the sequence graph, element $u$'s node has an edge to element $v$'s node if $u$ appears before $v$ in any sequence. We then run an algorithm for finding Strongly Connected Components (SCCs) on this graph. A strongly connected component is a set of nodes such that for every pair of nodes $u$ and $v$ in the set, $u$ has a path to $v$ and vice versa. In this context, every SCC corresponds to a set of incomparable elements. Figure \ref{fig:conflict_res} shows the process for determining which elements to split to create a new, totally ordered universe. Figure \ref{fig:ordering}(d) and (e) shows the result of using this new ordering to modify each sequence. 
+To do so systematically, we construct the sequence graph $G$, shown in \ref{fig:ordering}(b) for the sequences  in \ref{fig:ordering}(a). We then run an algorithm for finding Strongly Connected Components (SCCs) on this graph. A strongly connected component is a set of nodes such that for every pair of nodes $u$ and $v$ in the set, $u$ has a path to $v$ and vice versa. In this context, every SCC corresponds to a set of incomparable elements.  Figure \ref{fig:ordering}(d) and (e) shows the result of using this new ordering to modify each sequence.  
+Figure \ref{fig:conflict_res} details the process for determining which elements to split to create a new, totally ordered universe.
 
 
 \begin{figure}[t!] 
@@ -42,7 +46,7 @@ To systematically identify these incomparable elements, we construct the sequenc
 \includegraphics[trim={0 6cm 19.2cm 0}, clip, width=\linewidth]{figures/partial_ordering}
 \end{subfigure} 
 \end{minipage} 
-\caption{This figure shows, at a high level, the process for converting a partial ordering to a total ordering by identifying incomparable elements and creating duplicates to resolve the incomparabilities. (a) shows the four input ordered sequences. In (b), we create a graph of the elements, where there is an edge from $u$ to $v$ if $u$ appears before $v$ in some sequence. (b) shows how the graph can be broken up into an ordered Directed Acyclic Graph (DAG) of Strongly Connected Components (SCC), where each SCC corresponds to a set of incomparable elements. (d) shows the result of splitting elements to resolve incomparability, which is covered in more depth in figure \ref{fig:conflict_res}. In (e), the original sequences are modified with the splits such that each sequence adheres to a total ordering.}
+\caption{Not-aligned ordering constraints. (a) shows the four input ordered sequences. In (b) illustrates the corresponding sequence graph $G$.. (b) shows the disjoints SCCs  (Strongly Connected Components) of $G$. Each SCC corresponds to a set of incomparable elements. (d) describes the result of splitting elements to resolve order-inconsistency, which is covered in more depth in figure \ref{fig:conflict_res}. In (e), the original sequences are modified with the splits such that each sequence adheres to the constructed ordering.}
 \label{fig:ordering}
 \end{figure}
 
@@ -54,7 +58,8 @@ To systematically identify these incomparable elements, we construct the sequenc
 \includegraphics[trim={19.2cm 10cm 0 0}, clip, width=\linewidth]{figures/partial_ordering}
 \end{subfigure} 
 \end{minipage} 
-\caption{This details the Conflict Resolution step of the algorithm. (a) shows a SCC corresponding to four incomparable elements. (b) shows an 'almost' ordering of the SCC nodes, which minimizes the number of backward edges. (c) shows how the almost ordering is used to construct a worst-case quadratically-sized universe, which is then traversed by every sequence to determine which splits are necessary. }
+\caption{This details the order-inconsistency resolution step of the algorithm. (a) shows a SCC of four attributes. (b) shows an 'almost' ordering of the SCC nodes, which minimizes the number of backward edges. (c) shows a  construction of a worst-case quadratically-sized universe, which is then traversed by every sequence to determine which attributes to splits for the new ordering.}
 \label{fig:conflict_res}
 \end{figure}
+ 
 
