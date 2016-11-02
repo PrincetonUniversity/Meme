@@ -6,29 +6,34 @@ Next, we discuss flat index tagging and its limitations, and then present
 several example applications that would benefit from more flexible tagging
 schemes.
 
-\subsection{Match-Action Tables in Switches} Commodity switches traditionally
+\subsection{Match-Action Tables in Switches} 
+\label{ssec:match-action}
+Commodity switches traditionally
 use \emph{match-action tables} to determine how to handle packets, based on
-\textit{forwarding rules} installed at runtime. Each match in the forwarding
+\textit{forwarding rules} installed at runtime. Each match ($M$) in the forwarding
 rules is comprised of one or more matching conditions, where each of these 
-matching conditions define the match string $S$ for for a header field. 
+matching conditions define the match string or a header field of packet $P$. 
 We can represent this match string as $S \in \{0,1,*\}^{W_{field}}$, where
-$W_{field}$ is the width of the designated header field. $Type$ specifies how
-$S$ is compared to the header field. There are three types of matches in
-commodity switches:
+$W_{field}$ is the width of the designated header field. There are three types 
+of matches in commodity switches:
 
-\begin{itemize} \item \textbf{Exact Matching:} $S \in \{0,1\}^{W_{field}}$ is a
-binary string, and $M(P) = true$ if $S = P[field]$.\\ \item
-\textbf{Longest-Prefix Matching:} $S$ is a ternary string, where the first $x$
+\begin{itemize} 
+\item \textbf{Exact Matching:} $S \in \{0,1\}^{W_{field}}$ is a
+binary string, and $M(P) = true$ if $S = P[field]$.
+
+\item \textbf{Longest-Prefix Matching:} $S$ is a ternary string, where the first $x$
 characters are drawn from $\{0,1\}$ and the remaining are $*$. $M(P) = true$ if
 the first $x$ characters of $S$ match the first $x$ characters of $P[field]$,
-and there is no rule such that the first $y$ characters match for some $y >
-x$.\\ \item \textbf{Wildcard Matching:} $S \in \{0,1,*\}^{W_{field}}$ is any
+and there is no rule such that the first $y$ characters match for some $y > x$. 
+
+\item \textbf{Wildcard Matching:} $S \in \{0,1,*\}^{W_{field}}$ is any
 ternary string. Associated with each wildcard match is a priority. $M(P) = true$
-if two conditions are met: (1) For every $0 \le i < W_{field}$, either the
+if two conditions are met: (1)~For every $0 \le i < W_{field}$, either the
 $i^{th}$ character of $S$ is $*$, or the $i^{th}$ character of $S$ matches
-the $i^{th}$ character of $P[field]$. (2) There is no other wildcard match
-rule of higher priority that satisfies condition (1).  \end{itemize}
-  
+the $i^{th}$ character of $P[field]$. (2)~There is no other wildcard match
+rule of higher priority that satisfies condition~(1).  
+\end{itemize}
+\noindent
 Until recently, switches imposed significant restrictions on the matching type.
 For the vast majority of fields, this matching type is exact matching, with the
 exception of longest-prefix matching for IP addresses. Consequently, techniques
@@ -38,7 +43,9 @@ switches~\cite{of13} and flexible protocol-independent switches~\cite{P4},
 we can apply longest-prefix or wildcard matching to many header fields, or
 even define our own header fields for use within a single network.
 
-\subsection{Forwarding Equivalence Class Tagging} In flat tagging schemes, the
+\subsection{Forwarding Equivalence Class Tagging} 
+\label{ssec:fec-tagging}
+In flat tagging schemes, the
 tag serves as a single, unstructured index.  A flow of packets is defined by a
 combination of header fields that each of the packets has in common. Each
 combination of header fields can imply a set of attributes which are revealed by
@@ -75,24 +82,11 @@ general, if the number of attribute sets is large enough, this tagging scheme
 may barely improve upon the memory used by performing re-classification at every
 switch!
 
-%Flat tagging is a format which optimally minimizes digest size at the cost of
-%read complexity. The result of every classification is a set of indirect
-%attributes, which has an exponential number of possibilities, but for many
-%applications only a small number of unique sets are seen. 
-
-
-
-% to attach the result of classification as a digest to the headers of every
-% packet in the flow. 
-
-%assign a t, after classifying a flow, to attach a tag to each packet in the
-%flow which contains the indirect attributes. 
-
-
-\begin{figure}[t!] \begin{minipage}{1\linewidth} \includegraphics[trim={0 8cm 0
-0}, clip, width=\linewidth]{figures/system_flow2} \end{minipage} \caption{An
-illustration of the information flow for an attribute-encoding tagging scheme.}
-\label{fig:system_flow} \end{figure}
+% TODO: Either figure out better place to use this figure or nix it completely.
+%\begin{figure}[t!] \begin{minipage}{1\linewidth} \includegraphics[trim={0 8cm 0
+%0}, clip, width=\linewidth]{figures/system_flow2} \end{minipage} \caption{An
+%illustration of the information flow for an attribute-encoding tagging scheme.}
+%\label{fig:system_flow} \end{figure}
 
 Attribute reading need not be so complex, though. If we do not require minimal
 tag width, we can make the attributes much easier to read. Figure BLANK shows
@@ -114,7 +108,10 @@ scheme to generate too many control messages.  \end{enumerate}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-\subsection{Motivating Applications} \begin{figure} \small \begin{center}
+\subsection{Motivating Applications} 
+\label{ssec:motivating-apps}
+
+\begin{figure} \small \begin{center}
 \begin{tabular}{|l|c|c|} \hline \multicolumn{1}{|c|}{\bf Application} &
 \multicolumn{1}{c|}{\bf FEC Attributes} & \multicolumn{1}{c|}{\bf Ordered?}\\
 \hline SDN-enabled IXP & Advertising peers & No \\ \hline Service chaining &
