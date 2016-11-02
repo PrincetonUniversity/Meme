@@ -2,13 +2,13 @@
 \subsection{Allowing flexibility in identifiers' lengths}
 In this section, we describe an enhanced encoding technique that enables further reduction in the required tag width.  While maintaining the ability to distinguish between different supersets, we allow their distinct identifiers to be of a variable length. We describe a simple condition on the identifiers that enable such a distinction. 
 
-Consider the supersets from Table~\ref{Table_variable}.\ref{Table_variable_a}, each described as a set of attributes. The largest of the $N=4$ supersets has five attributes. 
-If fixed-length identifiers of $\left \lceil \log_2(N) \right \rceil = 2$ bits 00, 01, 10 and 11 are allocated then we derive a maximal width of 2 + 5 = 7 bits, as illustrated in Table~\ref{Table_variable}.\ref{Table_variable_b}. 
+Consider the supersets from Table~\ref{Table_variable_a}, each described as a set of attributes. The largest of the $N=4$ supersets has five attributes. 
+If fixed-length identifiers of $\left \lceil \log_2(N) \right \rceil = 2$ bits 00, 01, 10 and 11 are allocated then we derive a maximal width of 2 + 5 = 7 bits, as illustrated in Table~\ref{Table_variable_b}. 
 Note that the observed total width for several of the subsets is shorter than the maximal.
 In the general case, with fixed-length identifiers, given $N$ supersets of size $\ell_1, \ldots, \ell_N$ the required width is determined by the largest superset and equals 
  $W_{f} = \left \lceil \log_2(N) \right \rceil + \max_{i \in [1,N]} \ell_i$. 
 
-In Table~\ref{Table_variable}.\ref{Table_variable_c} variable-length identifiers 0, 10, 110 and 110 are used. This enables to reduce the maximal width to only 6 bits by allocating the largest supersets shorter identifiers. 
+In Table~\ref{Table_variable_c} variable-length identifiers 0, 10, 110 and 110 are used. This enables to reduce the maximal width to only 6 bits by allocating the largest supersets shorter identifiers. 
 Notice that the identifiers are selected such that none of them is a prefix (start) of the other, i.e., the identifiers are codewords in a prefix code.
 Such a selection of the identifiers enables to distinguish between the supersets for any value of their bit masks as the second part of the tag. 
 
@@ -97,7 +97,7 @@ yeah
 \begin{minipage}{1\linewidth}
 \includegraphics[trim={0 10cm 0 0}, clip, width=\linewidth]{figures/code_tree}
 \end{minipage} 
-\caption{An example prefix code tree, based upon the prefix code identifiers from Table~\ref{Table_variable}.\ref{Table_variable_c} which are used to identify the attribute sets $[A,B,C]$, $[C,D]$, $[E,F]$ and $[W,X,Y,Z]$. This figure shows how reading a codeword corresponds to traversing a binary tree, starting at the root. By using such a code, larger sets are able to receive smaller identifiers, improving maximal  tag width.}
+\caption{An example prefix code tree, based upon the prefix code identifiers from Table~\ref{Table_variable_c} which are used to identify the attribute sets $[A,B,C]$, $[C,D]$, $[E,F]$ and $[W,X,Y,Z]$. This figure shows how reading a codeword corresponds to traversing a binary tree, starting at the root. By using such a code, larger sets are able to receive smaller identifiers, improving maximal  tag width.}
 \label{fig:code_tree}
 \end{figure}
 
@@ -107,7 +107,7 @@ Kraft's inequality~\cite{abramson} formally determines the existence of a prefix
 iff the following inequality holds:
 $$ \sum_{i = 1}^{N}{2^{-L_i}} \le 1. $$
 
-For instance, the lengths of the identifiers in Table~\ref{Table_variable}.\ref{Table_variable_c} satisfy $2^{-1} + 2^{-2} + 2^{-3} + 2^{-3} = 1$.
+For instance, the lengths of the identifiers in Table~\ref{Table_variable_c} satisfy $2^{-1} + 2^{-2} + 2^{-3} + 2^{-3} = 1$.
 
 This also enables us to exactly calculate the minimal width $W_{v}$ that can be achieved for a given $X$ supersets of size $\ell_1, \ldots, \ell_X$  using variable-length identifiers as described in the following property.
 
@@ -138,7 +138,7 @@ Since the fixed-length identifiers is a special case of the variable-length iden
 A selection of variable-length identifiers satisfying Kraft's inequality can be described as a subset of leaves in a binary tree. 
 A path from the root node to a node corresponds to a binary string where visits of the left child or the right child of a node stand for bits of 0 and 1, respectively. 
 The path length  to a leaf corresponds to the identifier length in bits.
-Fig.~\ref{fig:code_tree} illustrates the corresponding tree for the four identifiers from Table~\ref{Table_variable}.\ref{Table_variable_c}. 
+Fig.~\ref{fig:code_tree} illustrates the corresponding tree for the four identifiers from Table~\ref{Table_variable_c}. 
 Shorter identifiers appear more to the left in the tree.
 
 For given supersets, after calculating $W_{v}$ as the minimal possible width enabled by variable-length identifiers we can easily find identifiers that realize it. We first calculate for a superset of size $\ell_i$ the (maximal) allowed length $W_{v} - \ell_i$. We sort the identifiers in an ascending length order. We consider a binary tree and while beginning from the root node, we relate to the next identifier the most left available leaf that its depth equals the length of the current identifier. We assign as the identifier the binary string obtained by the path from the root to the leaf.
