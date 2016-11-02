@@ -1,4 +1,5 @@
-\section{Background} \label{sec:background}
+\section{Moving Beyond Flat Index Tags}
+\label{sec:background}
 
 %\begin{figure}[t!] 
 %\begin{minipage}{1\linewidth}
@@ -10,34 +11,30 @@
 %\label{fig:mbox_policies}
 %\end{figure}
 
+Packet labeling schemes need to work within the capabilities of commodity switches.  In this section, we first review packet forwarding in high-speed switches and how the ``match-action'' capabilities have evolved in recent years.  Next, we discuss flat index tagging and its limitations, and then present several example applications that would benefit from more flexible tagging schemes.
 
+\subsection{Match-Action Tables in Switches}
+Commodity switches traditionally use \emph{match-action tables} to determine how to handle packets, based on \textit{forwarding rules} installed at runtime. A forwarding rule $<M, A>$ consists of matching conditions $M = [m_1, m_2, ..., m_C]$ and an action $A$ to apply to a packet $P$ if $M(P) = true$. Actions include dropping a packet, rewriting a header field, or forwarding the packet out a specific port. Each matching condition $m_i = [field, type, S]$ is comprised of a packet header field designation ($field$), a matching type ($type$), and a match string $S$. $field$ is the name of the header field the match string will be compared to. Each match string is a ternary string $S \in \{0,1,*\}^{W_{field}}$, where $W_{field}$ is the width of the designated header field. $Type$ specifies how $S$ is compared to the header field. There are three types of matches in commodity switches:
 
-We mentioned flat index labels and their applications in the introduction. In this section, we will discuss flat labeling schemes, their implementation in commodity switches, and their limitations. We will use these limitations as motivations for new labeling schemes which take advantage of recent changes in commodity switches.
-
-\subsection{Match-Action Tables}
-In order to understand how our result came to be, we must first explain what features commodity switches have supported and how they have evolved in recent years. Commodity switches traditionally use match-action tables for determining how to handle packets. Match-action tables are populated by \textit{forwarding rules} at runtime. A forwarding rule $<M, A>$ is made of a set matching conditions $M = [m_1, m_2, ..., m_C]$, and an action $A$ to apply to a packet $P$ if the matching conditions are met, or in other words if $M(P) = true$. Actions include dropping a packet, rewriting a header field, or forwarding the packet out a specific port. Each matching condition $m_i = [field, type, S]$ is comprised of a packet header field designation ($field$), a matching type ($type$), and a match string $S$. $field$ is the name of the header field the match string will be compared to. Each match string is a ternary string $S \in \{0,1,*\}^{W_{field}}$, where $W_{field}$ is the width of the designated header field. $Type$ specifies how $S$ is compared to the header field. There are three types of matches in commodity switches:
-  \begin{itemize}
-  \item{\textbf{Exact Matching:} $S \in \{0,1\}^{W_{field}}$ is a binary string, and $M(P) = true$ if $S = P[field]$.}\\
-  \item{\textbf{Longest-Prefix Matching:} $S$ is a ternary string, where the first $x$ characters are drawn from $\{0,1\}$ and the remaining $W_{field} - x$ are the character $*$. $M(P) = true$ if the first $x$ characters of $S$ exactly match the first $x$ characters of $P[field]$, and there is no other longest-prefix match forwarding rule such that the first $y$ characters match for some $y > x$.}\\
-  \item{\textbf{Wildcard Matching:} $S \in \{0,1,*\}^{W_{field}}$ is any ternary string. $M(P) = true$ if, for every $0 \le i < W_{field}$, either the $i^{th}$ character of $S$ is $*$, or the $i^{th}$ character of $S$ exactly matches the $i^{th}$ character of $P[field]$.}
-  \end{itemize}
+\begin{itemize}
+  \item \textbf{Exact Matching:} $S \in \{0,1\}^{W_{field}}$ is a binary string, and $M(P) = true$ if $S = P[field]$.\\
+  \item \textbf{Longest-Prefix Matching:} $S$ is a ternary string, where the first $x$ characters are drawn from $\{0,1\}$ and the remaining are $*$. $M(P) = true$ if the first $x$ characters of $S$ match the first $x$ characters of $P[field]$, and there is no rule such that the first $y$ characters match for some $y > x$.\\
+  \item \textbf{Wildcard Matching:} $S \in \{0,1,*\}^{W_{field}}$ is any ternary string. $M(P) = true$ if, for every $0 \le i < W_{field}$, either the $i^{th}$ character of $S$ is $*$, or the $i^{th}$ character of $S$ matches the $i^{th}$ character of $P[field]$. \jrex{The text doesn't mention rule priorities!}
+\end{itemize}
   
-  Until recently, switches have been designed with a single matching type in mind for each supported field. For the vast majority of fields, this matching type is exact matching, with the notable exception of longest-prefix matching for IPv4 address fields. Consequently, any innovation in networking research which repurposes a less-used packet field for carrying information across the network is forced to treat a single field as a single piece of information. If the researcher wishes to carry multiple pieces of information, either multiple fields must be used, or these pieces must somehow be multiplexed into a single value. The former approach is undesirable, as researchers often have a hard enough time choosing even a single field to repurpose. We will discuss the latter approach in more depth in the next section. 
-  
-  However, with recent changes to commodity switches, such as new features supported by OpenFlow 1.3 switches~\cite{of13} and flexible protocol-independent switches~\cite{P4}, we are no longer forced to work within the constraints of hardware vendors' expectations. Specifically, we are able to define our own fields and apply longest-prefix or wildcard matching to fields which have previously only supported exact matches. This opens up a wide variety of encoding opportunities.
+Until recently, switches imposed significant restrictions on the matching type.  For the vast majority of fields, this matching type is exact matching, with the exception of longest-prefix matching for IP addresses. Consequently, techniques for tagging packets had to rely on flat labels.  However, with recent changes to commodity switches, such as new features supported by OpenFlow 1.3 switches~\cite{of13} and flexible protocol-independent switches~\cite{P4}, we can apply longest-prefix or wildcard matching to many header fields, or even define our own header fields for use within a single network.
 
 \subsection{Forwarding Equivalence Class Tagging}
-  
-In the introduction, we briefly mentioned existing index tagging schemes and their limitations. We refer to these schemes as \textit{flat tagging} schemes, because each tag can be thought of as a single, unstructured index.  We will now go into a more detailed explanation of such schemes. A flow of packets is defined by a combination of header fields that each of the packets has in common. Each combination of header fields can imply a set of attributes which are revealed by classification, such as a set of routes the flow may take, network nodes the flow must traverse, or characteristics of the sending/receiving hosts. 
-Figure MISSING shows the concrete example of service chains. Each flow has a set of middleboxes it must traverse, and this set is determined by the classification rules in the first table.
+In flat tagging schemes, the tag serves as a single, unstructured index.  A flow of packets is defined by a combination of header fields that each of the packets has in common. Each combination of header fields can imply a set of attributes which are revealed by classification, such as a set of routes the flow may take, middleboxes the flow must traverse, or characteristics \jrex{``characteristics'' is vague/cryptic} of the sending/receiving hosts.  Figure MISSING shows the concrete example of service chains. Each flow has a set of middleboxes it must traverse, and this set is determined by the classification rules in the first table.
 
-Network nodes must be aware of these attributes to correctly implement a policy. In our example, not all flows should traverse the NAT. To determine which flows to route to the NAT, each node could re-perform classification. However, the number of rules may be prohibitively large to install on each node. 
+Switches must be aware of these attributes to correctly implement a policy. In our example, not all flows should traverse the NAT. To determine which flows to route through the NAT, each switch could re-perform classification. However, the number of rules may be prohibitively large to install on each switch.  
 
-One solution for avoiding re-classification is to compile the results of classification into a short \textit{tag} and attach this tag to each packet. Switches may then read these tags to discover the attributes. If we maintained global knowledge of every distinct set of attributes seen in the network in an array, we could then use the array indices as packet tags and provide each switch with the index-to-attributes mapping. This mapping is shown in the second table of figure MISSING. Switches can then recover all attributes by reading the tag. 
+To avoid repeatedly classifying the packets, the result can be represented as a short \textit{tag} attached
+to each packet. Switches may then read these tags to discover the attributes. If we maintained global knowledge of every distinct set of attributes in an array, we could then use the array indices as packet tags and provide each switch with the index-to-attributes mapping. This mapping is shown in the second table of figure MISSING. Switches can then recover all attributes by reading the tag.
 
 %However, a good format for these digests which minimizes both the digest size and read operation complexity is unclear. 
 
-This tagging scheme is optimal in tag width, because it uses the minimum number of bits required to convey which attribute set is attached to the flow. However, optimal width comes at the cost of attribute reading complexity. If a switch wishes to make a decision based only upon attribute $x$, it must compare each tag to the indices of every set that contains attribute $x$. In our example, the Load Balancing middlebox is present in three tags, so switches must compare the packet's tag to each of the three tags to determine if the middlebox is in the attribute set. In general, if the number of attribute sets is large enough, this tagging scheme may barely improve upon the memory used by performing re-classification at every switch!
+This tagging scheme is optimal in tag width, because it uses the minimum number of bits to convey the attribute set for each flow. However, small tags comes at the cost of complexity in reading the attributes.  To make a decision based only on attribute $x$, a switch must compare each packet's tag to the indices of every set that contains attribute $x$. In our example, the Load Balancing middlebox is present in three tags, so switches must compare the packet's tag to each of the three tags to determine if the middlebox is in the attribute set. In general, if the number of attribute sets is large enough, this tagging scheme may barely improve upon the memory used by performing re-classification at every switch!
 
 %Flat tagging is a format which optimally minimizes digest size at the cost of read complexity. The result of every classification is a set of indirect attributes, which has an exponential number of possibilities, but for many applications only a small number of unique sets are seen. 
 
@@ -56,37 +53,42 @@ This tagging scheme is optimal in tag width, because it uses the minimum number 
 \label{fig:system_flow}
 \end{figure}
 
-Attribute reading need not be so complex, though. If we do not require optimal tag width, we can construct tags such that the attributes are more quickly read. Figure BLANK shows such a construction for service chains, with tags as bitfields. Each attribute can be read using a single wildcard match, but the tag width is equal to the number of middleboxes. It is interesting to note that when each bitfield tag is viewed as an integer, it can still be thought of as an index into a implicit table of all possible attribute sets. 
+Attribute reading need not be so complex, though. If we do not require minimal tag width, we can make the attributes much easier to read. Figure BLANK shows such a construction for service chains, with tags as bit fields. Each attribute can be read using a single wildcard match, but the tag width is equal to the number of middleboxes. It is interesting to note that when each bit-field tag is viewed as an integer, it can still be thought of as an index into a implicit table of all possible attribute sets. 
 
 In general, any tagging scheme must simultaneously minimize three different metrics:
 \begin{enumerate}
-\item{\textbf{Tag Width:} Tags should not be too many bits, so they are able to handle large real-world applications without significant header space overhead. Tags should be able to either be inserted into small repurposed header fields or contribute little size to custom packet headers. }
-\item{\textbf{Switch Memory:} The amount of memory required to decode attributes from any tag should be able to easily fit in modern commodity switches.}
-\item{\textbf{Churn:} No network event should cause the encoding scheme to generate too many control messages.}
+\item \textbf{Tag Width:} Tags should not be too wide, to avoid wasting packet-header space.
+Tags should be able to either be inserted into small repurposed header fields or contribute little size to custom packet headers. 
+\item \textbf{Switch Memory:} The amount of memory required to decode attributes from any tag should be able to easily fit in modern commodity switches.
+\item \textbf{Churn:} No network event should cause the encoding scheme to generate too many control messages.
 \end{enumerate}
-It is these metrics by which we will evaluate our solution. 
+%It is these metrics by which we will evaluate our solution.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \subsection{Motivating Applications}
 \begin{figure}
-    \begin{tabular}{| p{2.5cm} | p{2cm} | p{2cm} |}
+\small
+\begin{center}
+    \begin{tabular}{|l|c|c|}
     \hline
-    Tagging Application & FEC-Defining Attributes & Ordered Attributes?\\ \hline
-    SDN-Enabled IXP & Advertising Peers & No \\ \hline
-    Service Chaining & Middleboxes& Yes \\ \hline
-    Policy Enforcement & Host Permissions & No \\ \hline
-    Multicast/Anycast & Destination Hosts & Maybe \\
-    \hline
+    \multicolumn{1}{|c|}{\bf Application} & 
+    \multicolumn{1}{c|}{\bf FEC Attributes} & 
+    \multicolumn{1}{c|}{\bf Ordered?}\\ \hline
+    SDN-enabled IXP & Advertising peers & No \\ \hline
+    Service chaining & Middleboxes & Yes \\ \hline
+    Policy enforcement & Host permissions & No \\ \hline
+    Multicast/anycast & Servers & Maybe \\ \hline
     \end{tabular}
-    \caption{Four applications of our encoding scheme, and their relevant properties. } 
+\end{center}
+    \caption{Example applications and their relevant properties. } 
     \label{tab:applications}
 \end{figure}
 
 There are many applications where a forwarding equivalence class is characterized by a distinct set of attributes, and where the switches could benefit from being able to read these sets using a small amount of memory. To motivate our solution, we will present four such applications, which are summarized in Figure \ref{tab:applications}.
  
 \paragraph{Software-Defined Internet Exchange Points}
-Consider the example of an Internet Exchange Point (IXP) with $N$ members Autonomous Systems $[AS_1, AS_2, ..., AS_N]$ and support for participants to install fine-grained forwarding policies on the shared fabric. At such an IXP, members may wish to enact \textit{Application-Specific Peering}, where traffic exchange is determined by header fields other than the destination IP address. Say that $AS_1$ wishes to send as much of their HTTP traffic to $AS_2$ as possible. $AS_2$ does not have routes to every HTTP destination, so it is incorrect for them to receive all HTTP traffic. This peering policy could be augmented to only apply if the packet's destination is from the set of destinations that $AS_2$ advertises, but this would greatly increase the memory required. If instead every packet that entered the exchange point was tagged with the set of IXP members that have routes towards the packet's destination, $AS_1$'s peering policy could easily check the packet header for the presence of $AS_2$ before fowarding.
+Consider the example of an Internet Exchange Point (IXP) with $N$ members Autonomous Systems $[AS_1, AS_2, ..., AS_N]$ and support for participants to install fine-grained forwarding policies on the shared fabric. At such an IXP, members may wish to enact \textit{Application-Specific Peering}, where traffic exchange is determined by header fields other than the destination IP address. Say that $AS_1$ wishes to send as much of their HTTP traffic to $AS_2$ as possible. $AS_2$ does not have routes to every HTTP destination, so it is incorrect for them to receive all HTTP traffic. This peering policy could be augmented to only apply if the packet's destination is from the set of destinations that $AS_2$ advertises, but this would greatly increase the memory required. If instead every packet that entered the exchange point was tagged with the set of IXP members that have routes towards the packet's destination, $AS_1$'s peering policy could easily check the packet header for the presence of $AS_2$ before forwarding.
 
 \paragraph{Service Chaining}
 Network operators often desire that network traffic be directed through a series of middleboxes, such as load balancers or firewalls. Such middleboxes can provide security and performance guarantees for the network's users.
