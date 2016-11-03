@@ -16,6 +16,7 @@ class RCode:
             elements should appear in less sets.
         codeBuild is a boolean stating whether we have built the codes array or not.
         isOrdered is a boolean stating if we are encoding an ordered or unordered universe of elements.
+        freeCodes is a list of binary strings.
     """
     supersets = []
     elementOrdering = {}
@@ -24,6 +25,7 @@ class RCode:
     elementWeights = {}
     codeBuilt = False
     isOrdered = False
+    freeCodes = []
 
 
     # pep8 can go suck it
@@ -121,7 +123,30 @@ class RCode:
 
 
     def memoryRequired(self):
+        if not self.codeBuilt:
+            self.buildCode()
         return sum(sum(self.elementWeights[element] for element in superset) for superset in self.supersets)
+
+
+    def memoryPerElement(self):
+        """ Returns a dictionary where the keys are elements and the values are how many decoding strings are
+            associated with each element.
+        """
+        if not self.codeBuilt:
+            self.buildCode()
+        memCounts = {element:0 for element in self.elementWeights.keys()}
+        for superset in self.supersets:
+            for element in superset:
+                memCounts[element] += self.elementWeights[element]
+        return memCounts
+
+
+    def widthRequired(self):
+        """ Returns the maximum width of any tag (if there was no padding)
+        """
+        if not self.codeBuilt:
+            self.buildCode()
+        return max(len(self.codes[i]) + len(self.supersets[i]) for i in range(len(self.supersets)))
 
 
     def _orderSuperset(self, superset):
@@ -244,9 +269,12 @@ class RCode:
         currDepth = 0
 
         while len(uncodedIndices) > 0:
-            if codeLens[-1] == currDepth:
+            if len(freeCodes) == len(uncodedIndices)*2:
+                freeCodes = [freeCodes[i][:-1] for i in range(len(freeCodes)/2)]
+            elif codeLens[-1] == currDepth:
                 newCode = freeCodes.pop()
                 index = uncodedIndices.pop()
+                codeLens.pop()
                 self.codes[index] = newCode
             elif self.kraftsInequality(currDepth, codeLens) < len(freeCodes)/2.0:
                 currDepth += 1
@@ -264,6 +292,8 @@ class RCode:
             for (i, superset) in enumerate(self.supersets):
                 self.supersets[i] = list(superset)
 
+
+        self.freeCodes = freeCodes
         self.codeBuilt = True
         self.logger("Done building encoding.")
 

@@ -392,36 +392,77 @@ public class TotalOrderBuilder {
     }
 
 
+    public static String[] orderedListStrings(String[][] paths) {
+        HashSet<String> itemSet = new HashSet<>();
+        for (String[] path : paths) {
+            for (String item : path) {
+                itemSet.add(item);
+            }
+        }
+
+        String[] itemArray = new String[itemSet.size()];
+        int i = 0;
+        for (String item : itemSet)
+            itemArray[i++] = item;
+
+
+
+        TotalOrderBuilder tob = new TotalOrderBuilder(itemArray);
+
+        // build the ordering graph
+        for (String[] path : paths) {
+            tob.addList(path);
+        }
+        tob.buildOrder();
+
+        // read all the new, totally ordered paths
+        String[] newPaths = new String[paths.length];
+        for (i = 0; i < paths.length; i++) {
+            newPaths[i] = arrayToString(tob.getBits(paths[i]));
+        }
+
+        // return them
+        return newPaths;
+    }
+
+    public static void processFile(String inName, String outName) {
+        String[][] paths = readListsFromJSON(inName);
+        String[] orderedPaths = orderedListStrings(paths);
+
+        try {
+            PrintWriter writer = new PrintWriter(outName, "UTF-8");
+            writer.print("[\n");
+
+            for (int i = 0; i < paths.length; i++) {
+                if (i > 0)
+                    writer.print(",\n");
+
+
+                writer.print(arrayToString(paths[i]));
+                writer.print(", ");
+                writer.print(orderedPaths[i]);
+            }
+            writer.print("\n]");
+            writer.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
 
     public static void main(String[] args) {
+        String dataDir = "../data/";
+        In filelist = new In(args[0]);
+        while(!filelist.isEmpty()) {
+            String filename = filelist.readLine();
+            System.out.println("Processing file " + filename);
 
-        String[][] paths = readListsFromJSON("data/paths600.json");
+            int i = filename.lastIndexOf('.');
+            String outname = filename.substring(0, i);
+            String extension = filename.substring(i, filename.length());
 
-        int chunkSize = 60;
-
-        String[][] pathsChunk = new String[chunkSize][];
-        for (int i = 0; i < paths.length/chunkSize; i++) {
-            for (int j = 0; j < chunkSize; j++) {
-                pathsChunk[j] = paths[i*chunkSize + j];
-            }
-
-            double infFactor = inflationFactorForChunk(pathsChunk);
-            //System.out.println("Inflation factor: " + infFactor);
-            break;
+            processFile(dataDir + filename, dataDir + outname + "_ordered" + extension);
         }
-
-    /*
-
-        HashSet<Integer> bits = new HashSet<>();
-
-        for (String[] list : lists) {
-            for (int bit : tob.getBits(list)) {
-                bits.add(bit);
-            }
-        }
-        System.out.println("Original number of elements: " + items.size());
-        System.out.println("Number of bits required for total ordering: " + bits.size());
-        System.out.println("Number of bits needed worst case: " + tob.bitsWorstCase());
-        */
     }
 }
