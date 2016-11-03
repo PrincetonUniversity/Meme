@@ -13,15 +13,15 @@ The simplest and most common form of FEC tag is a flat tag, or \emph{index}. His
 
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
-\includegraphics[trim={0 11.5cm 0 0}, clip, width=\linewidth]{figures/mbox_path_example}
+\includegraphics[trim={0 10cm 0 0}, clip, width=\linewidth]{figures/mbox_path_example}
 \end{minipage} 
-\caption{An illustration of the scaling issues of flat tagging. Each of the five labeled switches have different middlebox functionality. Packets that enter the network are classified as needing to go through one of two chains of middlebox services, and they are tagged as such. If flat matching is used, no aggregate forwarding rules are possible.  }
+\caption{An illustration of the scaling issues of flat tagging. There are three switches $s_1, s_2, s_3$ and four middleboxes $A,B,C,D$. Packets enter the network on the left and are classified as needing to traverse one of four service chains, and are tagged as such. If flat matching is used, no aggregate forwarding rules are possible on the four tags.  }
 \label{fig:mbox_path}
 \end{figure}
 %%%
 %%% Matching on sequences
 %%%
-Fundamentally, the issue is that each FEC is defined by a \emph{collection} of attributes, yet two FECs that differ by only one attribute receive arbitrary, independent indices as tags, preventing forwarding table entries which handle different FECs from being aggregated. For middlebox steering policies, as seen in example figure ~\ref{fig:mbox_path}, FECs are defined by sequences of middleboxes, and two FECs may differ in a single hop.  If tags are assigned such that forwarding rules can be aggregated (akin to IP prefix routing), then switches $A$ and $B$ could forward multiple FECs with a single forwarding rule.
+Fundamentally, the issue is that each FEC is defined by a \emph{collection} of attributes, yet two FECs that differ by only one attribute receive arbitrary, independent indices as tags, preventing forwarding table entries which handle different FECs from being aggregated. For middlebox steering policies, as seen in example figure ~\ref{fig:mbox_path}, FECs are defined by sequences of middleboxes, and two FECs may differ in a single hop.  If tags are assigned such that forwarding rules can be aggregated (akin to IP prefix routing), then switches could forward the packets of multiple FECs with a single forwarding rule.
 %%%
 %%% Capabilities of newer switches 
 %%%
