@@ -1,6 +1,6 @@
-\section{Encoding Variable-length Identifiers}\label{sec:identifiers}
-\subsection{Allowing flexibility in identifiers' lengths}
+\section{Variable-length Identifiers}\label{sec:identifiers}
 In this section, we describe an enhanced encoding technique that enables further reduction in the required tag width.  While maintaining the ability to distinguish between different supersets, we allow their distinct identifiers to be of a variable length. We describe a simple condition on the identifiers that enable such a distinction. 
+\subsection{Prefix Codes using Kraft's Inequality}
 
 Consider the supersets from Table~\ref{Table_variable_a}, each described as a set of attributes. The largest of the $N=4$ supersets has five attributes. 
 If fixed-length identifiers of $\left \lceil \log_2(N) \right \rceil = 2$ bits 00, 01, 10 and 11 are allocated then we derive a maximal width of 2 + 5 = 7 bits, as illustrated in Table~\ref{Table_variable_b}. 

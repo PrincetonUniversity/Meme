@@ -1,179 +1,107 @@
-\section{Moving Beyond Flat Index Tags} \label{sec:background}
-Packet labeling schemes need to work within the capabilities of commodity
-switches. In this section, we first review packet forwarding in high-speed
-switches and how the ``match-action'' capabilities have evolved in recent years.
-Next, we discuss flat index tagging and its limitations, and then present
-several example applications that would benefit from more flexible tagging
-schemes.
+\section{Moving Beyond Flat Index Tags}
+\label{sec:background}
 
-\subsection{Match-Action Tables in Switches} 
-\label{ssec:match-action}
-Commodity switches traditionally
-use \emph{match-action tables} to determine how to handle packets, based on
-\textit{forwarding rules} installed at runtime. Each match ($M$) in the forwarding
-rules is comprised of one or more matching conditions, where each of these 
-matching conditions define the match string or a header field of packet $P$. 
-We can represent this match string as $S \in \{0,1,*\}^{W_{field}}$, where
-$W_{field}$ is the width of the designated header field. There are three types 
-of matches in commodity switches:
+%\begin{figure}[t!] 
+%\begin{minipage}{1\linewidth}
+%\begin{subfigure}[c]{0.96\linewidth}
+%\includegraphics[trim={0 12cm 19cm 0}, clip, width=\linewidth]{figures/mbox_path_example3}
+%\end{subfigure} 
+%\end{minipage} 
+%\caption{In this example, we have a policy that defines traffic which must flow through subsets of five middleboxes. The first table shows which header fields trigger each middlebox, and the second table shows some combinations we may see in network traffic. }
+%\label{fig:mbox_policies}
+%\end{figure}
 
-\begin{itemize} 
-\item \textbf{Exact Matching:} $S \in \{0,1\}^{W_{field}}$ is a
-binary string, and $M(P) = true$ if $S = P[field]$.
+Packet labeling schemes need to work within the capabilities of commodity switches.  In this section, we first review packet forwarding in high-speed switches and how the ``match-action'' capabilities have evolved in recent years.  Next, we discuss flat index tagging and its limitations, and then present several example applications that would benefit from more flexible tagging schemes.
 
-\item \textbf{Longest-Prefix Matching:} $S$ is a ternary string, where the first $x$
-characters are drawn from $\{0,1\}$ and the remaining are $*$. $M(P) = true$ if
-the first $x$ characters of $S$ match the first $x$ characters of $P[field]$,
-and there is no rule such that the first $y$ characters match for some $y > x$. 
+\subsection{Flexible Tags using Flexible Switches}
+Commodity switches traditionally use \emph{match-action tables} to determine how to handle packets, based on \textit{forwarding rules} installed at runtime. A table entry consists of a set of match conditions, and an action to take if the matching conditions are met. Actions include dropping a packet, rewriting a header field, or forwarding the packet out a specific port. 
+Each matching condition compares a string $S$ to a specific packet header field $H$, using one of three kinds of comparisons:
 
-\item \textbf{Wildcard Matching:} $S \in \{0,1,*\}^{W_{field}}$ is any
-ternary string. Associated with each wildcard match is a priority. $M(P) = true$
-if two conditions are met: (1)~For every $0 \le i < W_{field}$, either the
-$i^{th}$ character of $S$ is $*$, or the $i^{th}$ character of $S$ matches
-the $i^{th}$ character of $P[field]$. (2)~There is no other wildcard match
-rule of higher priority that satisfies condition~(1).  
+\begin{itemize}
+  \item \textbf{Exact Matching:} $S$ is a binary string, and the match returns true if $S = H$.
+  \item \textbf{Longest-Prefix Matching:} $S$ is a ternary string, where the first $x$ characters are binary, and the remaining are the wildcard character $*$. A header field is a match if the $x$ binary characters of $S$ are a prefix of $H$, and there is no other $S'$ in the table which is a longer prefix of $H$. 
+  \item \textbf{Wildcard Matching:} $S$ is a ternary string with characters $\{0,1,*\}$ and an associated priority. $S$ matches $H$ if the only characters on which they are unequal are wildcards, and there is no other $S$ in the table which also matches but has a higher priority.
 \end{itemize}
-\noindent
-Until recently, switches imposed significant restrictions on the matching type.
-For the vast majority of fields, this matching type is exact matching, with the
-exception of longest-prefix matching for IP addresses. Consequently, techniques
-for tagging packets had to rely on flat labels.  However, with recent changes to
-commodity switches, such as new features supported by OpenFlow 1.3
-switches~\cite{of13} and flexible protocol-independent switches~\cite{P4},
-we can apply longest-prefix or wildcard matching to many header fields, or
-even define our own header fields for use within a single network.
+  
+Until recently, switches imposed significant restrictions on the matching type.  For the vast majority of fields, only exact matching was supported, with the exception of longest-prefix matching for IP addresses. This prevents most fields from being repurposed for anything other than flat tags. However, with recent changes to commodity switches, such as new features supported by OpenFlow 1.3 switches~\cite{of13} and flexible protocol-independent switches~\cite{P4}, we can apply longest-prefix or wildcard matching to existing fields, or even add new fields. Prefix and wildcard matching allows us to treat a header field as a \emph{set} of information, rather than just a single value. 
 
-\subsection{Forwarding Equivalence Class Tagging} 
-\label{ssec:fec-tagging}
-In flat tagging schemes, the
-tag serves as a single, unstructured index.  A flow of packets is defined by a
-combination of header fields that each of the packets has in common. Each
-combination of header fields can imply a set of attributes which are revealed by
-classification, such as a set of routes the flow may take, middleboxes the flow
-must traverse, or permissions of the sending/receiving hosts which are read by
-security policies.  Figure ~\ref{fig:mbox_path} shows the concrete example of
-service chains. Every flow has a set of middlebox functions it must traverse,
-determined by some network policy.
+\subsection{Forwarding Equivalence Class Tagging}
+In flat tagging schemes, the tag serves as a single, unstructured index.  A flow of packets is defined by a combination of header fields that each of the packets has in common. Each combination of header fields can imply a set of attributes which are revealed by classification, such as a set of routes the flow may take, middleboxes the flow must traverse, or permissions of the sending/receiving hosts which are read by security policies.  Figure ~\ref{fig:mbox_path} shows the concrete example of service chains. Every flow has a set of middlebox functions it must traverse, determined by some network policy.
 
-Switches must be aware of these attributes to correctly implement a policy. In
-our example, not all flows should traverse switch $E$. To determine which flows
-to route through the NAT, each switch could re-perform classification. However,
-the number of rules may be prohibitively large to install on each switch.  
+Switches must be aware of these attributes to correctly implement a policy. In our example, not all flows should traverse switch $E$. To determine which flows to route through the NAT, each switch could re-perform classification. However, the number of rules may be prohibitively large to install on each switch.  
 
-To avoid repeatedly classifying the packets, the result can be represented as a
-short \textit{tag} attached to each packet. Switches may then read these tags to
-discover the attributes. If we maintained global knowledge of every distinct set
-of attributes in an array, we could then use the array indices as packet tags
-and provide each switch with the index-to-attributes mapping. This mapping is
-shown in the second table of figure MISSING. Switches can then recover all
-attributes by reading the tag.
+To avoid repeatedly classifying the packets, the result can be represented as a short \textit{tag} attached
+to each packet. Switches may then read these tags to discover the attributes. If we maintained global knowledge of every distinct set of attributes in an array, we could then use the array indices as packet tags and provide each switch with the index-to-attributes mapping. This mapping is shown in the second table of figure MISSING. Switches can then recover all attributes by reading the tag.
 
-%However, a good format for these digests which minimizes both the digest size
-%and read operation complexity is unclear. 
+%However, a good format for these digests which minimizes both the digest size and read operation complexity is unclear. 
 
-This tagging scheme is optimal in tag width, because it uses the minimum number
-of bits to convey the attribute set for each flow. However, small tags comes at
-the cost of complexity in reading the attributes.  To make a decision based only
-on attribute $x$, a switch must compare each packet's tag to the indices of
-every set that contains attribute $x$. In our example, the Load Balancing
-middlebox is present in three tags, so switches must compare the packet's tag to
-each of the three tags to determine if the middlebox is in the attribute set. In
-general, if the number of attribute sets is large enough, this tagging scheme
-may barely improve upon the memory used by performing re-classification at every
-switch!
+This tagging scheme is optimal in tag width, because it uses the minimum number of bits to convey the attribute set for each flow. However, small tags comes at the cost of complexity in reading the attributes.  To make a decision based only on attribute $x$, a switch must compare each packet's tag to the indices of every set that contains attribute $x$. In our example, the Load Balancing middlebox is present in three tags, so switches must compare the packet's tag to each of the three tags to determine if the middlebox is in the attribute set. In general, if the number of attribute sets is large enough, this tagging scheme may barely improve upon the memory used by performing re-classification at every switch!
 
-% TODO: Either figure out better place to use this figure or nix it completely.
-%\begin{figure}[t!] \begin{minipage}{1\linewidth} \includegraphics[trim={0 8cm 0
-%0}, clip, width=\linewidth]{figures/system_flow2} \end{minipage} \caption{An
-%illustration of the information flow for an attribute-encoding tagging scheme.}
-%\label{fig:system_flow} \end{figure}
 
-Attribute reading need not be so complex, though. If we do not require minimal
-tag width, we can make the attributes much easier to read. Figure BLANK shows
-such a construction for service chains, with tags as bit fields. Each attribute
-can be read using a single wildcard match, but the tag width is equal to the
-number of middleboxes. It is interesting to note that when each bit-field tag is
-viewed as an integer, it can still be thought of as an index into a implicit
-table of all possible attribute sets. 
 
-In general, any tagging scheme must simultaneously minimize three different
-metrics: \begin{enumerate} \item \textbf{Tag Width:} Tags should not be too
-wide, to avoid wasting packet-header space.  Tags should be able to either be
-inserted into small repurposed header fields or contribute little size to custom
-packet headers.  \item \textbf{Switch Memory:} The amount of memory required to
-decode attributes from any tag should be able to easily fit in modern commodity
-switches.  \item \textbf{Churn:} No network event should cause the encoding
-scheme to generate too many control messages.  \end{enumerate}
+
+\begin{figure}[t!] 
+\begin{minipage}{1\linewidth}
+\includegraphics[trim={0 8cm 0 0}, clip, width=\linewidth]{figures/system_flow2}
+\end{minipage} 
+\caption{An illustration of the information flow for an attribute-encoding tagging scheme.}
+\label{fig:system_flow}
+\end{figure}
+
+Attribute reading need not be so complex, though. If we do not require minimal tag width, we can make the attributes much easier to read. Figure BLANK shows such a construction for service chains, with tags as bit fields. Each attribute can be read using a single wildcard match, but the tag width is equal to the number of middleboxes. It is interesting to note that when each bit-field tag is viewed as an integer, it can still be thought of as an index into a implicit table of all possible attribute sets. 
+
+In general, any tagging scheme must simultaneously minimize three different metrics:
+\begin{enumerate}
+\item \textbf{Tag Width:} Tags should not be too wide, to avoid wasting packet-header space.
+Tags should be able to either be inserted into small repurposed header fields or contribute little size to custom packet headers. 
+\item \textbf{Switch Memory:} The amount of memory required to decode attributes from any tag should be able to easily fit in modern commodity switches.
+\item \textbf{Churn:} No network event should cause the encoding scheme to generate too many control messages.
+\end{enumerate}
 %It is these metrics by which we will evaluate our solution.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-\subsection{Motivating Applications} 
-\label{ssec:motivating-apps}
+\subsection{Motivating Applications}
+\begin{figure}
+\small
+\begin{center}
+    \begin{tabular}{|l|c|c|}
+    \hline
+    \multicolumn{1}{|c|}{\bf Application} & 
+    \multicolumn{1}{c|}{\bf FEC Attributes} & 
+    \multicolumn{1}{c|}{\bf Tags Attached By}\\ \hline
+    SDN-enabled IXP & Advertising peers & ARP \\ \hline
+    Service chaining & Middleboxes & Middlebox \\ \hline
+    Policy enforcement & Host permissions & DHCP \\ \hline
+    \end{tabular}
+\end{center}
+    \caption{Example applications and their relevant properties. } 
+    \label{tab:applications}
+\end{figure}
 
-\begin{figure} \small \begin{center}
-\begin{tabular}{|l|c|c|} \hline \multicolumn{1}{|c|}{\bf Application} &
-\multicolumn{1}{c|}{\bf FEC Attributes} & \multicolumn{1}{c|}{\bf Ordered?}\\
-\hline SDN-based IXPs & Advertising peers & No \\ \hline Service chaining &
-Middleboxes & Yes \\ \hline Policy enforcement & Host permissions & No \\ \hline
-Multicast/anycast & Servers & Maybe \\ \hline \end{tabular} \end{center}
-\caption{Example applications and their relevant properties. }
-\label{tab:applications} \end{figure}
-
-There are many applications where a forwarding equivalence class is
-characterized by a distinct set of attributes, and where the switches could
-benefit from being able to read these sets using a small amount of memory. To
-motivate our solution, we will present four such applications, which are
-summarized in Figure \ref{tab:applications}.
+There are many applications where a forwarding equivalence class is characterized by a set of attributes, and where the switches could benefit from being able to read these sets using a small amount of memory. To motivate our solution, we will present three such applications, which are summarized in Figure \ref{tab:applications}.
  
-\paragraph{Fine-grained Interdomain Routing} SDN-based IXPs 
-(SDX~\cite{sdx, isdx}) enable overriding the forwarding decisions of default 
-interdomain routing protocol (BGP) with fine-grained match-action policies. 
-Such flexible routing, if done naively can create black holes in the network. 
-For example, consider an IXP with $N$ members Autonomous Systems $[AS_1, 
-AS_2,..., AS_N]$. $AS_1$ expresses a policy forwarding all the HTTPS traffic 
-to $AS_2$. If $AS_1$ forwards HTTPS traffic for prefixes that $AS_2$ never 
-advertised to $AS_1$, it will create a black hole in the network. To avoid 
-such black holes, SDX should augment the input policies to check if it can 
-forward a packet to the specified next hop. Thus for this case, the attributes 
-to encode are the set of next hops to which a packet can be forwarded. Note 
-that in this case ordering of next hop attributes is not necessary. 
-iSDX~\cite{isdx} proposed using the {\tt dMac} field for tagging. 
-Participant's border router apply the tagging before the packet enters 
-IXP's layer-2 network.
+\paragraph{Software-Defined Internet Exchange Points}
+At an Internet Exchange Point (IXP) multiple autonomous systems (ASes) connect at a single point to exchange traffic and interdomain routing information as peers.  At an IXP with support for SDN policies, the connected ASes may wish to enact fine-grained routing policies, where routing is decided by more than just destination addresses. Say that $AS_1$ wishes to send as much of their HTTP traffic to $AS_2$ as possible. $AS_2$ may not have routes to every HTTP destination, so it is incorrect for them to receive all HTTP traffic. If the routing policies do not account for the routes of each AS, traffic may be forwarded to networks that cannot handle it. 
 
-\paragraph{Service Chaining} Network operators often desire that network traffic
-be directed through a series of middleboxes, such as load balancers or
-firewalls. Such middleboxes can provide security and performance guarantees for
-the network's users.  However, each flow may need to be directed through a
-different chain of middleboxes. If each packet header had a list of middleboxes
-to visit, switches could check for the presence of a middlebox in the header
-and, if present, forward that packet towards the nearest matching middlebox.
-This resembles source routing or virtual circuit switching and could be
-accomplished with an MPLS label stack, but middleboxes do not necessarily
-understand or preserve MPLS labels. 
+The SDX project~\cite{sdx} handles this issue with the use of index tags. Each AS shares its list of routes with a central controller, and every unique set of routes is assigned an index tag. The controller then attaches these tags to every packet by announcing them to all peers as destination MAC addresses via ARP replies. The fine-grained routing policies are then modified by the controller to read tags before making a routing decision. 
 
-\paragraph{Host Attributes for Network Policies} Network policies may require
-knowledge of properties of the sending or receiving hosts in order to be applied
-correctly. As an example, users in the Computer Science department may be
-blocked from communicating with users in the Plasma Physics lab, because they
-are chumps. Since this information is not attached to the packets directly, it
-must be inferred from the source and destination addresses. This can result in a
-costly cross-product of matching conditions for enacting the policy. If each
-packet had a set of flags which directly correspond to these attributes, policy
-enforcers could simply check the two flags simultaneously. 
+The index tagging scheme of the original SDX ran into memory scalability challenges as a direct result of index tagging, which were remedied by the followup work iSDX~\cite{isdx}. iSDX used a precursor to our tagging scheme, taking advantage OpenFlow 1.3's support for wildcard matching on destination MAC addresses. 
+
+\paragraph{Service Chaining}
+Network operators often desire that network traffic be directed through a series of middleboxes, such as load balancers or firewalls. Such middleboxes can provide security and performance guarantees for the network's users.
+ Different flow may be subject to different chains of middleboxes, and it can be a challenge to design the network in such a way that every flow traverses only the needed set of middleboxes. Additionally, middleboxes may modify packet headers, obscuring the original source of the flow and making it unclear which middlebox chain should be followed. 
+ 
+FlowTags~\cite{flowtags} argues that a necessary remedy is the modification of middleboxes to attach relevant policy information to packets as they are processed. To compress policy information into small, repurposed header fields, flowtags makes use of index tagging, where each index maps to a middlebox sequence and the packet's origin host. Each time a middlebox sees a new flow, it communicates with a central controller to establish a new index tag. 
+However, the FlowTags paper does not evaluate the number of forwarding table entries required by network switches to determine which middleboxes a packet should be forwarded to. It is worth exploring the benefits such a system could see from a different tagging scheme. 
+ 
+
+\paragraph{Host Attributes for Network Policies}
+In some situations, network policies require knowledge of properties of sending hosts to be correctly enforced. As an example, users in different departments of a university may be subject to different quality of service or access control policies. If department information is not attached to packets directly, it must be inferred from some combination of packet header fields, which can result in unnecessarily complex forwarding tables. 
+
+The Alpaca~\cite{alpaca} paper addresses this by encoding policy information in IP addresses, and assigning these addresses to network hosts via DHCP. Although not explicitly a tag, these IP addresses can be thought of as a tag appended to the network's IP prefix. Alpaca takes advantage of prefix and wildcard matching in construction of their "tags" to circumvent the memory scalability challenges of index tagging, however their approach has the added constraint that each host must receive a different tag, because each IP must be unique. The work does not consider what is possible using prefix and wildcard matching if the tags were unique per FEC, rather than per host.
 
 
-\paragraph{Multicast and Anycast} In a classic IP anycast scenario, a single
-service is replicated across multiple servers to attempt to lighten the maximum
-load that any single server receives. Since each server hosts the same server,
-they can all equivalently handle packets destined for that service. Each server
-is assigned the same IP address, and the network forwards any traffic destined
-for the shared IP address to the nearest replica of the service. However, if
-each server has a set of services it replicates, but sets differ across
-servers, no two servers can be treated equally and receive identical IP
-addresses. If lists of servers could be attached to packet headers, the
-network could read this list and choose a server to handle the packet. The
-scenario of Multicast is similar, where a list of subscribers can be
-attached to the packet header of a multicast packet. The network would then
-read this list and replicate the packet towards each subscriber. 
+%\paragraph{Multicast and Anycast}
+%In a classic IP anycast scenario, a single service is replicated across multiple servers to attempt to lighten the maximum load that any single server receives. Since each server hosts the same server, they can all equivalently handle packets destined for that service. Each server is assigned the same IP address, and the network forwards any traffic destined for the shared IP address to the nearest replica of the service. However, if each server has a set of services it replicates, but sets differ across servers, no two servers can be treated equally and receive identical IP addresses. If lists of servers could be attached to packet headers, the network could read this list and choose a server to handle the packet. 
+%The scenario of Multicast is similar, where a list of subscribers can be attached to the packet header of a multicast packet. The network would then read this list and replicate the packet towards each subscriber. 

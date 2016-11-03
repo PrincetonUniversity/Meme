@@ -23,7 +23,7 @@
 }
 
 \renewcommand{\SS}{\mathbb{S}}
-\renewcommand{\AA}{\mathbb{A}}
+\renewcommand{\AA}{A}%{\mathbb{A}}
 
 
 \newcommand{\supsym}[1]{\raisebox{4pt}{{\footnotesize #1}}}
@@ -67,7 +67,6 @@
 %\usepackage{amsthm}
 
 \newcommand{\jrex}[1]{\textcolor{red}{(JREX: #1)}}
-\newcommand{\ag}[1]{\textcolor{blue}{(AG: #1)}}
 
 \renewcommand{\baselinestretch}{1.005} 
 
@@ -96,7 +95,7 @@ xleftmargin=0pt
 
 %%%%%%%%%%%%%%%%%%%%  LOCALS  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\newcommand{\system}{FlexTags\xspace}
+\newcommand{\system}{iSDX\xspace}
 
 %%%%%%%%%%%%%%%%%%%%  TITLE/AUTHORS  %%%%%%%%%%%%%%%%%%%%%
 
@@ -130,10 +129,9 @@ xleftmargin=0pt
 \input{introduction}
 \input{background}
 \input{tag_format}
-\input{ordering}
 %\input{tag_format_optimization}
 \input{variable_ids}
-
+\input{ordering}
 \input{evaluation}
 \input{related_work}
 \input{Conclusion}

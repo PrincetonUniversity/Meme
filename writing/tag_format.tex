@@ -1,6 +1,10 @@
 \section{Encoding Unordered Attributes} 
 \label{sec:flextag_encoding} 
-In this section, we will first describe how ...  
+In this section, we will first present a strawman tagging scheme that uses
+wildcard matching to optimally minimize the number of forwarding table
+entries needed to read flow attributes. We will then modify this strawman
+such that it becomes feasible in commodity switches, at the cost
+of slightly increased forwarding table memory usage.
 
 %To understand the problem, let us consider a
 %simple example for the case of attaching lists of anycast hosts to a packet. Say
@@ -18,14 +22,14 @@ In this section, we will first describe how ...
 %number of checks linear in the number of tags. 
 
 
-\subsection{Set Bitmasks}
+\subsection{Strawman Bitmask Tags}
 \label{ssec:bitmasks}
-For the sake of explanation, assume that it is possible to attach an arbitrary
-amount of metadata to each packet the moment it is classified, and that
-forwarding table entries are able to read and write to this metadata
-arbitrarily. We can easily use this hypothetical metadata to test for membership
-of any attribute. If there are $N$ possible attributes, we can write $N$ bits to
-the metadata: the $i^{th}$ bit corresponds to the $i^{th}$ attribute. The moment
+Assume that it is possible to attach an arbitrarily
+large tag to each packet the moment it is classified, and that network switches
+can perform masked matching on this tag.
+We can easily use this hypothetical tag to encode and decode 
+any attribute. If there are $N$ possible attributes, we can write $N$ bits to
+the tag: the $i^{th}$ bit corresponds to the $i^{th}$ attribute. The moment
 the packet is classified, the $i^{th}$ bit is set to 1 if the $i^{th}$ attribute
 is true for that flow, and 0 if it is not. As a result, if we wish to test for
 the presence of attribute $x$, we need only check that $x$'s bit is 1 in the
@@ -34,42 +38,38 @@ $x$.
 
 Of course, we cannot attach arbitrary metadata to packets. Rather, we can
 repurpose a field in the header for tagging. In FlowTags, the Fragment
-Identification field is used. In SDX, the destination MAC stores the tags. In
-both cases, there is a hard limit on the size of tags to at most a few bytes.
-The scheme of creating a bitmask to encode a set of attributes will fail the
-moment the universe of attributes grows too large. This further motivates our
-optimized encoding scheme for reducing both memory usage and tag width.
+Identification field is used. In SDX, the destination MAC stores the tags. And in Alpaca,
+the suffix of the IPv4 source address is used. In
+all cases, there is a hard limit on the size of tags to at most a few bytes.
+The strawman of creating a bitmask to encode a set of attributes will fail the
+moment the universe of attributes grows too large.
 
 
 \subsection{Multiple Masked Sets}
 \label{ssec:mset}
 
- As our scheme currently stands, we are assigning a single bit of the metadata
- bitmask to every attribute in the universe of attributes. If we have more
- attributes than bits in the header field used for tagging, this approach
- immediately fails.
+The strawman bitmask tags do not scale to any reasonable size, but they are 
+a good starting point. The bitmask approach encodes the complete list
+of attributes in a format that is easy to read using matching actions, and we aim to
+maintain this property.
+ 
 
-The purpose of the metadata bitmask attached to each packet is to concisely
-convey whether each attribute is attached to that flow or not. The bitmask can
-be thought of as recovering the desired list of attributes by masking some
-\textit{superset} which contains all possible attributes. 
 
 \begin{figure}[t!] \begin{minipage}{1\linewidth}
 \begin{subfigure}[b]{0.96\linewidth} \includegraphics[trim={0 0 5.5cm 0}, clip,
 width=\linewidth]{figures/masking} \end{subfigure}
 \begin{subfigure}[c]{0.96\linewidth} \includegraphics[trim={0 13cm 5.5cm 0},
 clip, width=\linewidth]{figures/making_metadata} \end{subfigure} \end{minipage}
-\caption{This figure demonstrates two different ways to recover attribute sets.
+\caption{Two different ways to recover attribute sets.
 In (a), the sets are recovered by masking over $[A,B,C,D,E]$. In (b), the sets
 are recovered by masking over either superset $[A,B,C]$ or set $[C,D,E]$. An X
 denotes that the set cannot be fully recovered by masking over the given set.
-(c) shows how, if each superset is identified by a binary integer, each set can
-be converted to a tag consisting of an identifier and a bitmask.}
+(c) shows how the matrix in (b) can be mapped to tags.}
 \label{fig:masking} \end{figure}
 
 Consider the example in figure \ref{fig:masking}(a), where the left matrix
 contain the lists of attributes that we wish to recover, and the right matrix
-shows the bitmasks we would currently generate, which have a width of 5. Figure
+shows the bitmasks the strawman generates, which have a width of 5. Figure
 \ref{fig:masking}(b) shows that the attributes can be broken up into two
 categories: those which can be generated by masking over the superset $[A,B,C]$,
 and those which can be generated by masking over $[C,D,E]$. If we can add to our
@@ -85,7 +85,7 @@ bitmask which corresponds to $D$. Thus, the check that would be generated is\\
 \noindent {
 %\footnotesize 
 $\texttt{tag=1*1*} \rightarrow
-\texttt{action}(\mathcal{A})$\\ } 
+\texttt{action}(\AA)$\\ } 
 Where the first bit in the tag match is for
 the superset identifier, and the remainder is for the mask.
 
@@ -147,14 +147,14 @@ had the rule\\
 \noindent {
 %\footnotesize 
 $\texttt{C in tag} \rightarrow
-\texttt{action}(\mathcal{A})$\\ } 
+\texttt{action}(\AA)$\\ } 
 This would be augmented under our scheme to
 become\\ 
 \noindent{
 %\footnotesize 
 $\texttt{metadata=0**1} \rightarrow
-\texttt{action}(\mathcal{A})$\\ $\texttt{metadata=11**} \rightarrow
-\texttt{action}(\mathcal{A})$\\ } 
+\texttt{action}(\AA)$\\ $\texttt{metadata=11**} \rightarrow
+\texttt{action}(\AA)$\\ } 
 Therefore, depending upon the matrix
 construction, attribute tests may still require multiple forwarding table
 entries. We refer to this effect as inflation. In the Figure
