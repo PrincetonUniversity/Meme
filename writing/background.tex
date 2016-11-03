@@ -40,7 +40,30 @@ Index tagging is optimal in tag width, because it uses $\log_2{N}$ bits to ident
 \label{fig:system_flow}
 \end{figure}
 
-Attribute reading need not be so complex, though. If we do not require minimal tag width, we can make the attributes much easier to read. Figure BLANK shows such a construction for service chains, with tags as bit fields. Each attribute can be read using a single wildcard match, but the tag width is equal to the number of middleboxes. It is interesting to note that when each bit-field tag is viewed as an integer, it can still be thought of as an index into a implicit table of all possible attribute sets. 
+
+\subsection{Strawman Bitmask Tags}
+
+Attribute reading need not be so complex, though. If we do not require minimal tag width, we can make the attributes much easier to read.
+Assume that it is possible to attach an arbitrarily
+large tag to each packet the moment it is classified, and that network switches
+can perform masked matching on this tag.
+We can easily use this hypothetical tag to encode and decode 
+any attribute. If there are $N$ possible attributes, we can write $N$ bits to
+the tag: the $i^{th}$ bit corresponds to the $i^{th}$ attribute. The moment
+the packet is classified, the $i^{th}$ bit is set to 1 if the $i^{th}$ attribute
+is present for that flow, and 0 if it is not. As a result, if we wish to test for
+the presence of attribute $x$, we need only check that $x$'s bit is 1 in the
+metadata before rerouting, rather than exact matching on every tag that contains
+$x$.
+
+Of course, we cannot attach arbitrary metadata to packets. Rather, we can
+repurpose a field in the header for tagging. In FlowTags, the Fragment
+Identification field is used. In SDX, the destination MAC stores the tags. And in Alpaca,
+the suffix of the IPv4 source address is used. In
+all cases, there is a hard limit on the size of tags to at most a few bytes.
+The strawman of creating a bitmask to encode a set of attributes will fail the
+moment the universe of attributes grows too large.
+
 
 In general, any tagging scheme must simultaneously minimize three different metrics:
 \begin{enumerate}
@@ -53,7 +76,7 @@ Tags should be able to either be inserted into small repurposed header fields or
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-\subsection{Motivating Applications}
+\section{Motivating Applications}\label{sec:motivation}
 \begin{figure}
 \small
 \begin{center}
