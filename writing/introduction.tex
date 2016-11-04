@@ -3,25 +3,25 @@
 %%%
 %%% Forwarding Equivalence Class
 %%%
-Routing is increasingly more sophisticated than simply directing all traffic along a shortest path to the destination.  Depending on their header fields, packets may traverse a sequence of middleboxes, be subject to access-control policies, or have a set of valid destinations.  Customizing the handling of the packets can require network switches to have a large number of forwarding rules that match on multiple header fields.  Fortunately, there can be a large amount of redundancy in the way traffic flows are handled.  Flows that are treated identically by the network can be grouped into a single \emph{forwarding equivalence class} (FEC). If each packet is tagged with an FEC identifier once it is classified, interior switches can simply forward packets based on the tag, leading to substantial reductions in forwarding state.
+Routing is increasingly more sophisticated than simply directing all traffic along a shortest path to the destination.  Depending on their header fields, packets may traverse a sequence of middleboxes, be subject to access-control policies, or have a set of valid destinations.  Customizing the handling of the packets can require network switches to have a large number of rules that match on multiple header fields.  Fortunately, there can be a large amount of redundancy in the way traffic flows are handled.  Flows that are viewed identically by the network can be grouped into a single \emph{attribute equivalence class} (AEC). If each packet is tagged with an AEC identifier once it is classified, interior switches can simply act on packets based on the tag, leading to substantial reductions in switch state.
 
 %%%
 %%% FEC is an index
 %%%
-The simplest and most common form of FEC tag is a flat tag, or \emph{index}. Historically, virtual circuit switching techniques like MPLS~\cite{mpls} and virtualization solutions like VLANs~\cite{vlan} follow this approach, and it is common in newer works as well~\cite{flowtags,sdx}.  Using the tag as an index worked well with traditional switches that support exact matches on a single header field, such as an MPLS label, VLAN tag, or destination MAC address.  However, index tagging solutions face two scalability challenges. First, the amount of forwarding rules placed in a switch is linear in the number of FECs which traverse that switch. Second, any minor change to the behavior of a flow can result in a large number of forwarding table changes as the FECs and their indices are updated.
+The simplest and most common form of AEC tag is a flat tag, or \emph{index}. Historically, virtual circuit switching techniques like MPLS~\cite{mpls} and virtualization solutions like VLANs~\cite{vlan} follow this approach, and it is common in newer works as well~\cite{flowtags,sdx}.  Using the tag as an index worked well with traditional switches that support exact matches on a single header field, such as an MPLS label, VLAN tag, or destination MAC address.  However, index tagging solutions face two scalability challenges. First, the amount of forwarding rules placed in a switch is linear in the number of AECs which traverse that switch. Second, any minor change to the behavior of a flow can result in a large number of switch rule changes as the AECs and their indices are updated.
 %If a network node wishes to decode whether attribute $A$ is associated with a packet, it must determine whether the packet belongs to any FEC which is associated with $A$. If $A$ is associated with $N$ FECs, each of which has its own index, the switch requires $N$ rules for decoding $A$. 
 
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
 \includegraphics[trim={0 10cm 0 0}, clip, width=\linewidth]{figures/mbox_path_example}
 \end{minipage} 
-\caption{An illustration of the scaling issues of flat tagging. There are three switches $s_1, s_2, s_3$ and four middleboxes $A,B,C,D$. Packets enter the network on the left and are classified as needing to traverse one of four service chains, and are tagged as such. If flat matching is used, no aggregate forwarding rules are possible on the four tags.  }
+\caption{An illustration of the scaling issues of flat tagging. There are three switches $s_1, s_2, s_3$ and four middleboxes $A,B,C,D$. Packets enter the network on the left and are classified as needing to traverse one of four service chains, and are tagged as such. If flat matching is used, no aggregate rules are possible on the four tags.  }
 \label{fig:mbox_path}
 \end{figure}
 %%%
 %%% Matching on sequences
 %%%
-Fundamentally, the issue is that each FEC is defined by a \emph{collection} of attributes, yet two FECs that differ by only one attribute receive arbitrary, independent indices as tags, preventing forwarding table entries which handle different FECs from being aggregated. For middlebox steering policies, as seen in example figure ~\ref{fig:mbox_path}, FECs are defined by sequences of middleboxes, and two FECs may differ in a single hop.  If tags are assigned such that forwarding rules can be aggregated (akin to IP prefix routing), then switches could forward the packets of multiple FECs with a single forwarding rule.
+Fundamentally, the issue is that each AEC is defined by a \emph{collection} of attributes, yet two AECs that differ by only one attribute receive arbitrary, independent indices as tags, preventing switch rules which handle different AECs from being aggregated. For middlebox steering policies, as seen in example figure ~\ref{fig:mbox_path}, AECs are defined by sequences of middleboxes, and two AECs may differ in a single hop.  If tags are assigned such that rules can be aggregated (akin to IP prefix routing), then switches could act upon the packets of multiple AECs with a single rule.
 %%%
 %%% Capabilities of newer switches 
 %%%
