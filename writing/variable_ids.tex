@@ -32,7 +32,7 @@ group and equals $W_{f} = \left \lceil \log_2(N) \right \rceil +
 To reduce the size of the tag, we introduce variable-length group
 identifiers.  In particular, groups that need larger bitmasks should
 have shorter group ids, and vice versa.  Table~\ref{Table_variable}(c)
-uses group identifiers 0, 10, 110, and 110, enabling a smaller tag with
+uses group identifiers 0, 10, 110, and 111, enabling a smaller tag with
 just five bits.  Notice that the group identifiers are selected such
 that none is a prefix (start) of another, i.e., the identifiers are
 codewords in a \emph{prefix code}.  Selecting the group identifiers in
@@ -136,8 +136,8 @@ Table~\ref{Table_variable}(c)
 satisfy $2^{-1} + 2^{-2} + 2^{-3} + 2^{-3} = 1$.
 %
 This also enables us to exactly calculate the minimal width $W_{v}$
-that can be achieved for a given $X$ groups of size $\ell_1,
-\ldots, \ell_X$ using variable-length identifiers as described in the
+that can be achieved for a given $N$ groups of size $\ell_1,
+\ldots, \ell_N$ using variable-length identifiers as described in the
 following property:
 
 \begin{property}
@@ -180,5 +180,5 @@ of as short a tag as possible. By Property~\ref{property_variable_length_minimal
 
 We begin with the input list of attribute groups $\SS = s_1, \ldots, s_N$.
 Next,  we consider each pair of groups, and calculate the benefit to the term $T$ if that pair of groups were to be replaced by their union, decreasing the number of groups by 1. For two groups $s_i, s_j$ of 
-size $\ell_i, \ell_j$ and intersection size $\ell_{ij}$, the impact to $T$ of replacing them with their union $s_i \bigcup s_j$ is equal to $(-2^\ell_i - 2^\ell_j + 2^\ell_{ij}$. However, it may be the case that no pair of groups has an impact less than 0. In such a case, we choose the pair which has minimum impact to $T$, and replace them with their union anyway. We do this because it may be the case that such a step will enable beneficial union steps later on. After each union, we record the current value of $T$ and the set of groups $\SS$ that achieved this value. This process is repeated until there is only one group remaining. 
+size $\ell_i, \ell_j$ and intersection size $\ell_{ij}$, the impact to $T$ of replacing them with their union $s_i \bigcup s_j$ is equal to $-2^{\ell_i} - 2^{\ell_j} + 2^{\ell_{ij}}$. However, it may be the case that no pair of groups has an impact less than 0. In such a case, we choose the pair which has minimum impact to $T$, and replace them with their union anyway. We do this because it may be the case that such a step will enable beneficial union steps later on. After each union, we record the current value of $T$ and the set of groups $\SS$ that achieved this value. This process is repeated until there is only one group remaining. 
 After one group remains, we go back and identify the set of groups $\SS$ that achieved the minimum value of $T$, and return this as our answer.
