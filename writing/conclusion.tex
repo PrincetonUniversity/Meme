@@ -1,5 +1,10 @@
-\section{Conclusion} \label{sec:conclusion}
+subsection{Conclusion} \label{sec:conclusion}
 
-Our reachability encoding scheme has shown the ability to compress a large amount of routing information into a small number of bits. Although our experiments were only for the RIPE-available information on 63 participants, in the full iSDX paper the encoding scheme was able to represent subsets of over 500 participants in only 33 bits~\cite{isdx}. We have yet to find an example of an exchange point where this technique breaks down, and so it seems that this approach will allow real software-defined exchange points to be deployed in the near future. 
+Although our scheme improves upon the switch memory usage of existing tagging approaches, it uses larger tags to do so. As a future work, it would be interesting to explore better memory-width tradeoffs, as well as better ways to handle attribute sequences which have conflicting attribute orderings.
 
-Since this technique is completed, any future work would be in finding new uses for the technique. However, it would be interesting to explore how this technique could be expanded or modified when additional capabilities are added to SDN switches.
+Each technique presented here has a customized method for attaching tags to packets. To make it easier to deploy tagging schemes to new applications, investigating application-agnostic techniques for tagging packets could open up a whole new range of use cases. 
+
+
+We have shown that our tagging scheme can improve upon flat tagging by orders of magnitude if there is enough redundancy in the data that tags convey. The scheme is versatile, able to encode both unordered sets and ordered sequences, as well as able to handle scenarios where the ordering is not perfect. 
+
+Our encoding scheme is possible because of the growing popularity of flexible switching hardware, such as switches that support OpenFlow and the newly emerging standard P4 for programmable switches. The continuing expansion of switch capabilities allows exploration of new techniques and applications for attaching increasingly complex information directly to packet flows, and we hope our work is not the last to explore this. 
