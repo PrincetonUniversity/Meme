@@ -1,37 +1,17 @@
-\documentclass[10pt,twocolumn]{sig-alternate-10pt}
+\documentclass[10pt,twocolumn]{confpaper}
 
+%%%%%%%%%%%%%%%%%%%%  LOCALS  %%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\renewcommand{\SS}{\mathbb{S}}
+\renewcommand{\AA}{A}%{\mathbb{A}}
 
 %%%%%%%%%%%%%%%%%%%%  INCLUDES  %%%%%%%%%%%%%%%%%%%%%%%%%%
 %\usepackage{subfigure}
 
 \usepackage{graphicx}
-\usepackage{caption}
 \usepackage{subcaption}
 \usepackage{url}
-\sloppy
-
-
-%\definecolor{darkgreen}{rgb}{0.0, 0.65, 0.0}
-%
-%\ifthenelse{\equal{\COMMENTS}{yes}}{%
-%\newcommand{\nfnote}[1]{\textcolor{red}{(\textit{\textcolor{red}{[Nick]: #1}} )}} % Nick's Comments
-%\newcommand{\jrnote}[1]{\textcolor{blue}{(\textit{\textcolor{blue}{[Jen]: #1}} )}} % Jen's Comments
-%\newcommand{\rmnote}[1]{\textit{\textcolor{darkgreen}{[Robert]: #1}}} % Robert's comments
-%\newcommand{\rbnote}[1]{\textit{\textcolor{darkgreen}{[Rudy]: #1}}} % Rudy's comments
-%\newcommand{\ornote}[1]{\textit{\textcolor{orange}{[Ori]: #1}}} % Ori's comments
-%\newcommand{\agnote}[1]{\textit{\textcolor{orange}{[Arpit]: #1}}} % Arpit's comments
-%}{
-%\newcommand{\nfnote}[1]{}
-%\newcommand{\jrnote}[1]{}
-%\newcommand{\rmnote}[1]{}
-%\newcommand{\rbnote}[1]{}
-%\newcommand{\ornote}[1]{}
-%\newcommand{\agnote}[1]{}
-%}
-
-\renewcommand{\SS}{\mathbb{S}}
-\renewcommand{\AA}{A}%{\mathbb{A}}
-
+\usepackage{balance}
 
 \newcommand{\supsym}[1]{\raisebox{4pt}{{\footnotesize #1}}}
 \newcommand{\et}{\supsym{$\dag$}}
@@ -61,57 +41,28 @@
 
 
 \usepackage{listing}
-%\usepackage{algorithm}% http://ctan.org/pkg/algorithm
-%usepackage{algpseudocode}% http://ctan.org/pkg/algorithmicx
 \usepackage[ruled,vlined]{algorithm2e}
 \usepackage{bbm}
 \usepackage{amsmath}
-\usepackage{tabularx}
 \usepackage{gnuplot-lua-tikz}
 
-%\usepackage{amssymb}
-%\usepackage{amsthm}
-
 \newcommand{\jrex}[1]{\textcolor{red}{(JREX: #1)}}
-
 \renewcommand{\baselinestretch}{1.005} 
-
 
 \definecolor{steel_blue}{RGB}{70, 130, 180}
 
-%\lstset{
-%basicstyle=\footnotesize\ttfamily\small,
-%frame=none,
-%language=Python,
-%numbers=none,
-%breaklines=true,
-%xleftmargin=0pt
-%}
-%
-%
-%\lstdefinelanguage{Pyretic}
-%{keywords={>>, >+, +, &, push, if_, elif_, else, pop, match, fwd, modify, set, mod, drop, $\triangleleft$, announce, withdraw}, 
-%  sensitive=true, alsoletter={-,>>,+,&,|,_},comment=[l][\footnotesize\sffamily\textbf]{\!}
-%}
-%
-%\lstset{emph={View1, CA, CA-IN, as-path, med, no-prepend},
-%  keywordstyle=\color{steel_blue}\textbf}
-%\lstset{language=Pyretic}
-
 
 %%%%%%%%%%%%%%%%%%%%  LOCALS  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%\newcommand{\system}{iSDX\xspace}
 
 %%%%%%%%%%%%%%%%%%%%  TITLE/AUTHORS  %%%%%%%%%%%%%%%%%%%%%
 
 
 \date{}
 \title{
-{Concise Encoding of Flow Attributes in SDN Switches}}
+{\ttlfnt Concise Encoding of Flow Attributes in SDN Switches}}
 \author{
-{Robert MacDavid\ptn, R\"udiger Birkner\et, Ori Rottenstreich\ptn,}\\
-{Arpit Gupta\ptn, Jennifer Rexford\ptn, Nick Feamster\ptn}\\
+{\aufnt Robert MacDavid\ptn, R\"udiger Birkner\et, Ori Rottenstreich\ptn,}\\
+{\aufnt Arpit Gupta\ptn, Jennifer Rexford\ptn, Nick Feamster\ptn}\\
 \ptn\normalsize{Princeton University}~~~\et\normalsize{ETH Z\"{u}rich}\\
 }
 
@@ -124,40 +75,24 @@
 %\AcmCopyright
 %\ToAppear
 
-%\begin{sloppypar}
+\begin{sloppypar}
 
 \input{abstract}
 
 %\ifthenelse{\equal{\onlyAbstract}{no}}{% !onlyAbstract
 
-
-
 \input{introduction}
 \input{background}
 \input{tag_format}
-%\input{tag_format_optimization}
 \input{ordering}
 \input{variable_ids}
 \input{evaluation}
 \input{related_work}
 \input{Conclusion}
-
-%\end{sloppypar}
-
-%\vspace{-0.01in}
-%\section*{Acknowledgments}
-% Comments for people we need to acknowledge in the final version.
-%\noindent \textbf{Acknowledgments.}
-%Fill me in
-%\pagebreak
-%\small
-%\setlength{\bibsep}{0pt}
-%\setlength{\parskip}{-1pt}
-%\setlength{\itemsep}{-1pt}
+\end{sloppypar}
 % \footnotesize % SPACE
-%\balance
-\bibliography{paper}
-\bibliographystyle{acm}
+\balance\bibliography{paper}
+\bibliographystyle{abbrv}
 %\bibliographystyle{abbrvnat_noaddr} % SPACE
 %\theendnotes % ENDNOTES
 %}{% onlyAbstract
