@@ -22,6 +22,15 @@
 There are many applications where encoding and reading FECs is of interest, and in particular we will look at three of them, which are outlined in Table \ref{tab:applications}.
  
 \subsection{Software-Defined IXPs}
+\begin{figure}[t!] 
+\begin{minipage}{1\linewidth}
+\begin{subfigure}[b]{0.96\linewidth}
+\includegraphics[width=\linewidth,trim={0 5cm 0 0}]{figures/sdx_example}
+\end{subfigure} 
+\end{minipage} 
+\caption{An example of a Software-Defined IXP system, as presented in the iSDX paper~\cite{isdx}. Border routers connect to the IXP fabric and initiate BGP sessions with the controller. Each router announces routes for IP prefixes to the controller, and the controller aggregates these, computes FECs for each IP prefix, and announces a Virtual Next-hop (VNH) IP address for IXP participants to reach that prefix. When a participant attempts to send traffic to a VNH IP, it first sends an ARP request for the MAC of that VNH to the IXP fabric. The controller intercepts this, and responds with a tag as the destination MAC. The participant then forwards packets to the IXP fabric with the appropriate tag in the destination MAC address field.}
+\label{fig:sdx_example}
+\end{figure}
 At an Internet Exchange Point (IXP), multiple autonomous systems (ASes)
 connect at a single logical interconnect to exchange traffic and
 interdomain routing information.  At an IXP with support for SDN
@@ -35,7 +44,7 @@ the routing policies do not account for the routes of each AS, traffic
 may be forwarded to networks that cannot handle it.
 
 The initial SDX design used flat tags to encode these distinct
-forwarding decisions~\cite{sdx}. Each AS shares its list of routes with
+forwarding decisions~\cite{sdx}, with the architecture shown in Figure \ref{fig:sdx_example}. Each AS shares its list of routes with
 a central controller, and every unique set of routes is assigned a flat
 tag. The controller then attaches these tags to every packet by
 announcing them to all peers as destination MAC addresses via ARP
