@@ -17,31 +17,43 @@ Sometimes, there does not exist a supersequence of attributes that all sequences
 
 \textbf{Approach II:} The first approach can sometime result in a large number of sequences that cannot be further merged. The second approach is more flexible by allowing the merging of two sequences even if this results in order-inconsistency. We solve the inconsistency by finding a supersequence with multiple appearances of some of the attributes such that merged sequences can be described as subsequences. 
 
-To do so systematically, we construct the sequence graph $G$, shown in \ref{fig:ordering}(b) for the sequences  in \ref{fig:ordering}(a). We then run an algorithm for finding Strongly Connected Components (SCCs) on this graph. A strongly connected component is a set of nodes such that for every pair of nodes $u$ and $v$ in the set, $u$ has a path to $v$ and vice versa. In this context, every SCC corresponds to a set of incomparable elements.  Figure \ref{fig:ordering}(d) and (e) shows the result of using this new ordering to modify each sequence.  
-Figure \ref{fig:conflict_res} details the process for determining which elements to split to create a new, totally ordered universe.
+To do so systematically, we construct the sequence graph $G$, shown in \ref{fig:ordering}(b) for the sequences  in \ref{fig:ordering}(a). We then run an algorithm for finding Strongly Connected Components (SCCs) on this graph. A strongly connected component is a set of nodes such that for every pair of nodes $u$ and $v$ in the set, $u$ has a path to $v$ and vice versa. In this context, every SCC corresponds to a set of incomparable elements.  Figure \ref{fig:ordering}(c) shows the result of finding SCCs on the sequence graph, identifying one pair of incomparable elements. Figure \ref{fig:ordering}(d) through (f) shows, at a high level, how the SCC is broken up 
 
 
-\begin{figure}[t!] 
-\begin{minipage}{1\linewidth}
-\begin{subfigure}[c]{0.96\linewidth}
-\includegraphics[trim={0 6cm 19.2cm 0}, clip, width=\linewidth]{figures/partial_ordering}
-\end{subfigure} 
-\end{minipage} 
-\caption{Not-aligned ordering constraints. (a) shows the four input ordered sequences. In (b) illustrates the corresponding sequence graph $G$.. (b) shows the disjoints SCCs  (Strongly Connected Components) of $G$. Each SCC corresponds to a set of incomparable elements. (d) describes the result of splitting elements to resolve order-inconsistency, which is covered in more depth in figure \ref{fig:conflict_res}. In (e), the original sequences are modified with the splits such that each sequence adheres to the constructed ordering.}
+\begin{figure*}
+%\begin{minipage}{2\linewidth}
+%\begin{subfigure}[c]{0.96\linewidth}
+%\includegraphics[trim={0 6cm 19.2cm 0}, clip, width=\linewidth]{figures/partial_ordering}
+\includegraphics[trim={0 18cm 0 0}, clip, width=\textwidth]{figures/partial_ordering2}
+%\end{subfigure} 
+%\end{minipage} 
+\caption{Not-aligned ordering constraints. (a) shows the four input ordered sequences. (b) illustrates the corresponding sequence graph $G$ (c) shows the disjoint SCCs  (Strongly Connected Components) of $G$. Each SCC corresponds to a set of incomparable elements. In (d), we order the elements of the SCC to minimize backward edges. (e) and (f) show how nodes of the SCC can be split to make all backward edges become forward edges, allowing a complete ordering to be found. Splitting nodes results in duplicated elements, which slightly changes the original sequences, as shown in (f).}
 \label{fig:ordering}
-\end{figure}
+\end{figure*}
+
+
+%
+%\begin{figure}[t!] 
+%\begin{minipage}{1\linewidth}
+%\begin{subfigure}[c]{0.96\linewidth}
+%\includegraphics[trim={0 6cm 19.2cm 0}, clip, width=\linewidth]{figures/partial_ordering}
+%\end{subfigure} 
+%\end{minipage} 
+%\caption{Not-aligned ordering constraints. (a) shows the four input ordered sequences. In (b) illustrates the corresponding sequence graph $G$.. (b) shows the disjoints SCCs  (Strongly Connected Components) of $G$. Each SCC corresponds to a set of incomparable elements. (d) describes the result of splitting elements to resolve order-inconsistency, which is covered in more depth in figure \ref{fig:conflict_res}. In (e), the original sequences are modified with the splits such that each sequence adheres to the constructed ordering.}
+%\label{fig:ordering}
+%\end{figure}
 
 
 
-\begin{figure}[t!] 
-\begin{minipage}{1\linewidth}
-\begin{subfigure}[c]{0.96\linewidth}
-\includegraphics[trim={19.2cm 10cm 0 0}, clip, width=\linewidth]{figures/partial_ordering}
-\end{subfigure} 
-\end{minipage} 
-\caption{This details the order-inconsistency resolution step of the algorithm. (a) shows a SCC of four attributes. (b) shows an 'almost' ordering of the SCC nodes, which minimizes the number of backward edges. (c) shows a  construction of a worst-case quadratically-sized universe, which is then traversed by every sequence to determine which attributes to splits for the new ordering.}
-\label{fig:conflict_res}
-\end{figure}
+%\begin{figure}[t!] 
+%\begin{minipage}{1\linewidth}
+%\begin{subfigure}[c]{0.96\linewidth}
+%\includegraphics[trim={19.2cm 10cm 0 0}, clip, width=\linewidth]{figures/partial_ordering}
+%\end{subfigure} 
+%\end{minipage} 
+%\caption{This details the order-inconsistency resolution step of the algorithm. (a) shows a SCC of four attributes. (b) shows an 'almost' ordering of the SCC nodes, which minimizes the number of backward edges. (c) shows a  construction of a worst-case quadratically-sized universe, which is then traversed by every sequence to determine which attributes to splits for the new ordering.}
+%\label{fig:conflict_res}
+%\end{figure}
 
 \subsection{Constructing Rules That Respect Order}
 \label{s:order-rules}
