@@ -19,7 +19,8 @@ def spew_files():
 
     repetitions = 10
     # iterate over total middlebox counts
-    for mboxcount in range(10, 41, 10):
+    #for mboxcount in range(10, 41, 10):
+    for mboxcount in [12]
         mboxkey = "Boxes%03d"%mboxcount
         # iterate over number of paths
         # for pathcount in range(10, 401, 10):
