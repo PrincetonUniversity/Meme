@@ -7,7 +7,7 @@ To evaluate service chains, we simulate a network policy by generating a set of 
 
 To generate random paths over these $M$ middleboxes, we first assume that all service chains follow a fixed underlying ordering. A random starting point in the ordering is chosen, and a path is constructed by making random jumps to middleboxes further down the ordering, stopping once the end of the ordering is reached.
 
-Next, to simulate conflicting orderings, we post-process each random path to add ordering conflicts. For each pair of adjacent middleboxes in a path, we swap their positions with some probability $p_err$. We chose a value of $5\%$ for $p_err$, as we believe reordering of middleboxes to be rare. 
+Next, to simulate conflicting orderings, we post-process each random path to add ordering conflicts. For each pair of adjacent middleboxes in a path, we swap their positions with some probability $p_{err}$. We chose a value of $5\%$ for $p_{err}$, as we believe reordering of middleboxes to be rare. 
 
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
