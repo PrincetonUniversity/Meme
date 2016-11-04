@@ -178,21 +178,7 @@ For given groups, after calculating $W_{v}$ as the minimal possible width enable
 In the selection of the groups, we would like to enable the existence
 of as short a tag as possible. By Property~\ref{property_variable_length_minimal_tag} the number of groups and their identifiers should be selected such that their sizes $\ell_1, \ldots, \ell_N$ minimize the term $T = \sum_{i = 1}^{N}{2^{\ell_i}}$. 
 
-We describe a simple scheme to determine the groups for a given
-(distinct) input groups $s_1, \ldots, s_N$. We first examine whether
-$s_i \subset s_j$ for some pair of sets. In this case, we can use
-$s_j$ as the group for both sets and eliminate $s_i$. This
-would decrease the value of sum. We refer to this change as redundancy
-elimination.
-\jrex{should we introduce the ``redundancy elimination'' term earlier,
-  as we already talk about this step.}
-
-Next,  we continue to examine a possible merging of pairs of groups. Such a merging decreases the number of groups. While considering two groups $s_i, s_j$ of 
-size $\ell_i, \ell_j$, the contribution of  a possible merging $s_i \bigcup s_j$ to $T$ is necessarily larger than  the sum of the contributions of $s_i$ and $s_j$ to $T$.
-This is because after the redundancy elimination, we must have that $|s_i \bigcup s_j| > \max(\ell_i, \ell_j)$. Accordingly,  $2^{|s_i \bigcup s_j|} > 2^{\max(\ell_i, \ell_j)} \ge 
-2^{\ell_i} + s^{\ell_j}$. However, a possible merging of a pair of groups might enable eliminating additional groups through redundancy elimination.
-
-Accordingly, in each step of the scheme we examine for each pair of the current groups the possible change in the value of $T$ after a potential merging of the pair and applying of the redundancy elimination. The pair that leads to a maximal reduction (or minimal increase in case no such pair exists) is selected and merged in this step and  redundancy elimination is applied. 
-
-Finally,  the observed groups having the minimal value of $T$ along the running are selected as the output groups.
- 
+We begin with the input list of attribute groups $\SS = s_1, \ldots, s_N$.
+Next,  we consider each pair of groups, and calculate the benefit to the term $T$ if that pair of groups were to be replaced by their union, decreasing the number of groups by 1. For two groups $s_i, s_j$ of 
+size $\ell_i, \ell_j$ and intersection size $\ell_{ij}$, the impact to $T$ of replacing them with their union $s_i \bigcup s_j$ is equal to $(-2^\ell_i - 2^\ell_j + 2^\ell_{ij}$. However, it may be the case that no pair of groups has an impact less than 0. In such a case, we choose the pair which has minimum impact to $T$, and replace them with their union anyway. We do this because it may be the case that such a step will enable beneficial union steps later on. After each union, we record the current value of $T$ and the set of groups $\SS$ that achieved this value. This process is repeated until there is only one group remaining. 
+After one group remains, we go back and identify the set of groups $\SS$ that achieved the minimum value of $T$, and return this as our answer.
