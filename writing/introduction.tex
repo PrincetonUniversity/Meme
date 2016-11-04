@@ -9,7 +9,9 @@ or be forwarded to one of several distinct destinations. These types of
 flexible forwarding decisions can require network switches to have many
 forwarding table rules, each of which may match on multiple packet
 header fields, thus causing switches to store many flow table entries to
-handle all possible cases. Fortunately, although the number of possible
+handle all possible cases. 
+
+Fortunately, although the number of possible
 combinations of forwarding decisions could in theory result in an
 inordinate number of flow table entries, in {\em practice} many distinct
 traffic flows may be subject to the same forwarding actions and
@@ -27,23 +29,33 @@ header field combinations.
 %%%
 The simplest way to mark an FEC is with a flat tag.  MPLS~\cite{mpls}
 and VLANs~\cite{vlan} use flat tags, for example, and newer SDN-based
-architectures such as FlowTags~\cite{flowtags} and the original SDX
-architecure~\cite{sdx} also make forwarding decisions based on flat
+architectures such as FlowTags~\cite{flowtags} and our original SDX
+architecture~\cite{sdx} also make forwarding decisions based on flat
 tags.  Flat tags work well in many scenarios because hardware switches
-can perform exact matches on these fields; yet, forwarding tables that
-match on flat tags do not scale, because the number of forwarding rules
-that the switch must store grows linearly with the number of FECs which
+can perform exact matches on these fields (e.g., using a
+content-addressable memory); yet, forwarding tables that match on flat
+tags do not scale, because the number of forwarding rules that the
+switch must store grows linearly with the number of FECs which
 traverse that switch, and small changes to forwarding decisions can
-trigger recomutations of a large number of FECs (and tags).
-%If a network node wishes to decode whether attribute $A$ is associated with a packet, it must determine whether the packet belongs to any FEC which is associated with $A$. If $A$ is associated with $N$ FECs, each of which has its own index, the switch requires $N$ rules for decoding $A$. 
+trigger recomputation of a large number of FECs (and tags).
+%If a network node wishes to decode whether attribute $A$ is
+%associated with a packet, it must determine whether the packet
+%belongs to any FEC which is associated with $A$. If $A$ is associated
+%with $N$ FECs, each of which has its own index, the switch requires
+%$N$ rules for decoding $A$. 
+
 In practice, an FEC constitutes a \emph{collection} of forwarding
 decisions (\eg, a sequence of middleboxes), but two FECs that differ
 only slightly would have completely different flat tags, making it
 difficult to aggregate forwarding table rules.  For example,
 Figure~\ref{fig:mbox_path} shows an example where an FEC constitutes a
-sequence of middleboxes; two FECs may differ in only a single middlebox,
-yet matching on flat tags requires the switch to maintain an entry for
-each unique sequence. 
+sequence of middleboxes.  Two FECs may differ in only a single
+middlebox yet matching on flat tags requires the switch to maintain an
+entry for each unique sequence.  For example, switch $n_1$ needs
+separate rules to direct tags $00$ and $01$ to $A$, even though the
+two paths differ only later in the path.  In contrast, wildcard
+matching in the switch, coupled with a careful assignment of tag bits,
+can enable the smaller rule tables shown in the bottom of the figure.
 
 % Figure ~\ref{fig:mbox_path} shows a simple example of service chaining
 % with four middleboxes, where every flow is mapped to one of four chains
@@ -74,45 +86,43 @@ each unique sequence.
 \label{fig:mbox_path}
 \end{figure}
 
-
-
 %%%
 %%% Capabilities of newer switches 
 %%%
-Instead, a forwarding mechanism that assigned tags that reflected
-commonality between sequences or sets between different forwarding
-equivalence classes could make it possible to aggregate forwarding table
-entries in switchs.  Fortunately, commodity switches that support
-OpenFlow~1.3~\cite{of13} can now perform {wildcard} matching on arbitrary
-packet 
-header fields; emerging protocol-independent switches supported by
-languages such as P4~\cite{P4} will also support more flexible
-matching based on wildcards. These new matching capabilities make it
-possible to redesign FEC tagging architectures to achieve more efficient encodings.
+A forwarding mechanism that assigns tags that reflect the commonality
+between sequences or sets between different forwarding equivalence
+classes could make it possible to aggregate rule-table entries in
+switches.  Fortunately, commodity switches that support OpenFlow
+1.3~\cite{of13} can now perform wildcard matching on arbitrary
+packet-header fields; emerging protocol-independent switches supported
+by languages such as P4~\cite{P4} also support more flexible matching
+based on wildcards, as well as the ability to create new header fields
+that can serve as tags. These new matching capabilities make it
+possible to redesign FEC tagging architectures to achieve more
+efficient encodings.
 
 In this paper, we take advantage of these emerging capabilities to
 encode similar FECs with tags that share common bits, as opposed to
 simply assigning each FEC a distinct flat tag.  These
 \emph{attribute-carrying tags} are more compact and reduce forwarding
-table size compared to flat tags.We present efficient algorithms for
-encoding sets and sequences of attributes in tags amd demonstrate how
-these encodings can reduce switch forwarding table size for a variety of
+table size compared to flat tags. We present efficient algorithms for
+encoding sets and sequences of attributes in tags and demonstrate how
+these encodings can reduce switch rule-table size for a variety of
 applications, including an SDN-based Internet Exchange Point and a
-service chaining application. We have publicly released the source code
-for the library that implements this encoding algorithm.
+service chaining application. We have publicly released the source
+code for the library that implements this encoding algorithm.
 
-The rest of this paper proceeds as follows. Section~\ref{sec:motivation}
-presents motivating applications. Section \ref{sec:flextag_encoding} presents
-the basic ideas of our FEC encoding scheme. In Section \ref{sec:ordering}, we
-extend our encoding to support ordered sequences of attributes; Section
-\ref{sec:identifiers} improves the space efficiency of this encoding. In
-Section \ref{sec:evaluation}, we evaluate the encoding over both real and
-synthetic data sets. We discuss related work in Section
-\ref{sec:related} and conclude in Section \ref{sec:conclusion}.
-
-
-
-
+The rest of this paper proceeds as
+follows. Section~\ref{sec:motivation} presents three motivating
+applications. Section~\ref{sec:flextag_encoding} presents the basic
+ideas of our scheme for consider encoding of attribute sets. In
+Section~\ref{sec:ordering}, we extend our encoding to support sequences
+of attributes; Section~\ref{sec:identifiers} improves the space
+efficiency of this encoding using prefix codes. In
+Section~\ref{sec:evaluation}, we evaluate our encoding over both real
+and synthetic data sets for two uses cases. We discuss related work in
+Section~\ref{sec:related} and conclude in
+Section~\ref{sec:conclusion}.
 
 
 %\subsection{Common Ground}
