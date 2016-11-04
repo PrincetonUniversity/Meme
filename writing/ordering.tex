@@ -5,20 +5,6 @@ In some applications, the \emph{order} of attributes is important.  For example,
 \subsection{Sequence Graph of Attribute Orderings}
 When the tag must encode a sequence of attributes, we need an effective way to identify what \emph{ordering} of attributes can occur.  Figure~\ref{fig:ordering}(a) shows four equivalence classes ($S_1$-$S_4$) with different sequences of attributes ($A$-$F$); for example, $S_2$ has the attribute sequence $E$-$A$-$B$, whereas $S_4$ has $A$-$B$-$C$-$D$.  We can generate a \emph{sequence graph} where each node is an attribute, and a directed edge from node $u$ to node $v$ exists if $u$ appears just before $v$ in any of the sequences.  For example, the sequence graph in Figure~\ref{fig:ordering}(b) has an edge from $E$ to $A$ and from $A$ to $B$ because of $S_2$, and from $D$ to $F$ because of $S_3$.  Each sequence in the input data corresponds to a path through the sequence graph.  If the sequence graph is acyclic, the attributes form a partial order, making it easier to encode all of the the sequences concisely.
 
-\begin{table}
-    \begin{tabular}{| l | l | l |}
-    \hline
-    Attribute & Unordered Match & Ordered Match\\ \hline
-    A & $1011**$ & $1011**$ \\ \hline
-    B & $101*1*$ & $10101*$ \\ \hline
-    C & $101**1$ & $101001$ \\
-    \hline
-    \end{tabular}
-    \caption{Wildcard strings for ordered versus unordered attributes. %In the unordered case, the string matches if the target attribute bit is 1, and does not depend upon the bits of other attributes.
-     In the ordered case, the string only matches if the target attribute bit is 1 and all bits for attributes preceding the target attribute are 0. This ensures only matching on the next attribute in the ordering succeeds.} 
-    \label{tab:ordering}
-\end{table}
-
 \subsection{Sequences Forming a Partial Order}
 If all of the attributes form a (partial) order, we can easily construct a single ordered list of all attributes where each input sequence is a subsequence. We refer to such a sequence as a \emph{supersequence}.  A supersequence can be computed by processing the nodes of the (acyclic) sequence graph in order. For example, suppose the input sequences are $X$-$Y$, $Y$-$Z$, and $X$-$Z$; then, the resulting supersequence would be $X$-$Y$-$Z$. To generate the tags, Algorithm~\ref{alg:memory_min}
 can be used ``as is'' to generate a concise encoding.  The resulting rules in the switches would simply match on the attributes
