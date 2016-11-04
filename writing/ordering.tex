@@ -1,9 +1,8 @@
-\section{Encoding Ordered Attributes} 
+\section{Encoding Attribute Sequences}
 \label{sec:ordering}
-So far, we studied the encoding of unordered sets, i.e. there was no importance for the order of attributes of a set. 
-In some applications the order can be important, where an ordered set is described as a sequence of attributes.  For instance, in the case of service chaining, 
-operators expect middleboxes to be visited in a specific order to ensure correctness or performance guarantees. 
-In this section, we cover how our encoding scheme can be adapted to support attribute \textit{sequences}.
+In some applications, the \emph{order} of attributes is important.  For example, in service chaining, traffic must traverse middleboxes in specified order.  In this section, we extend our encoding scheme to support \textit{sequences} of attributes.  We first propose a simple representation of the attribute sequences in a sequence graph.  Next, we discuss how to encode sequences when the attributes follow a partial order.  Then, we show how to encode sequences in general, even when the attributes do not form a partial order.
+
+\subsection{Graph of Attribute Sequences}
 Based on the required sequences the sequence graph $G$ can be constructed with nodes representing attributes. A directed edge from a node $u$ to a node $v$ exists if $u$ appears in adjacency before $v$ in one of the sequences.  
 
 \begin{table}
