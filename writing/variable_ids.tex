@@ -1,4 +1,4 @@
-\section{Variable-length Group Ids}
+\section{Variable-length Group Identifiers}
 \label{sec:identifiers}
 In the previous sections, our encoding imposes a fixed division of the
 tag bits into the \emph{group identifier} and the \emph{bitmask} on
@@ -17,7 +17,7 @@ the group identifier and the bitmask can waste space in the tag.
 Table~\ref{Table_variable}(a) shows an example output of
 Algorithm~\ref{alg:memory_min} with four groups with anywhere from two
 to four attributes.  With a fixed-length group identifier, the tags
-require a two-bit identifer (to represent the four groups) and a
+require a two-bit identifier (to represent the four groups) and a
 four-bit bitmask (to represent the largest bitmask of $[W,X,Y,Z]$),
 for a total of six bits, as shown in Table~\ref{Table_variable}(b).
 The other three groups do not make effective use of the four-bit
@@ -30,7 +30,7 @@ group and equals $W_{f} = \left \lceil \log_2(N) \right \rceil +
 %%% Variable-length ids are awesome
 %%%
 To reduce the size of the tag, we introduce variable-length group
-identifers.  In particular, groups that need larger bitmasks should
+identifiers.  In particular, groups that need larger bitmasks should
 have shorter group ids, and vice versa.  Table~\ref{Table_variable}(c)
 uses group identifiers 0, 10, 110, and 110, enabling a smaller tag with
 just five bits.  Notice that the group identifiers are selected such
@@ -141,7 +141,7 @@ that can be achieved for a given $X$ groups of size $\ell_1,
 following property:
 
 \begin{property}
-For given supersets of size $\ell_1, \ldots, \ell_N$ the optimal (minimal) tag width that can be derived using variable-length identifiers is given by 
+For given groups of size $\ell_1, \ldots, \ell_N$ the optimal (minimal) tag width that can be derived using variable-length identifiers is given by 
 \begin{equation} \label{eq2}
 W_{v}  = \left \lceil \log_2 \sum_{i = 1}^{N}{2^{\ell_i}} \right \rceil. \nonumber 
 \end{equation}
@@ -172,19 +172,27 @@ The path length  to a leaf corresponds to the identifier length in bits.
 Figure~\ref{fig:code_tree} illustrates the corresponding tree for the four identifiers from Table~\ref{Table_variable}(c).
 Shorter identifiers appear more to the left in the tree.
 
-For given groups, after calculating $W_{v}$ as the minimal possible width enabled by variable-length identifiers we can easily find identifiers that realize it. We first calculate for a group of size $\ell_i$ the (maximal) allowed length $W_{v} - \ell_i$. We sort the identifiers in an ascending length order. We consider a binary tree and while beginning from the root node, we relate to the next identifier the most left available leaf that its depth equals the length of the current identifier. We assign as the identifier the binary string obtained by the path from the root to the leaf.
+For given groups, after calculating $W_{v}$ as the minimal possible width enabled by variable-length identifiers, we can easily find identifiers that realize it. We first calculate for a group of size $\ell_i$ the (maximal) allowed length $W_{v} - \ell_i$. We sort the identifiers in an ascending length order. We consider a binary tree and while beginning from the root node, we relate to the next identifier the most left available leaf that its depth equals the length of the current identifier. We assign as the identifier the binary string obtained by the path from the root to the leaf.
  
-\subsection{Optimizing Selection of Groups}
-In the selection of the supersets we would like to enable the existence of a short as possible tag. By Property~\ref{property_variable_length_minimal_tag} the number of supersets and their identities should be selected such that their sizes $\ell_1, \ldots, \ell_N$ minimize the term $T = \sum_{i = 1}^{N}{2^{\ell_i}}$. 
+\subsection{Optimizing the Selection of Groups}
+In the selection of the groups, we would like to enable the existence
+of as short a tag as possible. By Property~\ref{property_variable_length_minimal_tag} the number of groups and their identifiers should be selected such that their sizes $\ell_1, \ldots, \ell_N$ minimize the term $T = \sum_{i = 1}^{N}{2^{\ell_i}}$. 
 
-We describe a simple scheme to determine the supersets for a given (distinct) input sets $s_1, \ldots, s_N$. We first examine whether $s_i \subset s_j$ for some two sets. In this case, we can use $s_j$ as the superset for both sets and eliminate the set $s_i$. This would decrease the value of sum. We refer to this change as redundancy elimination.
+We describe a simple scheme to determine the groups for a given
+(distinct) input groups $s_1, \ldots, s_N$. We first examine whether
+$s_i \subset s_j$ for some pair of sets. In this case, we can use
+$s_j$ as the group for both sets and eliminate $s_i$. This
+would decrease the value of sum. We refer to this change as redundancy
+elimination.
+\jrex{should we introduce the ``redundancy elimination'' term earlier,
+  as we already talk about this step.}
 
-Next,  we continue to examine a possible merging of pairs of supersets. Such a merging decreases the number of supersets. While considering two sets $s_i, s_j$ of 
+Next,  we continue to examine a possible merging of pairs of groups. Such a merging decreases the number of groups. While considering two groups $s_i, s_j$ of 
 size $\ell_i, \ell_j$, the contribution of  a possible merging $s_i \bigcup s_j$ to $T$ is necessarily larger than  the sum of the contributions of $s_i$ and $s_j$ to $T$.
 This is because after the redundancy elimination, we must have that $|s_i \bigcup s_j| > \max(\ell_i, \ell_j)$. Accordingly,  $2^{|s_i \bigcup s_j|} > 2^{\max(\ell_i, \ell_j)} \ge 
-2^{\ell_i} + s^{\ell_j}$. However, a possible merging of a pair of supersets might enable eliminating additional supersets through redundancy elimination.
+2^{\ell_i} + s^{\ell_j}$. However, a possible merging of a pair of groups might enable eliminating additional groups through redundancy elimination.
 
-Accordingly, in each step of the scheme we examine for each pair of the current supersets the possible change in the value of $T$ after a potential merging of the pair and applying of the redundancy elimination. The pair that leads to a maximal reduction (or minimal increase in case no such pair exists) is selected and merged in this step and  redundancy elimination is applied. 
+Accordingly, in each step of the scheme we examine for each pair of the current groups the possible change in the value of $T$ after a potential merging of the pair and applying of the redundancy elimination. The pair that leads to a maximal reduction (or minimal increase in case no such pair exists) is selected and merged in this step and  redundancy elimination is applied. 
 
-Finally,  the observed supersets having the minimal value of $T$ along the running are selected as the output supersets.
+Finally,  the observed groups having the minimal value of $T$ along the running are selected as the output groups.
  
