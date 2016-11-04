@@ -21,14 +21,19 @@ Next, to simulate conflicting orderings, we post-process each random path to add
 
 Figure \ref{fig:chain_bits} evaluates the minimum widths required by our encoding scheme across varying numbers of random paths and middleboxes. Recall that if there are $N$ distinct paths, flat tagging requires $log_2(N)$ bits to encode every path. Since $log_2(800) = 9$, our encoding scheme requires roughly twice the tag width of flat tagging for this experiment. 
 
+Figure BLANK compares the number of rules required by our encoding scheme to the number of rules required by flat tags. Since our scheme uses less memory when the tag is permitted to be wider, we evaluate the rules required over several different tag widths. Flat tagging does not have any tuneable parameters for making a width-memory tradeoff. 
+
+
+
+
 
 \subsection{Software-Defined IXPs}
 For evaluating the application of Software-Defined IXPs, we used Routing Information dumps from the AMS-IX exchange point~\cite{ams-ix}, retrieved from the Routing Information Service raw data webpage~\cite{ris}. This dataset gave us access to 63 participants advertising over 600,000 prefixes. 
 To simulate smaller instances when determining growth functions, we randomly sample subsets of all the IXP participants. We repeat this sampling procedure multiple times to average together multiple results. To simulate interdomain routing policies of exchange point participants, 
 
-In SDX and iSDX~\cite{sdx, isdx} solutions, tags are attached to the destination MAC field of packets, which has a limit of 48 bits. For our encoding scheme to apply to these solutions, we must respect the 48 bit limit. 
+In SDX and iSDX~\cite{sdx, isdx} solutions, tags are attached to the destination MAC field of packets, which has a limit of 48 bits. However, the iSDX solution attaches additional information to the MAC field, leaving only 37 bits available for tagging. Therefore, for our encoding scheme to be used in the iSDX system, our tags must fit within 37 bits. We use this limit when evaluating the number of rules required. 
 
-Figure \ref{fig:bits} shows the number of bits required by our encoding scheme with uniformly randomly chosen subsets, repeated 500 times for each subset size. In the worst case, 18 bits were required when considering all 63 participants. The graphs appear to show that the number of bits required scales linearly with the number of participants present in the active set. However, we believe that the number of bits required actually scales sublinearly with the size of the active set, and that the appearance of linear scaling is a consequence of our random sampling method. In order for the bits required to scale linearly, the number of attributes per FEC would have to also increase linearly in the size of the IXP, but we suspect this is not the case. Even if the number of bits required were indeed to scale linearly, extrapolating out the graph yields that, in the worst case, there could be 100 attributes associated with flows, allowing very complex forwarding policies.
+Figure \ref{fig:bits} shows the number of bits required by our encoding scheme with uniformly randomly chosen IXP participant subsets, repeated 500 times for each subset size. In the worst case, 18 bits were required when considering all 63 participants. The graphs appear to show that the number of bits required scales linearly with the number of participants present in the active set. However, we believe that the number of bits required actually scales sublinearly with the size of the active set, and that the appearance of linear scaling is a consequence of our random sampling method. In order for the bits required to scale linearly, the number of attributes per FEC would have to also increase linearly in the size of the IXP, but we suspect this is not the case. Even if the number of bits required were indeed to scale linearly, extrapolating out the graph yields that, in the worst case, there could be over 100 attributes to encode, allowing very complex forwarding policies.
 
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
@@ -51,7 +56,9 @@ Figure \ref{fig:bits} shows the number of bits required by our encoding scheme w
 \label{fig:rules}
 \end{figure}
 
-Figure \ref{fig:rules} shows the number of rules required by our encoding scheme after running the greedy algorithm with a bit limit of 37, allowing 11 bits for the ``mini-MAC". In this experiment, we began with a baseline policy of 1000 rules, with each rule forwarding to a participant chosen uniformly at random from a random active set. The experiment was repeated 500 times for each active set size, and the number of rules required after applying our encoding was plotted. When the active set is of size 37 or fewer, all participants can fit into a single mask, resulting in zero rule inflation. For active sets of size greater than 37, we can see that the inflation factor is at most 2 in the average case and 3 in the worst case for all active sets. 
+Figure \ref{fig:rules} shows the number of rules required by our encoding scheme after running the greedy algorithm up to the limit of 37 bits. In this experiment, we began with a baseline forwarding policy of 1000 rules, with each rule querying a random attribute.
+
+forwarding to a participant chosen uniformly at random from a random active set. The experiment was repeated 500 times for each subset size, and the number of rules required after applying our encoding was plotted. When the active set is of size 37 or fewer, all participants can fit into a single mask, resulting in zero rule inflation. For active sets of size greater than 37, we can see that the inflation factor is at most 2 in the average case and 3 in the worst case for all active sets. 
 
 
 \begin{figure}[t!] 

@@ -15,12 +15,12 @@ the $i^{th}$ bit corresponds to the $i^{th}$ attribute. When the packet is class
 and the tag is attached, the $i^{th}$ bit is set to 1 if the $i^{th}$ attribute
 is present for that flow, and 0 if it is not. As a result, if we wish to test for
 the presence of attribute $x$, we need only check that $x$'s bit is 1 in the
-metadata, rather than exact matching on every tag that contains
+tag, rather than exact matching on every tag that contains
 $x$.
 
 This approach is a strawman because the tag is of width $N$, and $N$ can be quite large.
 Although we criticized flat tagging for using too much switch memory, 
-flat tagging only needed tag width logarithmic in the number AECs. We have just traded an extreme in memory
+flat tagging only needed tag width logarithmic in the number FECs. We have just traded an extreme in memory
 usage for an extreme in tag width. It would be ideal to find some middle ground.
 In general, any tagging scheme must simultaneously consider three different metrics:
 
@@ -56,7 +56,7 @@ width=\linewidth]{figures/masking} \end{subfigure}
 clip, width=\linewidth]{figures/making_metadata} \end{subfigure} \end{minipage}
 \caption{Two different ways to recover attribute sets.
 In (a), the sets are recovered by masking over $[A,B,C,D,E]$. In (b), the sets
-are recovered by masking over either superset $[A,B,C]$ or set $[C,D,E]$. An X
+are recovered by masking over either superset $[A,B,C]$ or set $[C,D,E]$. An $X$
 denotes that the set cannot be fully recovered by masking over the given set.
 (c) shows how the matrix in (b) can be mapped to tags.}
 \label{fig:masking} \end{figure}
@@ -78,7 +78,7 @@ the bitmask ``$11000$''.  Certain combinations of attributes may not
 occur for any traffic (e.g., attributes $B$ and $D$ are never true
 together, though both can be false as in $S_3$).  A single rule can
 test for any combination of attributes (e.g., comparing a tag to
-``1*1**'' identifies whether attributes $A$ and $C$ hold, without
+$\textsc{``1*1**''}$ identifies whether attributes $A$ and $C$ hold, without
 caring whether $B$, $D$, or $E$ hold).  However, when the number of
 attributes is large, a bitmask tag becomes quite large.
 
@@ -105,9 +105,9 @@ The forwarding rules can match on attributes by considering both the
 group identifier and the associated bitmask.  For example, a switch
 could test for attribute $D$ by matching on (i) group $1$ and (ii) the
 $D$ bit in group $1$'s bitmask.  Thus, the rule would have a match of
-``$1*1*$''.  However, some attributes appear in multiple groups, such
+``$\textsc{1*1*}$".  However, some attributes appear in multiple groups, such
 as attribute $C$ in the example.  The switch can use two rules to test
-for $C$: (i) ``$0001$'' for group $0$ and (ii) ``$1100$'' for group
+for $C$: (i) ``$\textsc{0**1}$'' for group $0$ and (ii) ``$\textsc{11**}$'' for group
 $1$.  Thus, our encoding scheme slightly increases the forwarding
 table size over the simple bitmask scheme, but only by one rule in
 this example.
@@ -190,7 +190,6 @@ $W_{max}$, and a tag-width calculator $W()$.  The tag-width calculator
 determines the number of bits in the tag, given the current set of
 groups $\SS$.  We present closed-form equations for the tag-width
 calculator later in \S~\ref{sec:identifiers}.
-\jrex{what is the computational complexity of the algorithm? 
-Should we stress that the algorithm can stop at any time -- the
-longer you run the better, but you don't have to run to completion.}
+
+The algorithm runs for at most $N$ iterations, and for each iteration considers $N^2$ pairs of attribute groups, resulting in an overall complexity of $O(N^3)$. As presented, the tag width calculator is $O(N)$ complexity, which would result in a total complexity of $O(N^4)$, however in practice we can avoid recomputing the width from scratch and perform only a constant amount of work every iteration. 
 
