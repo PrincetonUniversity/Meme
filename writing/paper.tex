@@ -1,26 +1,33 @@
-\documentclass[10pt,twocolumn]{confpaper}
+\documentclass[10pt,twocolumn]{sig-alternate-10pt}
+
 
 %%%%%%%%%%%%%%%%%%%%  INCLUDES  %%%%%%%%%%%%%%%%%%%%%%%%%%
 %\usepackage{subfigure}
 
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{url}
+\sloppy
 
-\definecolor{darkgreen}{rgb}{0.0, 0.65, 0.0}
 
-\ifthenelse{\equal{\COMMENTS}{yes}}{%
-\newcommand{\nfnote}[1]{\textcolor{red}{(\textit{\textcolor{red}{[Nick]: #1}} )}} % Nick's Comments
-\newcommand{\jrnote}[1]{\textcolor{blue}{(\textit{\textcolor{blue}{[Jen]: #1}} )}} % Jen's Comments
-\newcommand{\rmnote}[1]{\textit{\textcolor{darkgreen}{[Robert]: #1}}} % Robert's comments
-\newcommand{\rbnote}[1]{\textit{\textcolor{darkgreen}{[Rudy]: #1}}} % Rudy's comments
-\newcommand{\ornote}[1]{\textit{\textcolor{orange}{[Ori]: #1}}} % Ori's comments
-\newcommand{\agnote}[1]{\textit{\textcolor{orange}{[Arpit]: #1}}} % Arpit's comments
-}{
-\newcommand{\nfnote}[1]{}
-\newcommand{\jrnote}[1]{}
-\newcommand{\rmnote}[1]{}
-\newcommand{\rbnote}[1]{}
-\newcommand{\ornote}[1]{}
-\newcommand{\agnote}[1]{}
-}
+%\definecolor{darkgreen}{rgb}{0.0, 0.65, 0.0}
+%
+%\ifthenelse{\equal{\COMMENTS}{yes}}{%
+%\newcommand{\nfnote}[1]{\textcolor{red}{(\textit{\textcolor{red}{[Nick]: #1}} )}} % Nick's Comments
+%\newcommand{\jrnote}[1]{\textcolor{blue}{(\textit{\textcolor{blue}{[Jen]: #1}} )}} % Jen's Comments
+%\newcommand{\rmnote}[1]{\textit{\textcolor{darkgreen}{[Robert]: #1}}} % Robert's comments
+%\newcommand{\rbnote}[1]{\textit{\textcolor{darkgreen}{[Rudy]: #1}}} % Rudy's comments
+%\newcommand{\ornote}[1]{\textit{\textcolor{orange}{[Ori]: #1}}} % Ori's comments
+%\newcommand{\agnote}[1]{\textit{\textcolor{orange}{[Arpit]: #1}}} % Arpit's comments
+%}{
+%\newcommand{\nfnote}[1]{}
+%\newcommand{\jrnote}[1]{}
+%\newcommand{\rmnote}[1]{}
+%\newcommand{\rbnote}[1]{}
+%\newcommand{\ornote}[1]{}
+%\newcommand{\agnote}[1]{}
+%}
 
 \renewcommand{\SS}{\mathbb{S}}
 \renewcommand{\AA}{A}%{\mathbb{A}}
@@ -60,7 +67,6 @@
 \usepackage{bbm}
 \usepackage{amsmath}
 \usepackage{tabularx}
-%\usepackage{subfigure}
 \usepackage{gnuplot-lua-tikz}
 
 %\usepackage{amssymb}
@@ -73,29 +79,29 @@
 
 \definecolor{steel_blue}{RGB}{70, 130, 180}
 
-\lstset{
-basicstyle=\footnotesize\ttfamily\small,
-frame=none,
-language=Python,
-numbers=none,
-breaklines=true,
-xleftmargin=0pt
-}
-
-
-\lstdefinelanguage{Pyretic}
-{keywords={>>, >+, +, &, push, if_, elif_, else, pop, match, fwd, modify, set, mod, drop, $\triangleleft$, announce, withdraw}, 
-  sensitive=true, alsoletter={-,>>,+,&,|,_},comment=[l][\footnotesize\sffamily\textbf]{\!}
-}
-
-\lstset{emph={View1, CA, CA-IN, as-path, med, no-prepend},
-  keywordstyle=\color{steel_blue}\textbf}
-\lstset{language=Pyretic}
+%\lstset{
+%basicstyle=\footnotesize\ttfamily\small,
+%frame=none,
+%language=Python,
+%numbers=none,
+%breaklines=true,
+%xleftmargin=0pt
+%}
+%
+%
+%\lstdefinelanguage{Pyretic}
+%{keywords={>>, >+, +, &, push, if_, elif_, else, pop, match, fwd, modify, set, mod, drop, $\triangleleft$, announce, withdraw}, 
+%  sensitive=true, alsoletter={-,>>,+,&,|,_},comment=[l][\footnotesize\sffamily\textbf]{\!}
+%}
+%
+%\lstset{emph={View1, CA, CA-IN, as-path, med, no-prepend},
+%  keywordstyle=\color{steel_blue}\textbf}
+%\lstset{language=Pyretic}
 
 
 %%%%%%%%%%%%%%%%%%%%  LOCALS  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\newcommand{\system}{iSDX\xspace}
+%\newcommand{\system}{iSDX\xspace}
 
 %%%%%%%%%%%%%%%%%%%%  TITLE/AUTHORS  %%%%%%%%%%%%%%%%%%%%%
 
@@ -122,7 +128,7 @@ xleftmargin=0pt
 
 \input{abstract}
 
-\ifthenelse{\equal{\onlyAbstract}{no}}{% !onlyAbstract
+%\ifthenelse{\equal{\onlyAbstract}{no}}{% !onlyAbstract
 
 
 
@@ -149,13 +155,13 @@ xleftmargin=0pt
 %\setlength{\parskip}{-1pt}
 %\setlength{\itemsep}{-1pt}
 % \footnotesize % SPACE
-\balance
+%\balance
 \bibliography{paper}
 \bibliographystyle{acm}
 %\bibliographystyle{abbrvnat_noaddr} % SPACE
 %\theendnotes % ENDNOTES
-}{% onlyAbstract
-}
+%}{% onlyAbstract
+%}
 
 %\pagebreak
 %\input{appendix}
