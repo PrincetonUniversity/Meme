@@ -1,12 +1,67 @@
 \section{Related Work} 
 \label{sec:related}
 
-\textbf{Encoding end-host attributes in IP addresses:} Alpaca~\cite{alpaca} embeds the attributes of end hosts into the packet header with the goal of easing network policy enforcement.  However, Alpaca focuses on a special case where attributes are embedded in the low-order bits of the IP address, requiring a unique attribute encoding for each host.  This results in a different encoding scheme and different algorithm than our solution.  In addition, Alpaca does not support \emph{sequences} of attributes.  As such, our algorithm can solve the problem introduced in the Alpaca, but the reverse is not true.
+\paragraph{Software-defined Internet exchange points.} The first
+SDX~\cite{sdx} prototype in 2014 used a flat tag to identify the set of
+valid next hops (\ie, BGP neighbors) that can direct traffic to a
+destination prefix to avoid installing forwarding table entries for each
+destination IP prefix in the IXP switch; this prototype SDX controller
+proactively installed rules to decode each tag.  The follow-up
+industrial scale iSDX~\cite{isdx} project reduced forwarding-table size
+and rule churn to make operation at large IXPs practical.  The iSDX uses
+the technique for encoding sets of attributes described in
+Section~\ref{sec:flextag_encoding}, although our iSDX paper did not
+describe the encoding scheme in much detail.  In addition, the iSDX
+design supports neither the encoding of {sequences} of attributes
+(Section~\ref{sec:ordering}) nor the optimizations possible with
+variable-length group identifiers (Section~\ref{sec:identifiers}).
 
-\textbf{Traffic steering with flat tags:} Recent works on traffic steering through middleboxes uses a flat tag to identify the service chain each packet should traverse.  FlowTags~\cite{flowtags} is a prominent example, where the first middlebox in a path tags the packet with the rest of the service chain.  Rules for decoding the tag are installed reactively as switches see a new tag for the first time.  In contrast, our encoding scheme enables much more compact rules in the switches, so that the switches could install these rules proactively.  As such, our encoding scheme could be incorporate in Flowtags to enhance the scalability of the solution.
+\paragraph{Service chaining with flat tags.} Recent works on traffic
+steering through middleboxes uses a flat tag to identify the service
+chain each packet should traverse.  FlowTags~\cite{flowtags} is a
+prominent example, where the first middlebox in a path tags the packet
+with the rest of the service chain. Rules to decode each tag are
+installed reactively when switches see a new tag for the first time.  In
+contrast, the encoding scheme we present in this work results in fewer
+rules, allowing for proactive rule installation.
+Incorporating the encoding mechanism that we present in this paper would
+make FlowTags scale to larger sets and sequences of middleboxes.
 
-\textbf{Software-defined Internet exchange points:} Our earlier SDX~\cite{sdx} project used a flat tag to identify the set of valid ``next-hops'' (BGP neighbors) that can direct traffic to a destination prefix, as a way to avoid installing rules for each destination IP prefix in the IXP switch fabric.  The SDX controller proactively installs rules for decoding the tags in the underlying switches.  In our follow-up iSDX~\cite{isdx} project, we addressed some of the scalability challenges of our original design to reduce rule-table size and rule churn so our system could run at the scale (in number of peers and number of IP prefixes) common at large operational IXPs.  Our iSDX system uses the technique for encoding sets of attributes described in \S\ref{sec:flextag_encoding}, though our iSDX paper did not describe the encoding scheme in much detail.  In addition, the iSDX paper did not consider how to encode \emph{sequences} of attributes (\S\ref{sec:ordering}) or the optimizations possible with variable-length group identifiers (\S\ref{sec:identifiers}).
+\paragraph{Encoding end-host attributes in IP addresses.}
+Alpaca~\cite{alpaca} embeds the attributes of end hosts into the packet
+header with the goal of easing network policy enforcement.  Alpaca
+focuses on a special case where attributes are embedded in the low-order
+bits of the IP address. This mechanism requires a unique attribute
+encoding for each host.  In addition, Alpaca does not support the
+encoding of sequences of attributes.  As such, the encoding algorithm we
+present can solve the problem introduced in Alpaca, but the reverse is
+not true.
 
-\textbf{Encoding sets concisely in Bloom filters:} A Bloom filter~\cite{Bloom} is a popular data structure for representing a set of items with a small amount of memory. A Bloom filter supports membership queries, but suffers from false positives, where some elements can be wrongly reported as members of the set. Our solution does not have false positives.  While minimizing the tag width is an key property of our scheme, the memory for a Bloom filter is several times larger than the number of elements, e.g., 10-20 times for a false-positive probability of 0.01\% - 1\%. Moreover, Bloom filters rely on hashing into a large bit vector, which might not be possible in some switch architectures.
+\paragraph{Encoding sets concisely in Bloom filters.} A Bloom
+filter~\cite{Bloom} is a common data structure that represents a set of
+items with a fixed amount of memory. A Bloom filter supports membership
+queries but suffers from false positives, where some elements can be
+wrongly reported as members of the set. In contrast, the encoding
+mechanism we develop has no false positives.  Although minimizing the
+tag width is an key property of our scheme, the memory for a Bloom
+filter is several times larger than the number of elements---10-20 times
+for a false-positive probability of 0.01--1\%. Bloom filters also
+require each value to be hashed into a large bit vector, which might not
+be possible in some switch architectures.
 
-\textbf{Coding efficiently using prefix codes:} Variable-length prefix codes have been used for various applications. The seminal work of Huffman~\cite{Huffman} describes an algorithm for an optimal selection of prefix codes for lossless compression of source symbols. The selection minimizes the encoding length by using fewer bits for common symbols, achieving results close to lower bounds from information theory. More recently, prefix codes were suggested as a way to encode paths, while reducing the maximum length of any encoded path~\cite{PathEncoding}. A similar approach was suggested for the encoding for fixed-width memories~\cite{FixedMemories}. In all of these schemes, the encoding is given by the concatenating the codes of the attributes, and thus is often long when the number of attributes is large. In contrast, our solution combines input sets (or sequences) with common attributes (or common orderings of attributes), and simply uses prefix codes for the group identifiers to achieve a further reduction in tag size.
+\paragraph{Efficient coding using prefix codes.} Variable-length prefix
+codes have been used for various applications. The seminal work of
+Huffman~\cite{Huffman} describes an algorithm for an optimal selection
+of prefix codes for lossless compression of source symbols. The
+selection minimizes the encoding length by using fewer bits for common
+symbols, achieving results close to lower bounds from information
+theory. More recently, prefix codes were suggested as a way to encode
+paths, while reducing the maximum length of any encoded
+path~\cite{PathEncoding}. A similar approach was suggested for the
+encoding for fixed-width memories~\cite{FixedMemories}. In all of these
+schemes, the encoding concatenates the codes of the attributes and thus
+is often long when the number of attributes is large. In contrast, the
+encoding we develop
+combines input sets or sequences with common attributes (or
+common orderings of attributes) and uses prefix codes for the
+group identifiers to further reduce tag size.
