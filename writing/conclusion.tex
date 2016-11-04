@@ -1,10 +1,34 @@
 \section{Conclusion} \label{sec:conclusion}
 
-Although our scheme improves upon the switch memory usage of existing tagging approaches, it uses larger tags to do so. As a future work, it would be interesting to explore better memory-width tradeoffs, as well as better ways to handle attribute sequences which have conflicting attribute orderings.
+Many network architectures and mechanisms, from SDN-based exchange
+points to middlebox service chains, rely on mechanisms to encode sets of
+sequences in forwarding equivalence classes. Previous work has generally
+encoded each FEC with a flat tag, which is amenable to exact matching
+but scales poorly as the size of a set or the number of unique orderings
+increases. In this paper, we propose a mechanism that takes advantage of
+the ability of commodity switches to perform wildcard matching
+on arbitrary packet header fields; this capability, which has been
+enabled by protocols such as OpenFlow~1.3, facilitates more efficient
+encodings that allow aggregation of FECs that share commonality, through
+prefix-based encoding. 
 
-Each technique presented here has a customized method for attaching tags to packets. To make it easier to deploy tagging schemes to new applications, investigating application-agnostic techniques for tagging packets could open up a whole new range of use cases. 
+Our evaluation for two deployment scenarios---for service chaining and
+an SDN-based IXP---demonstrates that a wildcard-based encoding can
+reduce the number of forwarding table entries in each switch by several
+orders of magnitude, given typical levels of redundancy in the sets or
+sequences that are typical in forwarding policies for these
+scenarios. The encoding can capture both unordered sets and ordered
+sequences; it can also efficiently capture rare perturbations to
+sequences that appear more frequently.
 
 
-We have shown that our tagging scheme can improve upon flat tagging by orders of magnitude if there is enough redundancy in the data that tags convey. The scheme is versatile, able to encode both unordered sets and ordered sequences, as well as able to handle scenarios where the ordering is not perfect. 
-
-Our encoding scheme is possible because of the growing popularity of flexible switching hardware, such as switches that support OpenFlow and the newly emerging standard P4 for programmable switches. The continuing expansion of switch capabilities allows exploration of new techniques and applications for attaching increasingly complex information directly to packet flows, and we hope our work is not the last to explore this. 
+The encoding algorithm we present reduces forwarding table size, at the
+cost of larger tags. A possible avenue for future work involves
+exploring this tradeoff more thoroughly, as well as exploring
+alternatives ways to handle attribute sequences that have conflicting
+attribute orderings.  Every application that we presented relies on a
+different method to attach tags to packets. To make it easier to tag
+packets for arbitrary network deployment scenarios, we plan to
+investigate more general techniques for tagging packets that could apply
+to a wider range of use cases and possibly express even more expressive
+forwarding semantics. 
