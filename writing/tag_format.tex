@@ -189,7 +189,7 @@ s_N\}$, the attribute test counts $\{q_k\}$, a maximum tag width
 $W_{max}$, and a tag-width calculator $W()$.  The tag-width calculator
 determines the number of bits in the tag, given the current set of
 groups $\SS$.  We present closed-form equations for the tag-width
-calculator later in \S~\ref{sec:identifiers}.
+calculator later in Section~\ref{sec:identifiers}.
 
 The algorithm runs for at most $N$ iterations, and for each iteration considers $N^2$ pairs of attribute groups, resulting in an overall complexity of $O(N^3)$. As presented, the tag width calculator is $O(N)$ complexity, which would result in a total complexity of $O(N^4)$, however in practice we can avoid recomputing the width from scratch and perform only a constant amount of work every iteration. 
 
