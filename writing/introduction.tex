@@ -24,6 +24,14 @@ combination of header fields, potentially reducing switch forwarding
 table size if the number of FECs is smaller than the number of unique
 header field combinations.
 
+\begin{figure}[t!] 
+\begin{minipage}{1\linewidth}
+\includegraphics[trim={0 10cm 0 0}, clip, width=\linewidth]{figures/mbox_path_example}
+\end{minipage} 
+\caption{An illustration of the scaling issues of flat tagging. There are three switches $n_1, n_2, n_3$ and four middleboxes $A,B,C,D$. Packets enter the network on the left and are classified as needing to traverse one of four service chains, and are tagged as such. If flat matching is used, no aggregate rules are possible on the four tags.  }
+\label{fig:mbox_path}
+\end{figure}
+
 %%%
 %%% FEC is an index
 %%%
@@ -78,13 +86,6 @@ can enable the smaller rule tables shown in the bottom of the figure.
 
 
 
-\begin{figure}[t!] 
-\begin{minipage}{1\linewidth}
-\includegraphics[trim={0 10cm 0 0}, clip, width=\linewidth]{figures/mbox_path_example}
-\end{minipage} 
-\caption{An illustration of the scaling issues of flat tagging. There are three switches $n_1, n_2, n_3$ and four middleboxes $A,B,C,D$. Packets enter the network on the left and are classified as needing to traverse one of four service chains, and are tagged as such. If flat matching is used, no aggregate rules are possible on the four tags.  }
-\label{fig:mbox_path}
-\end{figure}
 
 %%%
 %%% Capabilities of newer switches 
@@ -114,11 +115,11 @@ code for the library that implements this encoding algorithm.
 
 The rest of this paper proceeds as
 follows. Section~\ref{sec:motivation} presents three motivating
-applications. Section~\ref{sec:flextag_encoding} presents the basic
-ideas of our scheme for consider encoding of attribute sets. In
-Section~\ref{sec:ordering}, we extend our encoding to support sequences
-of attributes; Section~\ref{sec:identifiers} improves the space
-efficiency of this encoding using prefix codes. In
+applications. Section~\ref{sec:flextag_encoding}
+presents the basic ideas of our scheme for consider encoding of
+attribute sets. In Section~\ref{sec:ordering}, we extend our encoding
+to support sequences of attributes; Section~\ref{sec:identifiers}
+improves the space efficiency of this encoding using prefix codes. In
 Section~\ref{sec:evaluation}, we evaluate our encoding over both real
 and synthetic data sets for two uses cases. We discuss related work in
 Section~\ref{sec:related} and conclude in
