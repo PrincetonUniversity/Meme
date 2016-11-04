@@ -1,0 +1,47 @@
+
+
+\section{Motivating Applications}\label{sec:motivation}
+\begin{table*}[t]
+\begin{center}
+    \begin{tabular}{|l|c|c|c|c|}
+    \hline
+    \multicolumn{1}{|c|}{\bf Application} & 
+    \multicolumn{1}{c|}{\bf Attributes} & 
+    \multicolumn{1}{c|}{\bf Existing Solution} & 
+    \multicolumn{1}{c|}{\bf Tag Field} & 
+    \multicolumn{1}{c|}{\bf Tags Conveyed By}\\ \hline
+    SDN-enabled IXP & Advertising peers & iSDX~\cite{isdx} & Destination MAC & ARP \\ \hline
+    Service chaining & Middleboxes & FlowTags~\cite{flowtags} & IP Fragment Field & First Middlebox \\ \hline
+    Policy enforcement & Host permissions & Alpaca~\cite{alpaca} & IP Source Address & DHCP \\ \hline
+    \end{tabular}
+\end{center}
+    \caption{Example applications and systems which have solved them by some form of tagging.} 
+    \label{tab:applications}
+\end{table*}
+
+There are many applications where encoding and reading AECs is of interest, and in particular we will look at three of them, which are outlined in Table \ref{tab:applications}.
+ 
+\paragraph{Software-Defined Internet Exchange Points}
+At an Internet Exchange Point (IXP) multiple autonomous systems (ASes) connect at a single point to exchange traffic and interdomain routing information as peers.  At an IXP with support for SDN policies, the connected ASes may wish to enact fine-grained routing policies, where routing is decided by more than just destination addresses. Say that $AS_1$ wishes to send as much of their HTTP traffic to $AS_2$ as possible. $AS_2$ may not have routes to every HTTP destination, so it is incorrect for them to receive all HTTP traffic. If the routing policies do not account for the routes of each AS, traffic may be forwarded to networks that cannot handle it. 
+
+The SDX project~\cite{sdx} handles this issue with the use of index tags. Each AS shares its list of routes with a central controller, and every unique set of routes is assigned an index tag. The controller then attaches these tags to every packet by announcing them to all peers as destination MAC addresses via ARP replies. The fine-grained routing policies are then modified by the controller to read tags before making a routing decision. 
+
+The index tagging scheme of the original SDX ran into memory scalability challenges as a direct result of index tagging, which were remedied by the followup work iSDX~\cite{isdx}. iSDX used a precursor to our tagging scheme, taking advantage OpenFlow 1.3's support for wildcard matching on destination MAC addresses. 
+
+\paragraph{Service Chaining}
+Network operators often desire that network traffic be directed through a series of middleboxes, such as load balancers or firewalls. Such middleboxes can provide security and performance guarantees for the network's users.
+ Different flow may be subject to different chains of middleboxes, and it can be a challenge to design the network in such a way that every flow traverses only the needed set of middleboxes. Additionally, middleboxes may modify packet headers, obscuring the original source of the flow and making it unclear which middlebox chain should be followed. 
+ 
+FlowTags~\cite{flowtags} argues that a necessary remedy is the modification of middleboxes to attach relevant policy information to packets as they are processed. To compress policy information into small, repurposed header fields, flowtags makes use of index tagging, where each index maps to a middlebox sequence and the packet's origin host. Each time a middlebox sees a new flow, it communicates with a central controller to establish a new index tag. 
+However, the FlowTags paper does not evaluate the number of forwarding table entries required by network switches to determine which middleboxes a packet should be forwarded to. It is worth exploring the benefits such a system could see from a different tagging scheme. 
+ 
+
+\paragraph{Host Attributes for Network Policies}
+In some situations, network policies require knowledge of properties of sending hosts to be correctly enforced. As an example, users in different departments of a university may be subject to different quality of service or access control policies. If department information is not attached to packets directly, it must be inferred from some combination of packet header fields, which can result in unnecessarily complex forwarding tables. 
+
+The Alpaca~\cite{alpaca} paper addresses this by encoding policy information in IP addresses, and assigning these addresses to network hosts via DHCP. Although not explicitly a tag, these IP addresses can be thought of as a tag appended to the network's IP prefix. Alpaca takes advantage of prefix and wildcard matching in construction of their "tags" to circumvent the memory scalability challenges of index tagging, however their approach has the added constraint that each host must receive a different tag, because each IP must be unique. The work does not consider what is possible using prefix and wildcard matching if the tags were unique per FEC, rather than per host.
+
+
+%\paragraph{Multicast and Anycast}
+%In a classic IP anycast scenario, a single service is replicated across multiple servers to attempt to lighten the maximum load that any single server receives. Since each server hosts the same server, they can all equivalently handle packets destined for that service. Each server is assigned the same IP address, and the network forwards any traffic destined for the shared IP address to the nearest replica of the service. However, if each server has a set of services it replicates, but sets differ across servers, no two servers can be treated equally and receive identical IP addresses. If lists of servers could be attached to packet headers, the network could read this list and choose a server to handle the packet. 
+%The scenario of Multicast is similar, where a list of subscribers can be attached to the packet header of a multicast packet. The network would then read this list and replicate the packet towards each subscriber. 

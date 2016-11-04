@@ -47,6 +47,25 @@ middlebox. Instead, a forwarding scheme that assigned tags that
 reflected this commonality could afford more opportunities for
 aggregation.
 
+% Figure ~\ref{fig:mbox_path} shows a simple example of service chaining
+% with four middleboxes, where every flow is mapped to one of four chains
+% by some classification policy. To avoid reclassification at each switch,
+% the figure shows a simple tagging scheme where each of the four paths
+% receives a unique index tag. If the switches have up to date knowledge
+% of which tag maps to which attribute set, reading the tag determines the
+% next-hop. In flat tagging schemes, switches must have a rule for each distinct
+%  tag they may see. In Figure ~\ref{fig:mbox_path}, the top set of switch
+%  rules corresponds to flat tagging. No aggregation of these rules is
+%  possible, as flat tagging schemes are based on exact matching rules.  
+%  If the switches support more than just exact matching, these rules can
+% be aggregated, as in the bottom set of switch rules. Where flat tagging
+% can require rule space on the order of the number of tags,
+% \emph{flexible tagging} can require as few as a constant action, as seen
+% in in the figure where each next-hop has exactly one corresponding
+% wildcard rule. Of course, this depends entirely upon how the tags are
+% assigned. 
+
+
 
 
 \begin{figure}[t!] 
