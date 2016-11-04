@@ -1,14 +1,14 @@
 \begin{table*}
 \begin{center}
-    \begin{tabular}{|l|c|c|c|c|}
+    \begin{tabular}{|l|llll|}
     \hline
-    \multicolumn{1}{|c|}{\bf Application} & 
-    \multicolumn{1}{c|}{\bf Existing Solution} & 
-    \multicolumn{1}{c|}{\bf Attributes} & 
-    \multicolumn{1}{c|}{\bf Tag Field} & 
-    \multicolumn{1}{c|}{\bf Tags Conveyed By}\\ \hline
-    SDN-enabled IXP & iSDX~\cite{isdx} & Advertising peers & Destination MAC & ARP \\ \hline
-    Service chaining & FlowTags~\cite{flowtags} & Middleboxes & IP Fragment Field & First Middlebox \\ \hline
+    {\bf Application} & 
+    {\bf Existing Solution} & 
+    {\bf Attributes} & 
+    {\bf Tag Field} & 
+    {\bf Tags Conveyed By}\\ \hline
+    SDN-Enabled IXP (SDX) & iSDX~\cite{isdx} & Advertising peers & Destination MAC & ARP \\ 
+    Service chaining & FlowTags~\cite{flowtags} & Middleboxes & IP Fragment Field & First Middlebox \\ 
     Policy enforcement & Alpaca~\cite{alpaca} & Host permissions & IP Source Address & DHCP \\ \hline
     \end{tabular}
 \end{center}
@@ -37,24 +37,38 @@ regardless of destination. If
 the routing policies do not account for the BGP routes advertised by each 
 AS, traffic may be forwarded to networks that cannot handle it.
 
-Our initial SDX design used flat tags to encode these distinct
-forwarding decisions~\cite{sdx}, with the architecture shown in Figure
-\ref{fig:sdx_example}. Each AS shares its list of routes with a
-central controller, and every unique set of routes is assigned a flat
-tag. The controller then attaches these tags to every packet by
-announcing them to all peers as destination MAC addresses via ARP
-replies. The fine-grained forwarding policies are then modified by the
-controller to read tags before making a forwarding decision.  This
-solution work with unmodified BGP-speaking border routers, simply by
-changing the destination MAC address associated with the border
-routers' own forwarding rules.  
+The initial SDX system used flat tags to encode these distinct
+forwarding decisions~\cite{sdx}, as shown in Figure
+\ref{fig:sdx_example}. Border routers connect to the IXP fabric and
+initiate BGP sessions with the controller. Each router announces BGP
+routes for IP prefixes to the controller, and the controller aggregates
+these, computes FECs for each IP prefix, and announces a Virtual
+Next-hop (VNH) IP address for IXP participants to reach that
+prefix. When a participant attempts to send traffic to a VNH IP, it
+first sends an ARP request for the MAC of that VNH to the IXP
+fabric. The controller intercepts the ARP request, and responds with a
+tag as the destination MAC. The participant then forwards packets to the
+IXP fabric with the appropriate tag in the destination MAC address
+field.  The tagging technique works without requiring any modifications
+to legacy BGP-speaking border routers.
+% More generally, each AS shares its list of routes with a central
+% controller, and every unique set of routes is assigned a flat tag. The
+% controller then attaches these tags to every packet by announcing them
+% to all peers as destination MAC addresses via ARP replies. The
+% fine-grained forwarding policies are then modified by the controller to
+% read tags before making a forwarding decision.  
+This approach works with
+unmodified BGP-speaking border routers, simply by changing the
+destination MAC address associated with the border routers' own
+forwarding rules.
 
-However, the flat tagging approach introduces scalability challenges
-for the IXP, in terms of large rule tables and frequent changes in the
-installed rules (when BGP routes change).  We remedied these issues in
-the followup work on iSDX~\cite{isdx}. iSDX used a precursor to our
-encoding scheme for sets of attributes, taking advantage of OpenFlow
-1.3's support for wildcard matching on destination MAC addresses.
+Unfortunately, the flat tagging approach introduces scalability challenges
+at the IXP by creating large rule tables and frequent changes in the
+installed rules when BGP routes change.  We remedied these issues in
+the follow-up work on iSDX~\cite{isdx}. iSDX used a precursor to our
+encoding scheme for sets of attributes, taking advantage of
+OpenFlow~1.3's support for wildcard matching on destination MAC
+addresses. 
 
 \begin{figure}
 \begin{minipage}{1\linewidth}
@@ -62,19 +76,7 @@ encoding scheme for sets of attributes, taking advantage of OpenFlow
 \includegraphics[width=\linewidth,trim={0 5cm 0 0}]{figures/sdx_example}
 \end{subfigure} 
 \end{minipage} 
-\caption{An example of a Software-Defined IXP system, as presented in
-  the iSDX paper~\cite{isdx}. Border routers connect to the IXP fabric
-  and initiate BGP sessions with the controller. Each router announces
-  BGP routes for IP prefixes to the controller, and the controller
-  aggregates these, computes FECs for each IP prefix, and announces a
-  Virtual Next-hop (VNH) IP address for IXP participants to reach that
-  prefix. When a participant attempts to send traffic to a VNH IP, it
-  first sends an ARP request for the MAC of that VNH to the IXP
-  fabric. The controller intercepts the ARP request, and responds with
-  a tag as the destination MAC. The participant then forwards packets
-  to the IXP fabric with the appropriate tag in the destination MAC
-  address field.  The tagging technique works without requiring any
-  modifications to legacy BGP-speaking border routers.}
+\caption{A Software-Defined IXP (SDX)~\cite{isdx}. }
 \label{fig:sdx_example}
 \end{figure}
 

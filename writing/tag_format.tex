@@ -75,9 +75,9 @@ which combinations of attributes can hold together.  For example, all
 packets with attributes $A$ and $B$ true, and $C$, $D$, and $E$ false,
 belong to attribute equivalence class $S_1$, and can be encoded with
 the bitmask ``$11000$''.  Certain combinations of attributes may not
-occur for any traffic (e.g., attributes $B$ and $D$ are never true
+occur for any traffic (\eg, attributes $B$ and $D$ are never true
 together, though both can be false as in $S_3$).  A single rule can
-test for any combination of attributes (e.g., comparing a tag to
+test for any combination of attributes (\eg, comparing a tag to
 $\textsc{``1*1**''}$ identifies whether attributes $A$ and $C$ hold, without
 caring whether $B$, $D$, or $E$ hold).  However, when the number of
 attributes is large, a bitmask tag becomes quite large.
@@ -92,7 +92,7 @@ $A$, $B$, and $C$ commonly appear together, as do $C$, $D$, and $E$,
 leading to two groups.  The right side of Figure~\ref{fig:masking}(b)
 shows how each attribute equivalence class can be encoded as a bitmask
 on $[A,B,C]$, $[C,D,E]$, or both.  To differentiate between the two
-groups, the tag can include a one-bit group identifier (e.g., a $0$
+groups, the tag can include a one-bit group identifier (\eg, a $0$
 for $[A,B,C]$ and a $1$ for $[C,D,E]$), as shown in
 Figure~\ref{fig:masking}(c).  The result is a four-bit identifier
 where, for example, $S_4$ with attributes $C$ and $D$ is encoded as
@@ -119,10 +119,10 @@ this example.
 %%%
 The tag and rule-table sizes depend on the quality of the encoding.  A
 natural starting point is to have one group for each attribute
-equivalence class (e.g., $[A,B]$, $[A,B,C]$, $[C]$, $[C,D]$, and
+equivalence class (\eg, $[A,B]$, $[A,B,C]$, $[C]$, $[C,D]$, and
 $[C,D,E]$), at the cost of a large group id.  A simple optimization is
 to remove any group with attributes that are a \emph{subset} of
-another group (e.g., removing $[A,B]$ and $[C]$ that are subsets of
+another group (\eg, removing $[A,B]$ and $[C]$ that are subsets of
 $[A,B,C]$, and removing $[C,D]$ that is a subset of $[C,D,E]$).  In
 the simple example, this heuristic results in the two groups
 ($[A,B,C]$ and $[C,D,E]$).  However, in larger examples, this
