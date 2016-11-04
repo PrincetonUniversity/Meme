@@ -192,15 +192,17 @@ def plot_data(data):
         #break
     ax.yaxis.set_major_locator(my_locator)
     #pl.yscale('log')
-    ax.set_ylim(ymin = 0)
-    #ax.set_xlim(xmin = 10)
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=3,
+    ax.set_ylim(ymin = 8)
+    #ax.set_ylim(ymax = 24)
+    ax.set_xlim(xmin = 90)
+    ax.set_xlim(xmax = 810)
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=4,
                 fancybox=True, shadow=False)
-    pl.xlabel('Paths')
-    pl.ylabel('Bits')
+    pl.xlabel('Number of Unique Paths')
+    pl.ylabel('Minimum Bits Required')
     ax.grid(True)
     plt.tight_layout()
-    plot_name = "test.pdf"
+    plot_name = "service_chaining_minbits.pdf"
     pl.savefig(plot_name)
     pl.show()
 
