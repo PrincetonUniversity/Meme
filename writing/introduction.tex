@@ -1,15 +1,53 @@
 \section{Introduction}
 \label{sec:intro}
-%%%
-%%% Forwarding Equivalence Class
-%%%
-Routing is increasingly more sophisticated than simply directing all traffic along a shortest path to the destination.  Depending on their header fields, packets may traverse a sequence of middleboxes, be subject to access-control policies, or have a set of valid destinations.  Customizing the handling of the packets can require network switches to have a large number of rules that match on multiple header fields.  Fortunately, there can be a large amount of redundancy in the way traffic flows are handled.  Flows that are viewed identically by the network can be grouped into a single \emph{attribute equivalence class} (AEC). If each packet is tagged with an AEC identifier once it is classified, interior switches can simply act on packets based on the tag, leading to substantial reductions in switch state.
+
+Forwarding network traffic increasingly involves more sophisticated
+forwarding operations than simply traversing a shortest path to a single
+destination.  The values in a packet header may cause it to traverse a
+sequence of middleboxes, be subject to various access-control policies,
+or be forwarded to one of several distinct destinations. These types of
+flexible forwarding decisions can require network switches to have many
+forwarding table rules, each of which may match on multiple packet
+header fields, thus causing switches to store many flow table entries to
+handle all possible cases. Fortunately, although the number of possible
+combinations of forwarding decisions could in theory result in an
+inordinate number of flow table entries, in {\em practice} many distinct
+traffic flows may be subject to the same forwarding actions and
+policies, or {forwarding equivalence class} (FEC). Along an end-to-end
+path, a switch could mark all packets that belong to the same FEC with a
+tag that subsequent switches could use to make forwarding
+decisions. Switches further downstream on the path could then make
+forwarding decisions based on this tag, as opposed to a complex
+combination of header fields, potentially reducing switch forwarding
+table size if the number of FECs is smaller than the number of unique
+header field combinations.
 
 %%%
 %%% FEC is an index
 %%%
-The simplest and most common form of AEC tag is a flat tag, or \emph{index}. Historically, virtual circuit switching techniques like MPLS~\cite{mpls} and virtualization solutions like VLANs~\cite{vlan} follow this approach, and it is common in newer works as well~\cite{flowtags,sdx}.  Using the tag as an index worked well with traditional switches that support exact matches on a single header field, such as an MPLS label, VLAN tag, or destination MAC address.  However, index tagging solutions face two scalability challenges. First, the amount of forwarding rules placed in a switch is linear in the number of AECs which traverse that switch. Second, any minor change to the behavior of a flow can result in a large number of switch rule changes as the AECs and their indices are updated.
+The simplest and most common form of FEC tag is a flat tag, or
+\emph{index}.  MPLS~\cite{mpls} and VLANs~\cite{vlan} use flat tags, for
+example, and newer SDN-based architectures such as
+FlowTags~\cite{flowtags} and the original SDX architecure~\cite{sdx}
+also make forwarding decisions based on flat tags.  Flat tags work well
+in many scenarios because hardware switches can perform exact matches on
+these fields; yet, forwarding tables that match on flat tags do not
+scale, because the number of forwarding rules that the switch must store
+grows linearly with the number of FECs which traverse that
+switch, and small changes to forwarding decisions can trigger
+recomutations of a large number of FECs (and tags).
 %If a network node wishes to decode whether attribute $A$ is associated with a packet, it must determine whether the packet belongs to any FEC which is associated with $A$. If $A$ is associated with $N$ FECs, each of which has its own index, the switch requires $N$ rules for decoding $A$. 
+In practice, an FEC constitutes a \emph{collection} of
+forwarding decisions (\eg, a sequence of middleboxes), but two FECs that
+differ only slightly would have completely different flat tags, making it
+difficult to aggregate forwarding table rules.  For example,
+Figure~\ref{fig:mbox_path} shows an example where an FEC constitutes a
+sequence of middleboxes; two FECs may differ in only a single
+middlebox. Instead, a forwarding scheme that assigned tags that
+reflected this commonality could afford more opportunities for
+aggregation.
+
+
 
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
@@ -18,10 +56,9 @@ The simplest and most common form of AEC tag is a flat tag, or \emph{index}. His
 \caption{An illustration of the scaling issues of flat tagging. There are three switches $n_1, n_2, n_3$ and four middleboxes $A,B,C,D$. Packets enter the network on the left and are classified as needing to traverse one of four service chains, and are tagged as such. If flat matching is used, no aggregate rules are possible on the four tags.  }
 \label{fig:mbox_path}
 \end{figure}
-%%%
-%%% Matching on sequences
-%%%
-Fundamentally, the issue is that each AEC is defined by a \emph{collection} of attributes, yet two AECs that differ by only one attribute receive arbitrary, independent indices as tags, preventing switch rules which handle different AECs from being aggregated. For middlebox steering policies, as seen in example figure ~\ref{fig:mbox_path}, AECs are defined by sequences of middleboxes, and two AECs may differ in a single hop.  If tags are assigned such that rules can be aggregated (akin to IP prefix routing), then switches could act upon the packets of multiple AECs with a single rule.
+
+
+
 %%%
 %%% Capabilities of newer switches 
 %%%
@@ -32,7 +69,20 @@ Recently, commodity switches have emerged with more sophisticated capabilities, 
 
 %Paragraph 3: "In this paper, we show that ...". This is the key paragraph in the intro - you summarize, in one paragraph, what are the main contributions of your paper given the context you have established in paragraphs 1 and 2. What is the general approach taken? Why are the specific results significant? This paragraph must be really really good. If you can't "sell" your work at a high level in a paragraph in the intro, then you are in trouble. As a reader or reviewer, this is the paragraph that I always look for, and read very carefully.
 
-In this paper, we show how the set of attributes that define an equivalence class can be encoded in the assigned tag. The attributes of any tag can then be individually read using a small set of wildcard rules.  Such \emph{attribute-carrying tags} are much more compact, and lead to much smaller rule tables, than index tagging solutions.  We present efficient algorithms for generating compact tags that represent either \emph{sets} or \emph{sequences} of attributes.  We show how these tags can be used to improve the scalability in several real applications, including our SDN-based Internet exchange point~\cite{isdx}.  We have made public the code library for incorporating our tagging scheme into any application. We perform evaluations on both real and synthetic datasets for our proposed applications and show that it can reduce the amount of switch memory by X. 
+In this paper, we show how the set of attributes that define an
+equivalence class can be encoded in the assigned tag. The attributes of
+any tag can then be individually read using a small set of wildcard
+rules.  Such \emph{attribute-carrying tags} are much more compact, and
+lead to much smaller rule tables, than index tagging solutions.  We
+present efficient algorithms for generating compact tags that represent
+either \emph{sets} or \emph{sequences} of attributes.  We show how these
+tags can be used to improve the scalability in several real
+applications, including our SDN-based Internet exchange
+point~\cite{isdx}.  We have made public the code library for
+incorporating our tagging scheme into any application. We perform
+evaluations on both real and synthetic datasets for our proposed
+applications and show that it can reduce the amount of switch memory by
+X.  
 
 %Paragraph 4: At a high level what are the differences in what you are doing, and what others have done? Keep this at a high level, you can refer to a future section where specific details and differences will be given. But it is important for the reader to know at a high level, what is new about this work compared to other work in the area.
 
