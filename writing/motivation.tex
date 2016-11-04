@@ -21,7 +21,7 @@
 
 There are many applications where encoding and reading FECs is of interest, and in particular we will look at three of them, which are outlined in Table \ref{tab:applications}.
  
-\paragraph{Software-Defined Internet Exchange Points.}
+\subsection{Software-Defined IXPs}
 At an Internet Exchange Point (IXP), multiple autonomous systems (ASes)
 connect at a single logical interconnect to exchange traffic and
 interdomain routing information.  At an IXP with support for SDN
@@ -47,7 +47,7 @@ iSDX~\cite{isdx}. iSDX used a precursor to our tagging scheme, taking
 advantage of OpenFlow 1.3's support for wildcard matching on destination
 MAC addresses.
 
-\paragraph{Service Chaining.}
+\subsection{Service Chaining}
 Network operators often want network traffic to be directed through a
 sequence of middleboxes, such as load balancers or firewalls.  Different
 flows may be subject to different chains of middleboxes, and it can be a
@@ -67,7 +67,7 @@ of middleboxes, we expect that service chaining may benefit from the
 attribute-based tagging approach we present in this work.
  
 
-\paragraph{Host Attributes for Network Policies.}
+\subsection{Host Attributes for Network Policies}
 In some situations, network policies depend on the traffic sender.  For
 example, users in departments within an organization may be subject
 to different quality of service or access control policies. If
