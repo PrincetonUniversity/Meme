@@ -7,6 +7,33 @@ bitmasks on different subsets of attributes, at the expense of
 slightly larger rule tables.  We also present an algorithm for
 computing the concise encoding.
 
+\subsection{Strawman: Bitmask Tags}
+
+We will now present a strawman tagging scheme which always achieves optimum switch memory usage by using wildcard matches.
+If there are $N$ possible attributes to encode in a tag, construct a tag of length $N$: 
+the $i^{th}$ bit corresponds to the $i^{th}$ attribute. When the packet is classified
+and the tag is attached, the $i^{th}$ bit is set to 1 if the $i^{th}$ attribute
+is present for that flow, and 0 if it is not. As a result, if we wish to test for
+the presence of attribute $x$, we need only check that $x$'s bit is 1 in the
+metadata, rather than exact matching on every tag that contains
+$x$.
+
+This approach is a strawman because the tag is of width $N$, and $N$ can be quite large.
+Although we criticized flat tagging for using too much switch memory, 
+flat tagging only needed tag width logarithmic in the number AECs. We have just traded an extreme in memory
+usage for an extreme in tag width. It would be ideal to find some middle ground.
+In general, any tagging scheme must simultaneously consider three different metrics:
+
+\begin{enumerate}
+\item \textbf{Tag Width:} Tags should not be too wide, to avoid wasting packet-header space.
+Tags should be able to either be inserted into small repurposed header fields or contribute little size to custom packet headers. 
+\item \textbf{Switch Memory:} The amount of memory required to decode attributes from any tag should be able to easily fit in modern commodity switches rule tables.
+\item \textbf{Churn:} Normal network events should not cause the encoding scheme to undergo too many changes.
+\end{enumerate}
+%It is these metrics by which we will evaluate our solution.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 %To understand the problem, let us consider a
 %simple example for the case of attaching lists of anycast hosts to a packet. Say
 %that there is a local area network with five hosts $H = \{h_1, h_2, h_3, h_4,
