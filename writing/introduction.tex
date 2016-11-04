@@ -25,27 +25,25 @@ header field combinations.
 %%%
 %%% FEC is an index
 %%%
-The simplest and most common form of FEC tag is a flat tag, or
-\emph{index}.  MPLS~\cite{mpls} and VLANs~\cite{vlan} use flat tags, for
-example, and newer SDN-based architectures such as
-FlowTags~\cite{flowtags} and the original SDX architecure~\cite{sdx}
-also make forwarding decisions based on flat tags.  Flat tags work well
-in many scenarios because hardware switches can perform exact matches on
-these fields; yet, forwarding tables that match on flat tags do not
-scale, because the number of forwarding rules that the switch must store
-grows linearly with the number of FECs which traverse that
-switch, and small changes to forwarding decisions can trigger
-recomutations of a large number of FECs (and tags).
+The simplest way to mark an FEC is with a flat tag.  MPLS~\cite{mpls}
+and VLANs~\cite{vlan} use flat tags, for example, and newer SDN-based
+architectures such as FlowTags~\cite{flowtags} and the original SDX
+architecure~\cite{sdx} also make forwarding decisions based on flat
+tags.  Flat tags work well in many scenarios because hardware switches
+can perform exact matches on these fields; yet, forwarding tables that
+match on flat tags do not scale, because the number of forwarding rules
+that the switch must store grows linearly with the number of FECs which
+traverse that switch, and small changes to forwarding decisions can
+trigger recomutations of a large number of FECs (and tags).
 %If a network node wishes to decode whether attribute $A$ is associated with a packet, it must determine whether the packet belongs to any FEC which is associated with $A$. If $A$ is associated with $N$ FECs, each of which has its own index, the switch requires $N$ rules for decoding $A$. 
-In practice, an FEC constitutes a \emph{collection} of
-forwarding decisions (\eg, a sequence of middleboxes), but two FECs that
-differ only slightly would have completely different flat tags, making it
+In practice, an FEC constitutes a \emph{collection} of forwarding
+decisions (\eg, a sequence of middleboxes), but two FECs that differ
+only slightly would have completely different flat tags, making it
 difficult to aggregate forwarding table rules.  For example,
 Figure~\ref{fig:mbox_path} shows an example where an FEC constitutes a
-sequence of middleboxes; two FECs may differ in only a single
-middlebox. Instead, a forwarding scheme that assigned tags that
-reflected this commonality could afford more opportunities for
-aggregation.
+sequence of middleboxes; two FECs may differ in only a single middlebox,
+yet matching on flat tags requires the switch to maintain an entry for
+each unique sequence. 
 
 % Figure ~\ref{fig:mbox_path} shows a simple example of service chaining
 % with four middleboxes, where every flow is mapped to one of four chains
@@ -81,33 +79,36 @@ aggregation.
 %%%
 %%% Capabilities of newer switches 
 %%%
-Recently, commodity switches have emerged with more sophisticated capabilities, such as OpenFlow 1.3~\cite{of13} switches that supports \emph{wildcard} matching on previously flat header fields, and emerging protocol-independent switches (programmable using languages like P4~\cite{P4}) which support arbitrary headers that can be read, written, and matched in flexible ways.  These advances enable much more flexible ways to tag and match packets, beyond simple index tagging. 
+Instead, a forwarding mechanism that assigned tags that reflected
+commonality between sequences or sets between different forwarding
+equivalence classes could make it possible to aggregate forwarding table
+entries in switchs.  Fortunately, commodity switches that support
+OpenFlow~1.3~\cite{of13} can now perform {wildcard} matching on arbitrary
+packet 
+header fields; emerging protocol-independent switches supported by
+languages such as P4~\cite{P4} will also support more flexible
+matching based on wildcards. These new matching capabilities make it
+possible to redesign FEC tagging architectures to achieve more efficient encodings.
 
-%In the case of virtual circuit switching, the number of possible circuits can be exponential in the size of the network. Switches need to be programmed to react to every tag they may see, resulting in exponential memory usage. It may be the case that the majority of equivalence classes that a switch sees take identical egress ports, yet traditional tagging is unable to take advantage of this redundancy. Fundamentally, an equivalence class can be characterized by a set of attributes where that set is unique to that class. If two circuits differ by only a single hop, their attribute sets are unique and they are assigned different tags. Traditional solutions make no attempt to convey the similarity of the two sets in the tags, which could allow switches to be programmed with a single rule that reacts to both tags. We refer to these solutions as \textit{flat tagging} solutions. 
+In this paper, we take advantage of these emerging capabilities to
+encode similar FECs with tags that share common bits, as opposed to
+simply assigning each FEC a distinct flat tag.  These
+\emph{attribute-carrying tags} are more compact and reduce forwarding
+table size compared to flat tags.We present efficient algorithms for
+encoding sets and sequences of attributes in tags amd demonstrate how
+these encodings can reduce switch forwarding table size for a variety of
+applications, including an SDN-based Internet Exchange Point and a
+service chaining application. We have publicly released the source code
+for the library that implements this encoding algorithm.
 
-
-%Paragraph 3: "In this paper, we show that ...". This is the key paragraph in the intro - you summarize, in one paragraph, what are the main contributions of your paper given the context you have established in paragraphs 1 and 2. What is the general approach taken? Why are the specific results significant? This paragraph must be really really good. If you can't "sell" your work at a high level in a paragraph in the intro, then you are in trouble. As a reader or reviewer, this is the paragraph that I always look for, and read very carefully.
-
-In this paper, we show how the set of attributes that define an
-equivalence class can be encoded in the assigned tag. The attributes of
-any tag can then be individually read using a small set of wildcard
-rules.  Such \emph{attribute-carrying tags} are much more compact, and
-lead to much smaller rule tables, than index tagging solutions.  We
-present efficient algorithms for generating compact tags that represent
-either \emph{sets} or \emph{sequences} of attributes.  We show how these
-tags can be used to improve the scalability in several real
-applications, including our SDN-based Internet exchange
-point~\cite{isdx}.  We have made public the code library for
-incorporating our tagging scheme into any application. We perform
-evaluations on both real and synthetic datasets for our proposed
-applications and show that it can reduce the amount of switch memory by
-X.  
-
-%Paragraph 4: At a high level what are the differences in what you are doing, and what others have done? Keep this at a high level, you can refer to a future section where specific details and differences will be given. But it is important for the reader to know at a high level, what is new about this work compared to other work in the area.
-
-%Paragraph 5: "The remainder of this paper is structured as follows..." Give the reader a roadmap for the rest of the paper. Avoid redundant phrasing, "In Section 2, In section 3, ... In Section 4, ... " etc.
-
-The remainder of this paper is structured as follows. In \S \ref{sec:background}, we give some area background and a few motivating applications. In \S \ref{sec:flextag_encoding}, we outline the basic ideas of our encoding scheme for attaching sets of attributes to packet headers. In \S \ref{sec:ordering}, we extend our encoding to support ordered sequences of attributes. In \S \ref{sec:identifiers}, we improve the space usage of the encoding. In \S \ref{sec:evaluation}, we evaluate the encoding over both real and synthetic data sets. We discuss related works in \S \ref{sec:related}. The paper concludes with \S \ref{sec:conclusion}.
+The rest of this paper proceeds as follows. Section~\ref{sec:motivation}
+presents motivating applications. Section \ref{sec:flextag_encoding} presents
+the basic ideas of our FEC encoding scheme. In Section \ref{sec:ordering}, we
+extend our encoding to support ordered sequences of attributes; Section
+\ref{sec:identifiers} improves the space efficiency of this encoding. In
+Section \ref{sec:evaluation}, we evaluate the encoding over both real and
+synthetic data sets. We discuss related work in Section
+\ref{sec:related} and conclude in Section \ref{sec:conclusion}.
 
 
 
