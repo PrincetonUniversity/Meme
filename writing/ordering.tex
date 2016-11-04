@@ -19,12 +19,12 @@ When the tag must encode a sequence of attributes, we need an effective way to i
     \label{tab:ordering}
 \end{table}
 
-\subsection{Sequences that Form a Partial Order}
-If all of the attributes form a (partial) order, we can easily construct a single ordered list of all attributes where each input sequence is a subsequence. We refer to such a sequence as a \emph{supersequence}.  A supersequence can be computed by processing the nodes of the (acyclic) sequence graph in order. 
-%
-Then, sequences are selected, each as the union of some input sequences. A tag of a sequence would then include identifier together with a mask of its attributes based on the order of the supersequence.  Table \ref{tab:ordering} illustrates an example of wildcard rules imposing such an ordering for a sequence with attributes $A, B, C$ that was assigned the identifier $101$.  If the ordering dictates that an attribute $B$ must appear after $A$, then any wildcard rule for decoding $B$ must check that the $B$ bit is 1 and the $A$ bit is 0. This causes the wildcard rule to only successfully match if no other attributes that come before $B$ appear in the set. %In other words, testing for $X$ only returns true if tests for all attributes before $X$ returns false.
+\subsection{Sequences Forming a Partial Order}
+If all of the attributes form a (partial) order, we can easily construct a single ordered list of all attributes where each input sequence is a subsequence. We refer to such a sequence as a \emph{supersequence}.  A supersequence can be computed by processing the nodes of the (acyclic) sequence graph in order. For example, suppose the input sequences are $X$-$Y$, $Y$-$Z$, and $X$-$Z$; then, the resulting supersequence would be $X$-$Y$-$Z$. To generate the tags, Algorithm~\ref{alg:memory_min}
+can be used ``as is'' to generate a concise encoding.  The resulting rules in the switches would simply match on the attributes
+in the appropriate ``order'', e.g., a rule that checks for attribute $Y$ would include a $0$ bit for $X$, to ensure that middlebox $X$ was already visited and the associated bit in the tag cleared.  We discuss how to compute the rules in more detail in \S~\ref{s:order-rules}.
 
-\subsection{Not-Aligned Ordering Constraints}
+\subsection{Sequences Forming a Cycle}
 Sometimes, there does not exist a supersequence of attributes that all sequences follow its order. This is case  if for two attributes $B, A$,  $B$ appears before $A$ in some sequences, but $A$ appears before $B$ in others. Similarly, this happens when $B$ appear before $A$ in a sequence and $A$ has to appear before $B$ based on transitivity of other attributes. We refer to that as order-inconsistency.  In such cases the graph $G$ contains a cycle. We describe two approaches to deal with this scenario. 
 
 \textbf{Approach I:} The first approach begins with the input sequences. In each step, pairs of supersets are considered as long as their merging does not result in order-inconsistency. A pair is selected based on similar criterions as for the non-ordered sets. Finally, for each superset in the result, an identifier is allocated based on a potential order of the corresponding attributes.
@@ -56,5 +56,22 @@ Figure \ref{fig:conflict_res} details the process for determining which elements
 \caption{This details the order-inconsistency resolution step of the algorithm. (a) shows a SCC of four attributes. (b) shows an 'almost' ordering of the SCC nodes, which minimizes the number of backward edges. (c) shows a  construction of a worst-case quadratically-sized universe, which is then traversed by every sequence to determine which attributes to splits for the new ordering.}
 \label{fig:conflict_res}
 \end{figure}
- 
 
+\subsection{Constructing Rules That Respect Order}
+\label{s:order-rules}
+\jrex{placeholder text and table from earlier version.  needs updating to refer to the example in Figure~\ref{fig:ordering}, rather than introducing a new example.}
+Then, sequences are selected, each as the union of some input sequences. A tag of a sequence would then include identifier together with a mask of its attributes based on the order of the supersequence.  Table \ref{tab:ordering} illustrates an example of wildcard rules imposing such an ordering for a sequence with attributes $A, B, C$ that was assigned the identifier $101$.  If the ordering dictates that an attribute $B$ must appear after $A$, then any wildcard rule for decoding $B$ must check that the $B$ bit is 1 and the $A$ bit is 0. This causes the wildcard rule to only successfully match if no other attributes that come before $B$ appear in the set. %In other words, testing for $X$ only returns true if tests for all attributes before $X$ returns false.
+
+ \begin{table}
+    \begin{tabular}{| l | l | l |}
+    \hline
+    Attribute & Unordered Match & Ordered Match\\ \hline
+    A & $1011**$ & $1011**$ \\ \hline
+    B & $101*1*$ & $10101*$ \\ \hline
+    C & $101**1$ & $101001$ \\
+    \hline
+    \end{tabular}
+    \caption{Wildcard strings for ordered versus unordered attributes. %In the unordered case, the string matches if the target attribute bit is 1, and does not depend upon the bits of other attributes.
+     In the ordered case, the string only matches if the target attribute bit is 1 and all bits for attributes preceding the target attribute are 0. This ensures only matching on the next attribute in the ordering succeeds.} 
+    \label{tab:ordering}
+\end{table}
