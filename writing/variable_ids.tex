@@ -1,18 +1,43 @@
-\section{Variable-length Identifiers}\label{sec:identifiers}
-In this section, we describe an enhanced encoding technique that enables further reduction in the required tag width.  While maintaining the ability to distinguish between different supersets, we allow their distinct identifiers to be of a variable length. We describe a simple condition on the identifiers that enable such a distinction. 
-\subsection{Prefix Codes using Kraft's Inequality}
+\section{Variable-length Group Identifiers}
+\label{sec:identifiers}
+In the previous sections, our encoding imposes a fixed division of the
+tag bits into the \emph{group identifier} and the \emph{bitmask} on
+the attributes in the group.  However, some groups include more
+attributes than others, making a static split inefficient. In this
+section, we describe an enhanced encoding scheme that reduces the
+total size of the tag by allowing variable-length group identifiers,
+so some groups can devote more tag bits to the bitmasks.
 
-Consider the supersets from Table~\ref{Table_variable_a}, each described as a set of attributes. The largest of the $N=4$ supersets has five attributes. 
-If fixed-length identifiers of $\left \lceil \log_2(N) \right \rceil = 2$ bits 00, 01, 10 and 11 are allocated then we derive a maximal width of 2 + 5 = 7 bits, as illustrated in Table~\ref{Table_variable_b}. 
-Note that the observed total width for several of the subsets is shorter than the maximal.
-In the general case, with fixed-length identifiers, given $N$ supersets of size $\ell_1, \ldots, \ell_N$ the required width is determined by the largest superset and equals 
- $W_{f} = \left \lceil \log_2(N) \right \rceil + \max_{i \in [1,N]} \ell_i$. 
+\subsection{Prefix Codes for Group Identifiers}
+%%%
+%%% Fixed-length ids are bad
+%%%
+Table~\ref{Table_variable} illustrates how a fixed division between
+the group identifier and the bitmask can waste space in the tag.
+Table~\ref{Table_variable}(a) shows an example output of
+Algorithm~\ref{alg:memory_min} with four groups with anywhere from two
+to four attributes.  With a fixed-length group identifier, the tags
+require a two-bit identifier (to represent the four groups) and a
+four-bit bitmask (to represent the largest bitmask of $[W,X,Y,Z]$),
+for a total of six bits, as shown in Table~\ref{Table_variable}(b).
+The other three groups do not make effective use of the four-bit
+bitmask.  In the general case, given $N$ groups where group $i$ has
+$\ell_i$ attributes, the width of the tag is determined by the largest
+group and equals $W_{f} = \left \lceil \log_2(N) \right \rceil +
+\max_{i \in [1,N]} \ell_i$.
 
-In Table~\ref{Table_variable_c} variable-length identifiers 0, 10, 110 and 110 are used. This enables to reduce the maximal width to only 6 bits by allocating the largest supersets shorter identifiers. 
-Notice that the identifiers are selected such that none of them is a prefix (start) of the other, i.e., the identifiers are codewords in a prefix code.
-Such a selection of the identifiers enables to distinguish between the supersets for any value of their bit masks as the second part of the tag. 
-
-
+%%%
+%%% Variable-length ids are awesome
+%%%
+To reduce the size of the tag, we introduce variable-length group
+identifiers.  In particular, groups that need larger bitmasks should
+have shorter group ids, and vice versa.  Table~\ref{Table_variable}(c)
+uses group identifiers 0, 10, 110, and 110, enabling a smaller tag with
+just five bits.  Notice that the group identifiers are selected such
+that none is a prefix (start) of another, i.e., the identifiers are
+codewords in a \emph{prefix code}.  Selecting the group identifiers in
+this way allows the switch rules to distinguish between the groups
+for any values for their bitmasks in the second part of the tag.
 
 %\begin{table}[t!]
 %
@@ -32,22 +57,15 @@ Such a selection of the identifiers enables to distinguish between the supersets
 %}\\
 %\end{table}
 
-
-
-
-
-
-
-
 \begin{table}[t!]
 \small
 
 \centering
 \begin{subtable}[t]{0.35\linewidth}
-\caption{Supersets}\label{Table_variable_a}
+\caption{Groups}\label{Table_variable_a}
 \begin{tabular}{|c|}
 \hline
-Superset elements\\
+\textbf{Group attributes}\\
 \hline
 A B C\\
 C D\\
@@ -55,28 +73,30 @@ E F\\
 W X Y Z\\
 \hline
 \end{tabular}
-\end{subtable}\\
+\end{subtable}\\~\\
 
 
 \begin{subtable}[t]{0.49\linewidth}
-\caption{Fixed-length Identifiers}\label{Table_variable_b}
-\begin{tabular}{|c|c|}
+\begin{center}
+\caption{Fixed-length group ids}\label{Table_variable_b}
+\begin{tabular}{|r|l|}
 \hline
-Identifier   &  Superset\\
+\textbf{Id}   &  \textbf{Attributes}\\
 \hline
 00 & A B C\\
 01 &  C D\\
 10 &  E F\\
-11 &  W X Y Z\\
-\hline
+11 &  W X Y Z\\ \hline 
 \end{tabular}
+\end{center}
 \end{subtable}
 \hfill
 \begin{subtable}[t]{0.49\linewidth}
-\caption{Variable-length Identifiers}\label{Table_variable_c}
-\begin{tabular}{|c|c|}
+\begin{center}
+\caption{Variable-length group ids}\label{Table_variable_c}
+\begin{tabular}{|r|l|}
 \hline
-Identifier   &  Superset\\
+\textbf{Id}   &  \textbf{Attributes}\\
 \hline
 10 & A B C\\
 110 &  C D\\
@@ -84,14 +104,14 @@ Identifier   &  Superset\\
 0 &  W X Y Z\\
 \hline
 \end{tabular}
+\end{center}
 \end{subtable}
 
-\caption{Illustration of variable-length identifiers for supersets. While with fixed-length identifiers the maximal width in (B) is 6 bits, with variable-length identifiers it is reduced in (C) to only 5 bits.
+\caption{Illustration of variable-length group identifiers. While with fixed-length ids the maximal width in (b) is 6 bits, with variable-length identifiers it is reduced in (c) to only 5 bits.
 }\label{Table_variable}
 \end{table}
 
 
-yeah
 
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
@@ -101,25 +121,35 @@ yeah
 \label{fig:code_tree}
 \end{figure}
 
-
-Kraft's inequality~\cite{abramson} formally determines the existence of a prefix code with codewords of given lengths. It says that a code with $N$ codewords of lengths 
- $L_1, L_2, \ldots, L_N$ exists 
-iff the following inequality holds:
+\subsection{Computing Efficient Prefix Codes}
+%%%
+%%% Sizing the tags
+%%%
+Kraft's inequality~\cite{abramson} formally determines whether prefix
+codes of given lengths exist.  It says that a code with $N$ codewords
+of lengths $L_1, L_2, \ldots, L_N$ exists if and only if the following
+inequality holds:
 $$ \sum_{i = 1}^{N}{2^{-L_i}} \le 1. $$
-
-For instance, the lengths of the identifiers in Table~\ref{Table_variable_c} satisfy $2^{-1} + 2^{-2} + 2^{-3} + 2^{-3} = 1$.
-
-This also enables us to exactly calculate the minimal width $W_{v}$ that can be achieved for a given $X$ supersets of size $\ell_1, \ldots, \ell_X$  using variable-length identifiers as described in the following property.
+%
+For instance, the lengths of the identifiers in
+Table~\ref{Table_variable}(c) 
+satisfy $2^{-1} + 2^{-2} + 2^{-3} + 2^{-3} = 1$.
+%
+This also enables us to exactly calculate the minimal width $W_{v}$
+that can be achieved for a given $X$ groups of size $\ell_1,
+\ldots, \ell_X$ using variable-length identifiers as described in the
+following property:
 
 \begin{property}
-For given supersets of size $\ell_1, \ldots, \ell_N$ the optimal (minimal) tag width that can be derived using variable-length identifiers is given by 
+For given groups of size $\ell_1, \ldots, \ell_N$ the optimal (minimal) tag width that can be derived using variable-length identifiers is given by 
 \begin{equation} \label{eq2}
 W_{v}  = \left \lceil \log_2 \sum_{i = 1}^{N}{2^{\ell_i}} \right \rceil. \nonumber 
 \end{equation}
 \label{property_variable_length_minimal_tag}
 \end{property} 
-\bp
-A width of $W_{v}$ allows assigning an identifier of length  $W_{v} - \ell_i$ to the $i$-th superset. By Kraft's inequality the width  $W_{v}$ must satisfy
+\bp A width of $W_{v}$ allows assigning an identifier of length $W_{v}
+- \ell_i$ to the $i$-th group. By Kraft's inequality the width $W_{v}$
+must satisfy
 \begin{equation} \label{eq1}
 \begin{split}
 1 &\ge \sum_{i = 1}^{N}{2^{-(W_{v}-\ell_i)}} = 2^{-W_{v}} \cdot \sum_{i = 1}^{N}{2^{\ell_i}}. \nonumber 
@@ -127,33 +157,42 @@ A width of $W_{v}$ allows assigning an identifier of length  $W_{v} - \ell_i$ to
 %  \Leftrightarrow W_{v}  &\ge \left \lceil \sum_{i = 1}^{N}{2^{\ell_i}}  \right \rceil \nonumber 
 \end{split}
 \end{equation}
-Accordingly we have $2^{W_{v}}  \ge \sum_{i = 1}^{N}{2^{\ell_i}}$. Since $W_{v}$ is defined as the minimal possible width with that property the result follows.
+Accordingly we have $2^{W_{v}}  \ge \sum_{i = 1}^{N}{2^{\ell_i}}$. Since $W_{v}$ is defined as the minimal possible width with that property, the result follows.
 \ep
 
 %In the general case, with fixed-length identifiers, given $X$ supersets of size $\ell_1, \ldots, \ell_X$ the required width is determined by the largest superset and equals 
 % $W_{f} = \left \lceil \log_2(X) \right \rceil + \max_{i \in [1,X]} \ell_i$. 
  
-Since the fixed-length identifiers is a special case of the variable-length identifiers then necessarily $W_{v} \le W_{f}$. 
+Since the fixed-length group identifier is a special case of the
+variable-length identifiers, then necessarily $W_{v} \le W_{f}$.
 
-A selection of variable-length identifiers satisfying Kraft's inequality can be described as a subset of leaves in a binary tree. 
+A selection of variable-length group identifiers satisfying Kraft's inequality can be described as a subset of leaves in a binary tree. 
 A path from the root node to a node corresponds to a binary string where visits of the left child or the right child of a node stand for bits of 0 and 1, respectively. 
 The path length  to a leaf corresponds to the identifier length in bits.
-Fig.~\ref{fig:code_tree} illustrates the corresponding tree for the four identifiers from Table~\ref{Table_variable_c}. 
+Figure~\ref{fig:code_tree} illustrates the corresponding tree for the four identifiers from Table~\ref{Table_variable}(c).
 Shorter identifiers appear more to the left in the tree.
 
-For given supersets, after calculating $W_{v}$ as the minimal possible width enabled by variable-length identifiers we can easily find identifiers that realize it. We first calculate for a superset of size $\ell_i$ the (maximal) allowed length $W_{v} - \ell_i$. We sort the identifiers in an ascending length order. We consider a binary tree and while beginning from the root node, we relate to the next identifier the most left available leaf that its depth equals the length of the current identifier. We assign as the identifier the binary string obtained by the path from the root to the leaf.
+For given groups, after calculating $W_{v}$ as the minimal possible width enabled by variable-length identifiers, we can easily find identifiers that realize it. We first calculate for a group of size $\ell_i$ the (maximal) allowed length $W_{v} - \ell_i$. We sort the identifiers in an ascending length order. We consider a binary tree and while beginning from the root node, we relate to the next identifier the most left available leaf that its depth equals the length of the current identifier. We assign as the identifier the binary string obtained by the path from the root to the leaf.
  
-\subsection{Optimizing Selection of Supersets}
-In the selection of the supersets we would like to enable the existence of a short as possible tag. By Property~\ref{property_variable_length_minimal_tag} the number of supersets and their identities should be selected such that their sizes $\ell_1, \ldots, \ell_N$ minimize the term $T = \sum_{i = 1}^{N}{2^{\ell_i}}$. 
+\subsection{Optimizing the Selection of Groups}
+In the selection of the groups, we would like to enable the existence
+of as short a tag as possible. By Property~\ref{property_variable_length_minimal_tag} the number of groups and their identifiers should be selected such that their sizes $\ell_1, \ldots, \ell_N$ minimize the term $T = \sum_{i = 1}^{N}{2^{\ell_i}}$. 
 
-We describe a simple scheme to determine the supersets for a given (distinct) input sets $s_1, \ldots, s_N$. We first examine whether $s_i \subset s_j$ for some two sets. In this case, we can use $s_j$ as the superset for both sets and eliminate the set $s_i$. This would decrease the value of sum. We refer to this change as redundancy elimination.
+We describe a simple scheme to determine the groups for a given
+(distinct) input groups $s_1, \ldots, s_N$. We first examine whether
+$s_i \subset s_j$ for some pair of sets. In this case, we can use
+$s_j$ as the group for both sets and eliminate $s_i$. This
+would decrease the value of sum. We refer to this change as redundancy
+elimination.
+\jrex{should we introduce the ``redundancy elimination'' term earlier,
+  as we already talk about this step.}
 
-Next,  we continue to examine a possible merging of pairs of supersets. Such a merging decreases the number of supersets. While considering two sets $s_i, s_j$ of 
+Next,  we continue to examine a possible merging of pairs of groups. Such a merging decreases the number of groups. While considering two groups $s_i, s_j$ of 
 size $\ell_i, \ell_j$, the contribution of  a possible merging $s_i \bigcup s_j$ to $T$ is necessarily larger than  the sum of the contributions of $s_i$ and $s_j$ to $T$.
 This is because after the redundancy elimination, we must have that $|s_i \bigcup s_j| > \max(\ell_i, \ell_j)$. Accordingly,  $2^{|s_i \bigcup s_j|} > 2^{\max(\ell_i, \ell_j)} \ge 
-2^{\ell_i} + s^{\ell_j}$. However, a possible merging of a pair of supersets might enable eliminating additional supersets through redundancy elimination.
+2^{\ell_i} + s^{\ell_j}$. However, a possible merging of a pair of groups might enable eliminating additional groups through redundancy elimination.
 
-Accordingly, in each step of the scheme we examine for each pair of the current supersets the possible change in the value of $T$ after a potential merging of the pair and applying of the redundancy elimination. The pair that leads to a maximal reduction (or minimal increase in case no such pair exists) is selected and merged in this step and  redundancy elimination is applied. 
+Accordingly, in each step of the scheme we examine for each pair of the current groups the possible change in the value of $T$ after a potential merging of the pair and applying of the redundancy elimination. The pair that leads to a maximal reduction (or minimal increase in case no such pair exists) is selected and merged in this step and  redundancy elimination is applied. 
 
-Finally,  the observed supersets having the minimal value of $T$ along the running are selected as the output supersets.
+Finally,  the observed groups having the minimal value of $T$ along the running are selected as the output groups.
  
