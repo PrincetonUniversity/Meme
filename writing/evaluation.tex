@@ -1,27 +1,32 @@
 \section{Evaluation} \label{sec:evaluation}
-SECTION NOT YET UPDATED. Not worth proofreading yet. 
+We will now evaluate how our encoding scheme performs on tag width and memory usage for the applications of Software-Defined IXPs and service chaining.
 
-We will now demonstrate the scalability of the supersets encoding scheme table size for a real exchange point. 
+\subsection{Service Chaining}
 
-\subsection{Experimental Setup}
-We used a data set from the AMS-IX exchange point~\cite{ams-ix}, which gave us access to 63 participants advertising over 600,000 prefixes. Although not on the scale of complete data sets of the largest exchange points, the data set is large enough that the partial masks optimization is required to fit masks into the MAC field. Our experiments were run on a laptop with a 4-core CPU running at 2.4GHz and 16GB of RAM.
+To evaluate service chains, we simulate a network policy by generating a set of random middlebox paths. The number of attributes in the service chaining application is equal to the number of distinct types of middleboxes. Sherry et. al~\cite{Sherry:2012} gives a lower bound of 11 middlebox categories, so we evaluate up to $M = 40$ middleboxes to emulate a reasonably sized network. 
 
-The exchange point considered does not yet have support for SDN forwarding rules, so instead we simulate the number of forwarding entries required by the outbound policy of a hypothetical participant which is able to see all available route announcements. The participant was given 1000 uniformly random forwarding entries to a uniformly random subset of participants, with each subset size corresponding to a different experiment. 
+To generate random paths over these $M$ middleboxes, we first assume that all service chains follow a fixed underlying ordering. A random starting point in the ordering is chosen, and a path is constructed by making random jumps to middleboxes further down the ordering, stopping once the end of the ordering is reached.
 
-\subsection{Performance}
-We run our evaluations against a RIB dump of AMS-IX retrieved on May 1st, 2016 from the RIPE Routing Information Service raw data webpage~\cite{ris}.
+Next, to simulate conflicting orderings, we post-process each random path to add ordering conflicts. For each pair of adjacent middleboxes in a path, we swap their positions with some probability $p_err$. We chose a value of $5\%$ for $p_err$, as we believe reordering of middleboxes to be rare. 
 
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
 \begin{subfigure}[b]{0.96\linewidth}
-\includegraphics[width=\linewidth]{figures/bit_counts}
+\includegraphics[width=\linewidth]{figures/service_chaining_minbits}
 \end{subfigure} 
 \end{minipage} 
-\caption{Minimum number of bits required by a feasible solution for a random policy which forwards to a random subset of participants.}
-\label{fig:bits}
+\caption{Minimum number of bits required by our encoding scheme to encode every service chain as the number of service chains increases. The four lines represent the tag sizes required when encoding chains across 10, 20, 30, and 40 distinct middleboxes. All paths generated with a $5\%$ chance of reordering.}
+\label{fig:chain_bits}
 \end{figure}
 
+Figure \ref{fig:chain_bits} evaluates the minimum widths required by our encoding scheme across varying numbers of random paths and middleboxes. Recall that if there are $N$ distinct paths, flat tagging requires $log_2(N)$ bits to encode every path. Since $log_2(800) = 9$, our encoding scheme requires roughly twice the tag width of flat tagging for this experiment. 
+
+
+\subsection{Software-Defined IXPs}
+For evaluating the application of Software-Defined IXPs, we used Routing Information dumps from the AMS-IX exchange point~\cite{ams-ix}, retrieved from the Routing Information Service raw data webpage~\cite{ris}. This dataset gave us access to 63 participants advertising over 600,000 prefixes. 
+
 In order for our encoding scheme to successfully work, it must compress the information to the point that it fits into the MAC address field, which is restricted to 48 bits if no other information is encoded alongside reachability. Figure \ref{fig:bits} shows the number of bits required by our reachability encoding with uniformly randomly chosen active sets, repeated 500 times for each active set size. In the worst case, 18 bits were required when considering all 63 participants. The graphs appear to show that the number of bits required scales linearly with the number of participants present in the active set. However, we believe that the number of bits required actually scales sublinearly with the size of the active set, and that the appearance of linear scaling is a consequence of our simulation method. In order for the bits required to scale linearly, the number of participants that simultaneously advertise a single precept would have to also increase linearly in the size of the IXP, but we suspect this is not the case. Even if the number of bits required were indeed to scale linearly, extrapolating out the graph yields that, in the worst case, a participant's active set could contain over 100 participants, allowing very complex forwarding policies.
+
 
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
