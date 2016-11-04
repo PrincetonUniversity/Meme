@@ -34,16 +34,37 @@ regardless of destination. If
 the routing policies do not account for the routes of each AS, traffic
 may be forwarded to networks that cannot handle it.
 
-The SDX project~\cite{sdx} handles this issue with the use of index tags. Each AS shares its list of routes with a central controller, and every unique set of routes is assigned an index tag. The controller then attaches these tags to every packet by announcing them to all peers as destination MAC addresses via ARP replies. The fine-grained routing policies are then modified by the controller to read tags before making a routing decision. 
-
-The index tagging scheme of the original SDX ran into memory scalability challenges as a direct result of index tagging, which were remedied by the followup work iSDX~\cite{isdx}. iSDX used a precursor to our tagging scheme, taking advantage OpenFlow 1.3's support for wildcard matching on destination MAC addresses. 
+The initial SDX design used flat tags to encode these distinct
+forwarding decisions~\cite{sdx}. Each AS shares its list of routes with
+a central controller, and every unique set of routes is assigned a flat
+tag. The controller then attaches these tags to every packet by
+announcing them to all peers as destination MAC addresses via ARP
+replies. The fine-grained routing policies are then modified by the
+controller to read tags before making a routing decision.  This flat
+tagging approach encounters into memory scalability challenges as a
+direct result of flat tagging, which were remedied by the followup work
+iSDX~\cite{isdx}. iSDX used a precursor to our tagging scheme, taking
+advantage of OpenFlow 1.3's support for wildcard matching on destination
+MAC addresses.
 
 \paragraph{Service Chaining.}
-Network operators often desire that network traffic be directed through a series of middleboxes, such as load balancers or firewalls. Such middleboxes can provide security and performance guarantees for the network's users.
- Different flow may be subject to different chains of middleboxes, and it can be a challenge to design the network in such a way that every flow traverses only the needed set of middleboxes. Additionally, middleboxes may modify packet headers, obscuring the original source of the flow and making it unclear which middlebox chain should be followed. 
- 
-FlowTags~\cite{flowtags} argues that a necessary remedy is the modification of middleboxes to attach relevant policy information to packets as they are processed. To compress policy information into small, repurposed header fields, flowtags makes use of index tagging, where each index maps to a middlebox sequence and the packet's origin host. Each time a middlebox sees a new flow, it communicates with a central controller to establish a new index tag. 
-However, the FlowTags paper does not evaluate the number of forwarding table entries required by network switches to determine which middleboxes a packet should be forwarded to. It is worth exploring the benefits such a system could see from a different tagging scheme. 
+Network operators often want network traffic to be directed through a
+sequence of middleboxes, such as load balancers or firewalls.  Different
+flows may be subject to different chains of middleboxes, and it can be a
+challenge to design the network in such a way that every flow traverses
+only the needed set of middleboxes. Additionally, middleboxes may modify
+packet headers, obscuring the original source of the flow and making it
+unclear which middlebox chain should be followed.
+FlowTags~\cite{flowtags} uses tags to encode how each middlebox should
+process each packet. To compress policy information into small,
+repurposed header fields, FlowTags uses flat tags, where each tag maps
+to a middlebox sequence and the packet's origin host. Whenever a
+middlebox sees a new flow, it communicates with a central controller to
+establish a new tag.  Yet, FlowTags does not evaluate the number of
+forwarding table entries that such a flat tagging scheme might
+require. Because many flows may be forwarded through similar sequences
+of middleboxes, we expect that service chaining may benefit from the
+attribute-based tagging approach we present in this work.
  
 
 \paragraph{Host Attributes for Network Policies.}
