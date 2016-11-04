@@ -2,10 +2,10 @@
 \label{sec:flextag_encoding} 
 The simplest way to encode a set of attributes is a bitmask with one
 bit for each attribute, at the expense of large tags.  In this
-section, we present a more concise encoding that uses multiple smaller
+section, we present a concise encoding that uses multiple smaller
 bitmasks on different subsets of attributes, at the expense of
-slightly larger forwarding tables.  We also present an algorithm
-for computing the concise encoding.
+slightly larger rule tables.  We also present an algorithm for
+computing the concise encoding.
 
 %To understand the problem, let us consider a
 %simple example for the case of attaching lists of anycast hosts to a packet. Say
@@ -40,13 +40,20 @@ denotes that the set cannot be fully recovered by masking over the given set.
 %%% Strawman
 %%%
 In the strawman solution of a simple bitmask, the tag has one bit for
-each attribute.  For example, Figure~\ref{fig:masking}(a) shows
-multiple forwarding equivalence classes ($S_1$-$S_5$) that each
-correspond to a different subset of five attributes ($A$-$E$), and the
-resulting bitmask encoding.  A single forwarding rule can test for any
-combination of attributes (e.g., comparing a packet's tag to ``1*1**''
-identifies whether attributes $A$ and $C$ hold).  However, when the
-number of attributes is large, the tag becomes quite large.
+each boolean attribute.  For example, Figure~\ref{fig:masking}(a)
+shows multiple attribute equivalence classes ($S_1$-$S_5$) that each
+correspond to a different subset of five attributes ($A$-$E$).  The
+network policy determines which traffic has which attributes, and
+which combinations of attributes can hold together.  For example, all
+packets with attributes $A$ and $B$ true, and $C$, $D$, and $E$ false,
+belong to attribute equivalence class $S_1$, and can be encoded with
+the bitmask ``$11000$''.  Certain combinations of attributes may not
+occur for any traffic (e.g., attributes $B$ and $D$ are never true
+together, though both can be false as in $S_3$).  A single rule can
+test for any combination of attributes (e.g., comparing a tag to
+``1*1**'' identifies whether attributes $A$ and $C$ hold, without
+caring whether $B$, $D$, or $E$ hold).  However, when the number of
+attributes is large, a bitmask tag becomes quite large.
 
 %%%
 %%% Concise encoding example in the figure
@@ -56,20 +63,20 @@ commonly appear together, and creates one shorter bitmask for each
 such group.  In the example in Figure~\ref{fig:masking}, attributes
 $A$, $B$, and $C$ commonly appear together, as do $C$, $D$, and $E$,
 leading to two groups.  The right side of Figure~\ref{fig:masking}(b)
-shows how each forwarding equivalence class can be encoded as a
-bitmask on $[A,B,C]$, $[C,D,E]$, or both.  To differentiate between
-the two groups, the tag can include a one-bit group identifier (e.g.,
-a $0$ for $[A,B,C]$ and a $1$ for $[C,D,E]$), as shown in
+shows how each attribute equivalence class can be encoded as a bitmask
+on $[A,B,C]$, $[C,D,E]$, or both.  To differentiate between the two
+groups, the tag can include a one-bit group identifier (e.g., a $0$
+for $[A,B,C]$ and a $1$ for $[C,D,E]$), as shown in
 Figure~\ref{fig:masking}(c).  The result is a four-bit identifier
-where, for example, FEC $S_4$ with attributes $C$ and $D$ is encoded
-as $1110$.
+where, for example, $S_4$ with attributes $C$ and $D$ is encoded as
+$1110$.
 
 %%%
-%%% Slightly larger forwarding table
+%%% Slightly larger rule table
 %%%
 The forwarding rules can match on attributes by considering both the
-group id and the associated bitmask.  For example, a switch could test
-for attribute $D$ by matching on (i) group identifier $1$ and (ii) the
+group identifier and the associated bitmask.  For example, a switch
+could test for attribute $D$ by matching on (i) group $1$ and (ii) the
 $D$ bit in group $1$'s bitmask.  Thus, the rule would have a match of
 ``$1*1*$''.  However, some attributes appear in multiple groups, such
 as attribute $C$ in the example.  The switch can use two rules to test
@@ -78,16 +85,29 @@ $1$.  Thus, our encoding scheme slightly increases the forwarding
 table size over the simple bitmask scheme, but only by one rule in
 this example.
 
-\subsection{Computing Good Subsets of Attributes}
+\subsection{Computing Concise Encodings}
 \label{ssec:merge}
-
-
-
+%%%
+%%% Computing the initial groups
+%%%
+The tag and rule-table sizes depend on the quality of the encoding.  A
+natural starting point is to have one group for each attribute
+equivalence class (e.g., $[A,B]$, $[A,B,C]$, $[C]$, $[C,D]$, and
+$[C,D,E]$), at the cost of a large group id.  A simple optimization is
+to remove any group with attributes that are a \emph{subset} of
+another group (e.g., removing $[A,B]$ and $[C]$ that are subsets of
+$[A,B,C]$, and removing $[C,D]$ that is a subset of $[C,D,E]$).  In
+the simple example, this heuristic results in the two groups
+($[A,B,C]$ and $[C,D,E]$).  However, in larger examples, this
+heuristic could still result in too many groups. Instead, we use the
+set of groups ($\SS$) produced by the heuristic as an input to an
+algorithm for optimizing the selection of groups.
 
 \begin{algorithm}
 \DontPrintSemicolon
-\KwData{Supersets $\SS$, Tag Width Calculator $W()$, Width Limit $W_{max}$.}
-\KwResult{Supersets $\SS$ with minimal memory usage.}
+\KwData{Groups $\SS$, Attribute Test Counts $\{q_k\}$, 
+  Tag Width Limit, $W_{max}$, Tag Width Calculator $W()$.}
+\KwResult{Groups $\SS$ with minimal rule-table size.}
 \Begin{
 \While{$|\SS| > 1$}{
       	$bestPair \gets (None, None)$\;
@@ -113,44 +133,37 @@ this example.
 \caption{Greedy Memory Minimization\label{alg:memory_min}}
 \end{algorithm}
 
+%%%
+%%% Benefits of merging groups
+%%%
+Our algorithm iteratively merges pairs of groups, to minimize the
+rule-table size while staying within some limit $W_{max}$ on the tag
+size.  Suppose a switch has $q_a$ clauses that test whether attribute
+$a$ is true, and the attribute appears in $k_a$ groups.  Then, the
+switch would require $q_a \cdot k_a$ rules to test for that attribute.
+Merging two groups can reduce the number of rules, but possibly
+increase the tag size depending on the number of attributes the two
+groups have in common.  Suppose $\SS = \{s_1, s_2, \dots, s_N\}$,
+where group $s_i$ is a subset of attributes.  Replacing any pair of
+groups $\{s_i, s_j\}$ with their union $s_i\cup s_j$ would decrease
+the number of rules by $\sum_{a \in s_i\cap s_j}q_a$ because every
+attribute $a$ in the intersection of the two groups would appear in
+one fewer group after the merge.
 
-This tag format allows us to test for the presence of many attribute tag using
-only a single matching string in switch memory.  However, this is not true for
-all attributes. Looking again at Figure \ref{fig:masking}(b), the case of
-testing for attribute $C$ is not so simple. Since $C$ appears in both supersets,
-we must check whether $C$'s bit is 1 in either superset mask, using the wildcard
-strings $["0**1", "11**"]$. In general, any attribute $a$ that appears in $k_a$ supersets
-requires $k_a$ wildcard strings to be queried, where the strawman approach
-required exactly 1 wildcard string for every attribute. We refer to this effect as inflation. In the Figure
-\ref{fig:masking}(b) example, we can eliminate inflation by merging the
-supersets $[A,B,C]$ and $[C,D,E]$ into $[A,B,C,D,E]$. No attribute will appear
-in multiple sets, but the tag size has increased from 4 to 5 bits (the mask went
-from 3 to 5, and the identifier size went from 1 to 0). Note that this is identical to the strawman solution, but it is not the case that only the strawman solution eliminates inflation. If the intersection between the attributes of every pair of sets is empty, then the number of wildcard strings per attribute is always 1, regardless of how many supersets there are. 
+%%%
+%%% Greedy algorithm
+%%%
+We can extend this observation to a greedy algorithm that repeatedly
+identifies the pair of groups to merge that maximally decreases the
+number of rules without exceeding the $W_{max}$ tag size.
+Algorithm~\ref{alg:memory_min} shows the pseudocode.  The algorithm
+takes as input a set of attribute groups $\SS = \{s_1, s_2, \dots,
+s_N\}$, the attribute test counts $\{q_k\}$, a maximum tag width
+$W_{max}$, and a tag-width calculator $W()$.  The tag-width calculator
+determines the number of bits in the tag, given the current set of
+groups $\SS$.  We present closed-form equations for the tag-width
+calculator later in \S~\ref{sec:identifiers}.
+\jrex{what is the computational complexity of the algorithm? 
+Should we stress that the algorithm can stop at any time -- the
+longer you run the better, but you don't have to run to completion.}
 
-However, there may not be an even number of tests per attribute in a network policy, causing inflation
-to be less tolerable for some attributes. 
-If an attribute $a$ is tested $q_a$ times and appears in $k_a$
-supersets, there will be $q_a\cdot k_a$ match strings for that
-attribute. If we have a set of supersets $\SS = \{s_1, s_2, \dots, s_N\}$, we
-can decrease the amount of memory we will use by replacing any pair
-of sets $\{s_i, s_j\}$ in $\SS$ with their union $s_i\cup s_j$. If we do this,
-note that the memory used will decrease by $\sum_{a \in s_i\cap s_j}q_a$,
-because every attribute $a$ in the intersection of $s_i$ and $s_j$ will appear
-in one less superset, eliminating $q_a$ tests from memory. We can extend this
-observation to a simple greedy algorithm, which repeatedly finds a pair of
-supersets to merge which maximally decreases overall memory usage until any
-merging operation would case the maximum tag width to be exceeded. 
-
-
-Algorithm \ref{alg:memory_min} shows this simple greedy memory minimization
-algorithm in its entirety. The algorithm takes as input a superset list $\SS =
-\{s_1, s_2, \dots, s_N\}$, a tag width calculator $W()$, and a maximum tag width $W_{max}$. Based on the selected identifier type, the width calculator $W(\SS)$ returns $W_f$ or $W_v$, for which closed formulas are provided later in \S \ref{sec:identifiers}.
-
-We have not stated which superset list $\SS$ to use as an input to our
-algorithm. It suffices to begin with any list such that, for every attribute set
-$A_i$ in the list of sets we need to encode, there is some superset $s_j \in
-\SS$ such that $A_i \subseteq s_j$. An obvious choice for $\SS$ is to take the
-list of attribute sets we wish to reproduce as our initial superset list. Note
-that there may be many pairs of attribute sets $(A_i, A_j)$ such that $A_i
-\subseteq A_j$. There is no reason to keep $A_i$ in $S$ in this case, so we
-pre-process $\SS$ by removing any attribute set which is a subset of any other. 
