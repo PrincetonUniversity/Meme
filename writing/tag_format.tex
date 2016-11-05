@@ -9,19 +9,23 @@ computing the concise encoding.
 
 \subsection{Strawman: Bitmask Tags}
 
-We will now present a strawman tagging scheme which always achieves optimum switch memory usage by using wildcard matches.
+We now present a strawman tagging approach that always achieves optimal
+switch memory usage by using wildcard matches. The method proceeds as follows:
 If there are $N$ possible attributes to encode in a tag, construct a tag of length $N$: 
 the $i^{th}$ bit corresponds to the $i^{th}$ attribute. When the packet is classified
 and the tag is attached, the $i^{th}$ bit is set to 1 if the $i^{th}$ attribute
-is present for that flow, and 0 if it is not. As a result, if we wish to test for
-the presence of attribute $x$, we need only check that $x$'s bit is 1 in the
+is present for that flow, and 0 if it is not. As a result, testing for
+the presence of attribute $x$, requires only checking that $x$'s bit is 1 in the
 tag, rather than exact matching on every tag that contains
 $x$.
 
 This approach is a strawman because the tag is of width $N$, and $N$ can be quite large.
-Although we criticized flat tagging for using too much switch memory, 
-flat tagging only needed tag width logarithmic in the number FECs. We have just traded an extreme in memory
-usage for an extreme in tag width. It would be ideal to find some middle ground.
+Although flat tagging consumes too much switch memory as the number of
+FECs grows, 
+flat tagging only needed tag width logarithmic in the number FECs. In
+summary, we have traded an extreme in memory
+usage for an extreme in tag width. An ideal design would strike the
+right balance between these two extremes.
 In general, any tagging scheme must simultaneously consider three different metrics:
 
 \begin{enumerate}
@@ -85,13 +89,13 @@ attributes is large, a bitmask tag becomes quite large.
 %%%
 %%% Concise encoding example in the figure
 %%%
-Our more concise encoding identifies groups of attributes that
+The more concise encoding that we develop identifies groups of attributes that
 commonly appear together, and creates one shorter bitmask for each
-such group.  In the example in Figure~\ref{fig:masking}, attributes
+such group.  In Figure~\ref{fig:masking}, attributes
 $A$, $B$, and $C$ commonly appear together, as do $C$, $D$, and $E$,
 leading to two groups.  The right side of Figure~\ref{fig:masking}(b)
 shows how each attribute equivalence class can be encoded as a bitmask
-on $[A,B,C]$, $[C,D,E]$, or both.  To differentiate between the two
+on $[A,B,C]$, $[C,D,E]$, or both.  To distinguish the two
 groups, the tag can include a one-bit group identifier (\eg, a $0$
 for $[A,B,C]$ and a $1$ for $[C,D,E]$), as shown in
 Figure~\ref{fig:masking}(c).  The result is a four-bit identifier
@@ -105,19 +109,19 @@ The forwarding rules can match on attributes by considering both the
 group identifier and the associated bitmask.  For example, a switch
 could test for attribute $D$ by matching on (i) group $1$ and (ii) the
 $D$ bit in group $1$'s bitmask.  Thus, the rule would have a match of
-``$\textsc{1*1*}$".  However, some attributes appear in multiple groups, such
+``$\textsc{1*1*}$".  Naturally, however, some attributes appear in multiple groups, such
 as attribute $C$ in the example.  The switch can use two rules to test
 for $C$: (i) ``$\textsc{0**1}$'' for group $0$ and (ii) ``$\textsc{11**}$'' for group
-$1$.  Thus, our encoding scheme slightly increases the forwarding
-table size over the simple bitmask scheme, but only by one rule in
-this example.
+$1$.  Thus, the encoding algorithm slightly increases the forwarding
+table size over the simple bitmask approach (by only one rule in
+this example).
 
 \subsection{Computing Concise Encodings of Sets}
 \label{ssec:merge}
 %%%
 %%% Computing the initial groups
 %%%
-The tag and rule-table sizes depend on the quality of the encoding.  A
+The tag and rule-table sizes depend on the nature of the encoding.  A
 natural starting point is to have one group for each attribute
 equivalence class (\eg, $[A,B]$, $[A,B,C]$, $[C]$, $[C,D]$, and
 $[C,D,E]$), at the cost of a large group id.  A simple optimization is
@@ -125,8 +129,8 @@ to remove any group with attributes that are a \emph{subset} of
 another group (\eg, removing $[A,B]$ and $[C]$ that are subsets of
 $[A,B,C]$, and removing $[C,D]$ that is a subset of $[C,D,E]$).  In
 the simple example, this heuristic results in the two groups
-($[A,B,C]$ and $[C,D,E]$).  However, in larger examples, this
-heuristic could still result in too many groups. Instead, we use the
+($[A,B,C]$ and $[C,D,E]$).  In examples with more FECs, this
+heuristic could still create too many groups. Instead, the algorithm uses the
 set of groups ($\SS$) produced by the heuristic as an input to an
 algorithm for optimizing the selection of groups.
 
@@ -163,12 +167,12 @@ algorithm for optimizing the selection of groups.
 %%%
 %%% Benefits of merging groups
 %%%
-Our algorithm iteratively merges pairs of groups, to minimize the
+The encoding algorithm iteratively merges pairs of groups to minimize the
 rule-table size while staying within some limit $W_{max}$ on the tag
 size.  Suppose a switch has $q_a$ clauses that test whether attribute
 $a$ is true, and the attribute appears in $k_a$ groups.  Then, the
 switch would require $q_a \cdot k_a$ rules to test for that attribute.
-Merging two groups can reduce the number of rules, but possibly
+Merging two groups can reduce the number of rules but may
 increase the tag size depending on the number of attributes the two
 groups have in common.  Suppose $\SS = \{s_1, s_2, \dots, s_N\}$,
 where group $s_i$ is a subset of attributes.  Replacing any pair of

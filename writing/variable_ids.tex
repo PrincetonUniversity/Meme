@@ -149,7 +149,7 @@ W_{v}  = \left \lceil \log_2 \sum_{i = 1}^{N}{2^{\ell_i}} \right \rceil. \nonumb
 \end{property} 
 \bp A width of $W_{v}$ allows assigning an identifier of length $W_{v}
 - \ell_i$ to the $i$-th group. By Kraft's inequality the width $W_{v}$
-must satisfy
+must satisfy:
 \begin{equation} \label{eq1}
 \begin{split}
 1 &\ge \sum_{i = 1}^{N}{2^{-(W_{v}-\ell_i)}} = 2^{-W_{v}} \cdot \sum_{i = 1}^{N}{2^{\ell_i}}. \nonumber 
@@ -159,12 +159,11 @@ must satisfy
 \end{equation}
 Accordingly we have $2^{W_{v}}  \ge \sum_{i = 1}^{N}{2^{\ell_i}}$. Since $W_{v}$ is defined as the minimal possible width with that property, the result follows.
 \ep
-
+\noindent
 %In the general case, with fixed-length identifiers, given $X$ supersets of size $\ell_1, \ldots, \ell_X$ the required width is determined by the largest superset and equals 
 % $W_{f} = \left \lceil \log_2(X) \right \rceil + \max_{i \in [1,X]} \ell_i$. 
- 
-Since the fixed-length group identifier is a special case of the
-variable-length identifiers, then necessarily $W_{v} \le W_{f}$.
+The fixed-length group identifier is a special case of the
+variable-length identifiers, so $W_{v} \le W_{f}$.
 
 A selection of variable-length group identifiers satisfying Kraft's inequality can be described as a subset of leaves in a binary tree. 
 A path from the root node to a node corresponds to a binary string where visits of the left child or the right child of a node stand for bits of 0 and 1, respectively. 
