@@ -47,8 +47,8 @@ packets by writing and matching on flat labels in packet headers. MPLS can
   swapped out for a new tag. MPLS can extended to support segment routing~\cite{segmentrouting}, 
   by having each label represent a path segment, rather than a single hop. 
 While powerful, an issue with MPLS is that labels are often stacked, causing 
-packets to have variable length as they are forwarded. The Path Switching work~\cite{pathswitching} presents an alternate to MPLS for source routing, 
-but has the advantage of encoding forwarding information in a fixed amount 
+packets to have variable length as they are forwarded. The Path Switching work~\cite{pathswitching} presents an alternate to MPLS for source routing which
+has the advantage of encoding forwarding information in a fixed amount 
 of existing space in the packet headers. 
 
 \paragraph{Encoding sets concisely in Bloom filters.} A Bloom
