@@ -39,7 +39,7 @@ def parse_data_mb(fname):
 
     return data
 
-def plot_data_mb(data):
+def plot_data_mb(data, plot_name):
     legends = data.keys()
     legends.sort()
     x_labs = data[legends[0]].keys()
@@ -53,6 +53,8 @@ def plot_data_mb(data):
         y = [np.median(data[leg][x]) for x in x_labs]
         yerr = [np.std(data[leg][x]) for x in x_labs]
         print leg, y, yerr
+        if str(leg) == '40':
+            leg = str('40 Middle Boxes')
         pl.errorbar(x_labs, y, yerr=yerr, markerfacecolor=color_n[ctr],
                       color='k', ecolor='k', marker=markers[ctr], label= str(leg))
         ctr += 1
@@ -69,7 +71,6 @@ def plot_data_mb(data):
     pl.ylabel('Minimum Bits Required')
     ax.grid(True)
     plt.tight_layout()
-    plot_name = "service_chaining_minbits.pdf"
     pl.savefig(plot_name)
     pl.show()
 
@@ -101,8 +102,10 @@ def parse_data_cdf():
 
 if __name__ == '__main__':
     fname = 'ordered_widths_experiment_40_800.json'
-    #data = parse_data_mb(fname)
-    #plot_data(data)
+    #fname = 'unordered_widths_experiment.json'
+    plot_name = "service_chaining_minbits_ordered.eps"
+    #plot_name = "service_chaining_minbits_unordered.eps"
+    data = parse_data_mb(fname)
+    plot_data_mb(data, plot_name)
 
-    data = parse_data_cdf()
     #plot_data_cdf()
