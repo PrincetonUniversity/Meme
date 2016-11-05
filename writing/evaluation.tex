@@ -133,7 +133,9 @@ believe reordering of middleboxes to be rare.
 \includegraphics[width=\linewidth]{figures/service_chaining_minbits_ordered}
 \end{subfigure} 
 \end{minipage} 
-\caption{Minimum number of bits required by our encoding scheme to encode every service chain as the number of service chains increases. The four lines represent the tag sizes required when encoding chains across 10, 20, 30, and 40 distinct middleboxes. All paths generated with a $5\%$ chance of reordering.}
+\caption{Minimum number of bits required by our encoding scheme to
+  encode every service chain as the number of service chains increases.
+  All paths generated had a 0.05 probability of reordering.}
 \label{fig:chain_bits}
 \end{figure}
 
@@ -145,10 +147,19 @@ Figure \ref{fig:chain_bits} evaluates the minimum widths required by our encodin
 \includegraphics[width=\linewidth]{figures/attr_cdf}
 \end{subfigure} 
 \end{minipage} 
-\caption{Minimum number of bits required by our encoding scheme to encode every service chain as the number of service chains increases. The four lines represent the tag sizes required when encoding chains across 10, 20, 30, and 40 distinct middleboxes. All paths generated with a $5\%$ chance of reordering.}
+\caption{Number of forwarding table entiries required for tags of
+  different widths, over a distribution of paths with different sets of
+  attributes.}
 \label{fig:chain_rules}
 \end{figure}
 
-Figure \ref{fig:chain_rules} compares the number of rules required by our encoding scheme to the number of rules required by flat tags. Since our scheme uses less memory when the tag is permitted to be wider, we evaluate the memory usage for tag widths $[20,30,40]$. We observed that 20 bits was the minimum necessary for our tagging scheme on this dataset, as seen in Figure \ref{fig:chain_bits}, so we begin at that width. Flat tagging does not have any tuneable parameters for making a width-memory tradeoff, so it is only evaluated once.
+Figure \ref{fig:chain_rules} compares the number of rules required by
+our encoding scheme to the number of rules required by flat tags. Since
+our scheme uses less memory when the tag is permitted to be wider, we
+evaluate the memory usage for tag widths of 20, 30, and 40. We observed
+that 20 bits was the minimum necessary for our tagging scheme on this
+dataset, as seen in Figure \ref{fig:chain_bits}, so we begin at that
+width. Flat tagging does not have any tunable parameters for making a
+width-memory tradeoff, so it is only evaluated once. 
 
 The number of rules needed by our scheme is less than half that used by flat tagging in this application. While this is an improvement, we suspect the benefits will be much greater for real datasets, as there will be more redundancy in the paths for our encoding to exploit.
