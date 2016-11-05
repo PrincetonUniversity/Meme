@@ -37,6 +37,20 @@ encoding of sequences of attributes.  As such, the encoding algorithm we
 present can solve the problem introduced in Alpaca, but the reverse is
 not true.
 
+\paragraph{Forwarding with flat tags.}
+MPLS~\cite{mpls} is a well-established source-routing protocol for forwarding 
+packets by writing and matching on flat labels in packet headers. MPLS can
+ be used for tunneling unsupported protocols through relatively simple 
+ match-action switches. However, MPLS tags only instruct the packet 
+ how to reach the next node in a path by default. To use MPLS across 
+ multiple hops in succession, MPLS performs label swaps, where the tag is
+  swapped out for a new tag. MPLS can extended to support segment routing~\cite{segmentrouting}, 
+  by having each label represent a path segment, rather than a single hop. 
+While powerful, an issue with MPLS is that labels are often stacked, causing 
+packets to have variable length as they are forwarded. The Path Switching work~\cite{pathswitching} presents an alternate to MPLS for source routing, 
+but has the advantage of encoding forwarding information in a fixed amount 
+of existing space in the packet headers. 
+
 \paragraph{Encoding sets concisely in Bloom filters.} A Bloom
 filter~\cite{Bloom} is a common data structure that represents a set of
 items with a fixed amount of memory. A Bloom filter supports membership
