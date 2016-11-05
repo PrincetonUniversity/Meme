@@ -74,10 +74,7 @@ complex forwarding policies.
 \label{fig:rules}
 \end{figure}
 
-Figure \ref{fig:rules} shows the number of rules required by our encoding scheme after running the greedy algorithm up to the limit of 37 bits. In this experiment, we began with a baseline forwarding policy of 1000 rules, with each rule querying a random attribute.
-
-forwarding to a participant chosen uniformly at random from a random active set. The experiment was repeated 500 times for each subset size, and the number of rules required after applying our encoding was plotted. When the active set is of size 37 or fewer, all participants can fit into a single mask, resulting in zero rule inflation. For active sets of size greater than 37, we can see that the inflation factor is at most 2 in the average case and 3 in the worst case for all active sets. 
-
+Figure~\ref{fig:rules} shows the number of rules required by our encoding scheme after running the greedy algorithm up to the limit of 37 bits. In this experiment, we began with a baseline forwarding policy of 1000 rules, with each rule forwarding to a next-hop chosen uniformly at random from the set of all next-hops. The policy was then augmented with our tagging scheme's attribute testing strings.
 
 \begin{figure}[t!] 
 \begin{minipage}{1\linewidth}
