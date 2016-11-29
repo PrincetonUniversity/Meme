@@ -7,7 +7,7 @@ def printAllSupersets(supersets, rcode):
     for (i, superset) in enumerate(supersets):
         print "Set %d" %i, str(rcode.bitString(superset))
 
-"""
+
 print "----Running test case 1----"
 sets1 = [[1,2,3,4,5]]
 rcode = RCode(sets1, 5)
@@ -72,7 +72,7 @@ print "After addition 2: ", json.dumps(rcode.allSupersets())
 rcode.addSet([15,16,17])
 print "After addition 3: ", json.dumps(rcode.allSupersets())
 
-"""
+
 
 print "----Running test case 5----"
 sets = [

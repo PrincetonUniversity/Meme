@@ -74,6 +74,9 @@ class RCode:
         self.elementWeights.update(newWeights)
 
     def indexOfSuperset(self, superset):
+        """ If the argument superset appears in the list of supersets, return the index.
+            Returns -1 if not present. 
+        """
         for (i, superset2) in enumerate(self.supersets):
             if set(superset) == set(superset2):
                 return i
@@ -123,6 +126,8 @@ class RCode:
 
 
     def memoryRequired(self):
+        """ How many match strings will there be in the dataplane total?
+        """
         if not self.codeBuilt:
             self.buildCode()
         return sum(sum(self.elementWeights[element] for element in superset) for superset in self.supersets)
@@ -248,6 +253,8 @@ class RCode:
 
 
     def kraftsInequality(self, base, depths):
+        """ Helper method. Computes some messed up version of kraft's inequality.
+        """
         return sum(2**(base - depth) for depth in depths)
 
 
@@ -316,6 +323,9 @@ class RCode:
 
 
     def _bestSetToExpandUnordered(self, newSet):
+        """ In the unordered case, given a new set we need to reproduce, returns the index
+            of the superset whos expansion will have minimal impact on memory usage.
+        """
         minIncrease = float("inf")
         bestIndex = -1
         for (i, superset) in enumerate(self.supersets):
@@ -332,6 +342,9 @@ class RCode:
 
 
     def _bestSetToExpandOrdered(self, newSet):
+        """ In the ordered case, given a new set we need to reproduce, returns the index
+            of the superset whos expansion will have minimal impact on memory usage.
+        """
         minIncrease = float("inf")
         bestIndex = -1
         for (i, superset) in enumerate(self.supersets):

@@ -450,10 +450,9 @@ public class TotalOrderBuilder {
     }
 
 
-
-    public static void main(String[] args) {
+    public static void processFileOfFiles(String filefilename) {
         String dataDir = "../data/";
-        In filelist = new In(args[0]);
+        In filelist = new In(filefilename);
         while(!filelist.isEmpty()) {
             String filename = filelist.readLine();
             System.out.println("Processing file " + filename);
@@ -464,5 +463,28 @@ public class TotalOrderBuilder {
 
             processFile(dataDir + filename, dataDir + outname + "_ordered" + extension);
         }
+    }
+
+
+
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            StdOut.println("Usage: TotalOrderBuilder <paths_filename>");
+            throw new IllegalArgumentException("Wrong number of arguments.");
+        }
+        String[][] paths = readListsFromJSON(args[0]);
+        String[] orderedPaths = orderedListStrings(paths);
+        StdOut.print("[\n");
+
+        for (int i = 0; i < paths.length; i++) {
+            if (i > 0)
+                StdOut.print(",\n");
+
+
+            StdOut.print(arrayToString(paths[i]));
+            StdOut.print(", ");
+            StdOut.print(orderedPaths[i]);
+        }
+        StdOut.print("\n]");
     }
 }

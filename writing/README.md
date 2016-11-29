@@ -1,4 +1,0 @@
-dpal
-========
-
-Flowspace Authorization Project
