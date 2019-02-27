@@ -35,7 +35,7 @@ class RCode:
         """ Placeholder logger.
         """
         if LOGGING:
-            print ' '.join(str(arg) for arg in args)
+            print(' '.join(str(arg) for arg in args))
 
 
     def __init__(self, supersets, maxWidth, isOrdered = False, elementOrdering={}, elementWeights={}):
