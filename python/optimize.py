@@ -239,10 +239,10 @@ def minimizeRulesGreedy(supersets, ruleCounts, maxBits):
                         b.sort()
                         c.sort()
                         d.sort()
-                        print part, "not in", a
-                        print "Intersection:", b
-                        print "Set 1:", c
-                        print "Set 2:", d
+                        print(part, "not in", a)
+                        print("Intersection:", b)
+                        print("Set 1:", c)
+                        print("Set 2:", d)
                     impact += ruleCounts[part]
 
                 if (impact > bestImpact):
