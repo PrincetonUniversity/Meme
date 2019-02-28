@@ -38,7 +38,7 @@ class RCode:
             print(' '.join(str(arg) for arg in args))
 
 
-    def __init__(self, supersets, maxWidth, isOrdered = False, elementOrdering={}, elementWeights={}):
+    def __init__(self, supersets, maxWidth=None, isOrdered=False, elementOrdering={}, elementWeights={}):
         """ Constructor. Ensures the input adheres to some assumptions, and corrects it if it does not.
         """
         self.supersets = [list(superset) for superset in removeSubsets(supersets)]
@@ -48,6 +48,9 @@ class RCode:
         # what elements appear across all the supersets?
         allElements = set([])
         [ allElements.update(superset) for superset in self.supersets ]
+
+        if self.maxWidth is None:
+            self.maxWidth = len(allElements)
 
         if isOrdered:
             # what elements were we given an ordering for?
@@ -97,14 +100,16 @@ class RCode:
         """ Returns a dictionary where keys are codewords and values are supersets.
             Cool for debugging.
         """
-        all = {}
+        if not self.codeBuilt:
+            self.buildCode()
+        allSets = {}
         for (i,superset) in enumerate(self.supersets):
             if self.isOrdered:
-                all[self.codes[i]] = self._orderSuperset(superset)
+                allSets[self.codes[i]] = self._orderSuperset(superset)
             else:
-                all[self.codes[i]] = superset
+                allSets[self.codes[i]] = superset
 
-        return all
+        return allSets
 
 
     def optimizeWidth(self):
@@ -115,6 +120,11 @@ class RCode:
         supersets = minimizeVariableWidthGreedy(self.supersets)
         self.supersets = [list(superset) for superset in supersets]
 
+
+    def removePadding(self):
+        """ Set the maximum tag width to be the minimum possible.
+        """
+        self.maxWidth = self.widthRequired()
 
 
     def mergeOverlaps(self):
@@ -278,7 +288,7 @@ class RCode:
 
         minWidth = bitsRequiredVariableID(self.supersets)
         # indices of supersets that have no codes yet
-        uncodedIndices = range(len(self.supersets))
+        uncodedIndices = [i for i in range(len(self.supersets))]
         # sort it in descending order of available code widths
         uncodedIndices.sort(key = lambda index: minWidth - len(self.supersets[index]), reverse = True)
         codeLens = [minWidth - len(self.supersets[i]) for i in uncodedIndices]
@@ -286,15 +296,17 @@ class RCode:
         freeCodes = ['']
         currDepth = 0
 
+        # unassigned codewords are kept in an ordered list, and deleted from the end when assigned
+        # the unassigned codeword set will always be continuous
         while len(uncodedIndices) > 0:
-            if len(freeCodes) == len(uncodedIndices)*2:
-                freeCodes = [freeCodes[i][:-1] for i in range(len(freeCodes)/2)]
+            if len(freeCodes) >= len(uncodedIndices)*2:
+                freeCodes = [freeCodes[i][:-1] for i in range(0, len(freeCodes), 2)]
             elif codeLens[-1] == currDepth:
                 newCode = freeCodes.pop()
                 index = uncodedIndices.pop()
                 codeLens.pop()
                 self.codes[index] = newCode
-            elif self.kraftsInequality(currDepth, codeLens) < len(freeCodes)/2.0:
+            elif self.kraftsInequality(currDepth, codeLens) <= len(freeCodes)/2.0:
                 currDepth += 1
             else:
                 nextFreeCodes = []
