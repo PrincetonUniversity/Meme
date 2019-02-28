@@ -1,6 +1,69 @@
 import math
 from analyze import bitsRequiredFixedID, bitsRequiredVariableID
 
+
+class UnionFind:
+    nodeOwners = {}
+
+    def __init__(self, nodes):
+        # initially, each node is it's own owner
+        self.nodeOwners = {node:node for node in nodes}
+
+    def find(self, node):
+        while(node != self.nodeOwners[node]):
+            node = self.nodeOwners[node]
+        return node
+
+    def union(self, node1, node2):
+        owner1 = self.find(node1)
+        owner2 = self.find(node2)
+
+        # make node1's root own node2
+        self.nodeOwners[owner2] = owner1
+        
+        
+    def connectedComponents(self):
+        CCs = {}
+        for node in self.nodeOwners:
+            root = self.find(node)
+            if root not in CCs:
+                CCs[root] = [node]
+            else:
+                CCs[root].append(node)
+                
+        return list(CCs.values())            
+
+
+def mergeIntersectingSets(supersets):
+    toSetID   = lambda x : ("Set", x)
+    fromSetID = lambda x : x[1]
+    isSetID   = lambda x : (type(x) is tuple) and (x[0] == "Set")
+    
+    allItems = set()
+    for s in supersets:
+        allItems.update(s)
+    
+    UF = UnionFind([toSetID(i) for i in range(len(supersets))] + list(allItems))
+    
+    for i, s in enumerate(supersets):
+        sid = toSetID(i)
+        for item in s:
+            UF.union(sid, item)
+            
+    CCs = UF.connectedComponents()
+    
+    overlappingSets = [[fromSetID(t) for t in cc if isSetID(t)] for cc in CCs]
+    
+    mergedSets = []
+    for overlapGroup in overlappingSets:
+        mergedSet = set()
+        for setIndex in overlapGroup:
+            mergedSet.update(supersets[setIndex])
+        mergedSets.append(mergedSet)
+    return mergedSets
+
+
+
 def removeSubsets(supersets):
     """ Removes all subsets from a list of (super)sets.
     """

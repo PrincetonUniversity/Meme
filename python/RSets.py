@@ -1,4 +1,4 @@
-from optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy
+from optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets
 from analyze import getSupersetIndex, bitsRequiredVariableID
 import math
 
@@ -113,6 +113,17 @@ class RCode:
         """
         self.codeBuilt = False
         supersets = minimizeVariableWidthGreedy(self.supersets)
+        self.supersets = [list(superset) for superset in supersets]
+
+
+
+    def mergeOverlaps(self):
+        """ If overlapping sets are unacceptable for an application, this will merge 
+            any supersets that have a nonempty intersection.
+            WARNING: wipes out an existing code!
+        """
+        self.codeBuilt = False
+        supersets = mergeIntersectingSets(self.supersets)
         self.supersets = [list(superset) for superset in supersets]
 
 
