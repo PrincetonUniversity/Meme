@@ -78,7 +78,7 @@ class RCode:
 
     def indexOfSuperset(self, superset):
         """ If the argument superset appears in the list of supersets, return the index.
-            Returns -1 if not present. 
+            Returns -1 if not present.
         """
         for (i, superset2) in enumerate(self.supersets):
             if set(superset) == set(superset2):
@@ -128,7 +128,7 @@ class RCode:
 
 
     def mergeOverlaps(self):
-        """ If overlapping sets are unacceptable for an application, this will merge 
+        """ If overlapping sets are unacceptable for an application, this will merge
             any supersets that have a nonempty intersection.
             WARNING: wipes out an existing code!
         """
@@ -306,7 +306,7 @@ class RCode:
                 index = uncodedIndices.pop()
                 codeLens.pop()
                 self.codes[index] = newCode
-            elif self.kraftsInequality(currDepth, codeLens) <= len(freeCodes)/2.0:
+            elif self.kraftsInequality(currDepth, codeLens) < len(freeCodes)/2.0:
                 currDepth += 1
             else:
                 nextFreeCodes = []
