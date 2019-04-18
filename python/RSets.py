@@ -110,16 +110,15 @@ class RCode:
 
     def __init__(self, elementSets, maxWidth=None,
                     elementOrdering=None, elementWeights=None):
-        """ Constructor. Ensures the input adheres to some assumptions, and corrects it if it does not.
+        """ elementSets preferably will have no duplicate sets.
+            Duplicate sets do not impact correctness, only efficiency.
         """
         # what elements appear across all the supersets?
         self.elements = set([])
         for es in elementSets:
             self.elements.update(es)
 
-        # remove duplicate element sets, store the result as 'originals'
-        deduplicatedSets = set([frozenset(es) for es in elementSets])
-        self.originalSets = list(deduplicatedSets)
+        self.originalSets = [frozenset(es) for es in elementSets]
         # self.originalSets = bidict({i:s for i,s in enumerate(deduplicatedSets)})
 
 
@@ -158,17 +157,17 @@ class RCode:
         return occurrences
 
 
-    def columns(self, elements):
-        """ Returns only the columns of the matrix that are specified by 'elements'.
+
+    def extract(self, elements):
+        """ Remove the given elements'columns from the matrix, and return
+            the removed columns as a submatrix
         """
         elements = set(elements)
-        return [elements.intersection(row) for row in self.originalSets]
-
-    def extract(self, *elements):
+        submatrix = [elements.intersection(row) for row in self.originalSets]
         for superset in self.supersets:
             superset.difference_update(elements)
-        self.extractions.update(elements)
-
+        self.elements.difference_update(elements)
+        return submatrix
 
 
     def removeSubsets(self):

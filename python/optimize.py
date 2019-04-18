@@ -107,7 +107,6 @@ def greedyToEndAndRevert(supersets, initialCost, mergeValueFunc, costUpdateFunc)
         supersets.pop()
 
     while len(supersets) > 1:
-        print(supersets)
         bestMergeValue = None
         besti = -1
         bestj = -1
@@ -118,7 +117,6 @@ def greedyToEndAndRevert(supersets, initialCost, mergeValueFunc, costUpdateFunc)
                 besti = i
                 bestj = j
 
-        print(besti, bestj)
         currCost = costUpdateFunc(supersets[besti], supersets[bestj], currCost, supersets)
         _merge(besti, bestj)
         stepsTaken.append((besti, bestj))
