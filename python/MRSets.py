@@ -9,29 +9,37 @@ class MRCode(object):
 
 
     def __init__(self, elementSets):
+
+        # we start off with a single code
         rcode = RCode(elementSets)
         rcode.optimizeWidth()
+        self.rcodes = [rcode]
 
         self.elements = rcode.elements.copy()
 
-        self.rcodes = [rcode]
 
 
     def spawnSubCode(self):
+        # grab the 'latest' code
         rcode = self.rcodes[-1]
+
+        # find any elements in the code that occur more than twice
         occurrences = rcode.elementOccurrences()
         expensiveElements = [elem for elem in rcode.elements if occurrences[elem] > 2]
         if len(expensiveElements) == 0: return
 
+        # remove them from the code, and then re-optimize that code
         submatrix = rcode.extract(expensiveElements)
         rcode.removeSubsets()
         rcode.optimizeWidth()
         rcode.removePadding()
 
+        # place the removed elements into a new code
         newCode = RCode(submatrix)
         newCode.optimizeWidth()
         newCode.removePadding()
 
+        # add the new code to the list of codes
         self.rcodes.append(newCode)
 
     def tagWidth(self):
@@ -40,6 +48,9 @@ class MRCode(object):
 
 
     def tagString(self, elements, decorated=False):
+        """ Given a set of elements, returns a string which represents
+            that set in compressed form.
+        """
         elements = set(elements)
         subtags = []
         for code in self.rcodes:
@@ -51,6 +62,10 @@ class MRCode(object):
 
 
     def allMatchStrings(self, elements):
+        """ For every element in elements, return a list of of ternary strings which,
+            when compared to a compressed tag, will determine if the respective
+            element is present in the tag or not.
+        """
         padChar = '*'
         totalWidth = self.tagWidth()
         lPaddingLen = 0
