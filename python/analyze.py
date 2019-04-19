@@ -32,7 +32,8 @@ def bitsRequiredVariableID(supersets):
         Assumes optimal variable-width superset identifiers.
     """
     kraftSum = sum(2**len(superset) for superset in supersets)
-    return math.ceil(math.log(kraftSum, 2.0))
+    # print("Before ceiling, width: ",math.log(kraftSum, 2.0) + 0.5)
+    return math.ceil(math.log(kraftSum, 2.0) + 0.5)
 
 
 def rulesRequired(supersets, ruleCounts):

@@ -1,6 +1,7 @@
 from optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets
 from analyze import getSupersetIndex, bitsRequiredVariableID
 import math
+import numpy as np
 
 
 LOGGING = "Sure why not"
@@ -45,7 +46,13 @@ class RCode:
         self.maxWidth = maxWidth
         self.isOrdered = isOrdered
 
-        # what elements appear across all the supersets?
+        #initialize all instance variables
+        self.elementOrdering = {}
+        self.codes = []
+        self.codeBuilt = False
+        self.freeCodes = []
+
+        # what elements` appear across all the supersets?
         allElements = set([])
         [ allElements.update(superset) for superset in self.supersets ]
 
@@ -132,10 +139,10 @@ class RCode:
             any supersets that have a nonempty intersection.
             WARNING: wipes out an existing code!
         """
+        # print("Before merging", self.supersets)
         self.codeBuilt = False
         supersets = mergeIntersectingSets(self.supersets)
         self.supersets = [list(superset) for superset in supersets]
-
 
     def optimizeMemory(self, padding = 0):
         """ Attempts to minimize the amount of dataplane memory this encoding will take.
@@ -276,12 +283,14 @@ class RCode:
     def kraftsInequality(self, base, depths):
         """ Helper method. Computes some messed up version of kraft's inequality.
         """
+
         return sum(2**(base - depth) for depth in depths)
 
 
     def buildCode(self):
         """ Rebuilds all identifiers. Sets codeBuilt to True.
         """
+
         self.logger("Building encoding... ")
         self.supersets = [list(superset) for superset in removeSubsets(self.supersets)]
         self.codes = [""] * len(self.supersets)
@@ -296,19 +305,31 @@ class RCode:
         freeCodes = ['']
         currDepth = 0
 
+        # print("After merging, sets ",self.supersets)
+        # print("Before code, superset lengths: ",[len(self.supersets[i]) for i in uncodedIndices])
+        # print("Minimum width: ", minWidth)
+        # print(self.kraftsInequality(currDepth, codeLens), len(freeCodes), len(freeCodes)/2.0)
+
+
+
         # unassigned codewords are kept in an ordered list, and deleted from the end when assigned
         # the unassigned codeword set will always be continuous
         while len(uncodedIndices) > 0:
+            # print(self.kraftsInequality(currDepth, codeLens), len(freeCodes), len(freeCodes)/2.0)
             if len(freeCodes) >= len(uncodedIndices)*2:
+                # print("HI1")
                 freeCodes = [freeCodes[i][:-1] for i in range(0, len(freeCodes), 2)]
             elif codeLens[-1] == currDepth:
+                # print(codeLens[-1], "HI2")
                 newCode = freeCodes.pop()
                 index = uncodedIndices.pop()
                 codeLens.pop()
                 self.codes[index] = newCode
-            elif self.kraftsInequality(currDepth, codeLens) <= len(freeCodes)/2.0:
+            elif self.kraftsInequality(currDepth, codeLens) < len(freeCodes)/2.0:
+                # print("HI3")
                 currDepth += 1
             else:
+                # print("HI4")
                 nextFreeCodes = []
                 for freeCode in freeCodes:
                     nextFreeCodes.extend([freeCode + '0', freeCode + '1'])
@@ -325,7 +346,7 @@ class RCode:
 
         self.freeCodes = freeCodes
         self.codeBuilt = True
-        self.logger("Done building encoding.")
+        self.logger("Done building encoding.\n")
 
 
     def _bestCodewordToSplit(self, newSet):
