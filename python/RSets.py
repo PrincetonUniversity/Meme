@@ -1,10 +1,74 @@
 from optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets
 from analyze import getSupersetIndex, bitsRequiredVariableID
 import math
-import numpy as np
+from bidict import bidict
+from collections import deque as queue
 
+from typing import List,Set,Dict
 
 LOGGING = "Sure why not"
+
+class SuperSet(set):
+    codeword : str = None
+    rowIDs : List[int] = None # the original matrix rows that were merged to produce this superset
+    absolutes : set = None # the items that appeared in every row that was merged to produce this superset
+
+    def __init__(self, elements, firstRowID=None):
+        self.absolutes = set(elements)
+        if firstRowID != None:
+            self.rowIDs = [firstRowID]
+        else:
+            self.rowIDs = []
+        return super().__init__(elements)
+
+    def update(self, other):
+        if type(other) == type(self):
+            self.absolutes.intersection_update(other.absolutes)
+            self.rowIDs.extend(other.rowIDs)
+        else:
+            self.absolutes.intersection_update(other)
+        return super().update(other)
+
+    def remove(self, elem):
+        self.absolutes.discard(elem)
+        return super().remove(elem)
+
+    def discard(self, elem):
+        self.absolutes.discard(elem)
+        return super().discard(elem)
+
+    def difference_update(self, elements):
+        self.absolutes.difference_update(elements)
+        return super().difference_update(elements)
+
+    def copy(self):
+        other = SuperSet([i for i in self])
+        other.rowIDs = self.rowIDs.copy()
+        other.absolutes = self.absolutes.copy()
+        return other
+
+    """
+    def merge(self, other):
+        self.absolutes.intersection_update(other.absolutes)
+        self.elements.update(other.elements)
+    def issubset(self, other):
+        if type(other) is set:
+            return other.issubset(self.elements)
+        else:
+            return other.elements.issubset(self.elements)
+    """
+    ###
+
+
+"""
+rows = []
+active_rows = []
+deactivated_rows = []
+elem2active = {}
+"""
+
+
+
 
 
 class RCode:
@@ -19,14 +83,16 @@ class RCode:
         isOrdered is a boolean stating if we are encoding an ordered or unordered universe of elements.
         freeCodes is a list of binary strings.
     """
-    supersets = []
-    elementOrdering = {}
-    codes = []
-    maxWidth = 0
-    elementWeights = {}
-    codeBuilt = False
-    isOrdered = False
-    freeCodes = []
+    originalSets    : List["frozenset"] = None
+    elements        : Set = None    # all elements in the matrix
+    supersets       : List["SuperSet"] = None
+    elementOrdering : Dict = None
+    maxWidth        : int  = 0
+    elementWeights  : Dict = None
+    codeBuilt       : bool = False
+    isOrdered       : bool = False
+    freeCodes       : List[str] = None
+    extractions     : Set = None # elements that were removed from the input matrix
 
 
     # pep8 can go suck it
@@ -39,69 +105,99 @@ class RCode:
             print(' '.join(str(arg) for arg in args))
 
 
-    def __init__(self, supersets, maxWidth=None, isOrdered=False, elementOrdering={}, elementWeights={}):
-        """ Constructor. Ensures the input adheres to some assumptions, and corrects it if it does not.
+    def __init__(self, elementSets, maxWidth=None,
+                    elementOrdering=None, elementWeights=None):
+        """ elementSets preferably will have no duplicate sets.
+            Duplicate sets do not impact correctness, only efficiency.
         """
-        self.supersets = [list(superset) for superset in removeSubsets(supersets)]
+        # what elements appear across all the supersets?
+        self.elements = set([])
+        for es in elementSets:
+            self.elements.update(es)
+
+        self.originalSets = [frozenset(es) for es in elementSets]
+        # self.originalSets = bidict({i:s for i,s in enumerate(deduplicatedSets)})
+
+
+        self.supersets = [SuperSet(elementSet, i) for (i,elementSet) in enumerate(self.originalSets)]
+        self.removeSubsets()
+
         self.maxWidth = maxWidth
-        self.isOrdered = isOrdered
-
-        #initialize all instance variables
-        self.elementOrdering = {}
-        self.codes = []
-        self.codeBuilt = False
-        self.freeCodes = []
-
-        # what elements` appear across all the supersets?
-        allElements = set([])
-        [ allElements.update(superset) for superset in self.supersets ]
-
         if self.maxWidth is None:
-            self.maxWidth = len(allElements)
+            # assume the smallest possible max width if none given
+            self.maxWidth = self.minimumWidth()
 
-        if isOrdered:
-            # what elements were we given an ordering for?
-            orderedElements = set(elementOrdering.keys())
-            maxIndex = 0 if len(elementOrdering) == 0 else max(index for index in elementOrdering.keys())
 
-            # generate an ordering for any elements we weren't given an order for (could be none)
-            unorderedElements = allElements.difference(orderedElements)
-            newOrdering = {element : maxIndex + 1 + i for (i,element) in enumerate(unorderedElements)}
+        # ordering
+        if elementOrdering is not None:
+            self.isOrdered = True
+            if len(self.elements.difference(elementOrdering.keys())) > 0:
+                raise Exception("Ordered RCode was given an incomplete ordering!")
+            self.elementOrdering = dict(elementOrdering)
 
-            # add the ordering we generated to the ordering we were given
-            self.elementOrdering = elementOrdering.copy()
-            self.elementOrdering.update(newOrdering)
+        # weighting
+        if elementWeights is not None:
+            self.elementWeights = elementWeights.copy()
+            if len(self.elements.difference(elementWeights.keys())) > 0:
+                raise Exception("Weighted RCode was given an incomplete weighting!")
+        else:
+            self.elementWeights = {elem:1 for elem in self.elements}
 
-        # what elements were we given weights for?
-        weightedElements = set(elementWeights.keys())
 
-        # generate default weights for all unweighted elements
-        unweightedElements = allElements.difference(weightedElements)
-        newWeights = {element : 1 for element in unweightedElements}
-
-        # add the weights we generated to the weights we were given
-        self.elementWeights = elementWeights.copy()
-        self.elementWeights.update(newWeights)
-
-    def indexOfSuperset(self, superset):
-        """ If the argument superset appears in the list of supersets, return the index.
-            Returns -1 if not present. 
+    def elementOccurrences(self):
+        """ Returns a dictionary mapping every element to how many supersets it occurs in.
         """
-        for (i, superset2) in enumerate(self.supersets):
-            if set(superset) == set(superset2):
-                return i
-        return -1
+        occurrences = dict({elem : 0 for elem in self.elements})
+        for superset in self.supersets:
+            for elem in superset:
+                occurrences[elem] += 1
+        return occurrences
+
+
+
+    def extract(self, elements):
+        """ Remove the given elements'columns from the matrix, and return
+            the removed columns as a submatrix
+        """
+        elements = set(elements)
+        submatrix = [elements.intersection(row) for row in self.originalSets]
+        for superset in self.supersets:
+            superset.difference_update(elements)
+        self.elements.difference_update(elements)
+        return submatrix
+
+
+    def removeSubsets(self):
+        """ Removes all subsets from self.supersets
+        """
+        unsieved_supersets = self.supersets
+        unsieved_supersets.sort(key=len, reverse=True)
+        self.supersets = []
+        i = 0
+        while len(unsieved_supersets) > 0:
+            sieve = unsieved_supersets[0] # the longest set is certainly not a subset
+            self.supersets.append(sieve) # add the longest set to the final answer
+            sieved_supersets = []
+
+            for unsieved in unsieved_supersets[1:]:
+                if not unsieved.issubset(sieve):
+                    sieved_supersets.append(unsieved)
+                else:
+                    sieve.update(unsieved)
+                    # reclaim the codeword if it exists
+                    if self.codeBuilt:
+                        if unsieved.codeword != None:
+                            self.freeCodes.append(unsieved.codeword)
+
+            unsieved_supersets = sieved_supersets
+
 
     def allMatchStrings(self):
         """ Returns every match string in the encoding. If the elements are [1,2,3],
             the return value will something look like {1:["0*1*"], 2:["0**1", "1*1*"], 3:["1**1"]}.
         """
-        allElements = self.elementWeights.keys()
-        allStrings = {}
-        for element in allElements:
-            allStrings[element] = self.matchStrings(element)
+        return {element : self.matchStrings(element) for element in self.elements}
 
-        return allStrings
 
     def allSupersets(self):
         """ Returns a dictionary where keys are codewords and values are supersets.
@@ -124,25 +220,27 @@ class RCode:
             WARNING: wipes out an existing code!
         """
         self.codeBuilt = False
-        supersets = minimizeVariableWidthGreedy(self.supersets)
-        self.supersets = [list(superset) for superset in supersets]
+        self.supersets = minimizeVariableWidthGreedy(self.supersets)
 
 
     def removePadding(self):
         """ Set the maximum tag width to be the minimum possible.
         """
-        self.maxWidth = self.widthRequired()
+        if self.codeBuilt:
+            self.maxWidth = self.minimumWidth()
+        else:
+            self.maxWidth = self.widthUsed()
 
 
     def mergeOverlaps(self):
-        """ If overlapping sets are unacceptable for an application, this will merge 
+        """ If overlapping sets are unacceptable for an application, this will merge
             any supersets that have a nonempty intersection.
             WARNING: wipes out an existing code!
         """
-        # print("Before merging", self.supersets)
         self.codeBuilt = False
         supersets = mergeIntersectingSets(self.supersets)
         self.supersets = [list(superset) for superset in supersets]
+
 
     def optimizeMemory(self, padding = 0):
         """ Attempts to minimize the amount of dataplane memory this encoding will take.
@@ -174,12 +272,16 @@ class RCode:
         return memCounts
 
 
-    def widthRequired(self):
+    def minimumWidth(self):
+        return bitsRequiredVariableID(self.supersets)
+
+
+    def widthUsed(self):
         """ Returns the maximum width of any tag (if there was no padding)
         """
         if not self.codeBuilt:
             self.buildCode()
-        return max(len(self.codes[i]) + len(self.supersets[i]) for i in range(len(self.supersets)))
+        return max(len(superset.codeword) + len(superset) for superset in self.supersets)
 
 
     def _orderSuperset(self, superset):
@@ -199,11 +301,11 @@ class RCode:
             self.buildCode()
 
         strings = []
-        for (i, superset) in enumerate(self.supersets):
+        for superset in self.supersets:
             if element not in superset:
                 continue
 
-            identifier = self.codes[i]
+            identifier = superset.codeword
             mask = ['*'] * len(superset)
 
             orderedSS = self._orderSuperset(superset)
@@ -222,131 +324,82 @@ class RCode:
         return strings
 
 
-    def allSupersetStrings(self, superset):
-        """ Given a superset, return every element match string associated with that superset.
-            Example: for a superset [1,2] with codeword "01", this function will return:
-            {1:["011*"], 2:["01*1"]}
+    def allMatchStrings(self, elements):
+        """ Given a set of elements, return a dictionary which maps elements to lists of wildcard strings.
+            The wildcard strings determine, when matched against a tag, if the corresponding  element is present in a tag.
         """
         if not self.codeBuilt:
             self.buildCode()
-        superset = list(superset)
-        if self.isOrdered:
-            superset = self._orderSuperset(superset)
-
-        index = self.indexOfSuperset(superset)
-        if index == -1:
-            self.logger("Cannot generate relevant match strings for a superset cause we can't find it:", superset)
-            return {}
+        return {elem:self.matchStrings(elem) for elem in elements}
 
 
-        strings = {}
-
-        identifier = self.codes[index]
-        for (i, element) in enumerate(superset):
-            mask = ['*'] * len(superset)
-            mask[i] = '1'
-            mask = ''.join(mask)
-
-            paddingLen = self.maxWidth - (len(identifier) + len(mask))
-            padding = '*' * paddingLen
-
-            matchString = identifier + padding + mask
-            strings.update({element:[matchString]})
-
-        return strings
-
-
-
-    def bitString(self, elements):
-        """ Given an element set, returns a binary string to be used as a packet tag.
+    def getSupersetIndex(self, elements):
+        """ Return the index of the first superset that contains all the given elements.
+            Returns -1 if no superset exists.
         """
-        ssIndex = getSupersetIndex(elements, self.supersets)
+        for i, superset in enumerate(self.supersets):
+            if superset.issuperset(elements):
+                return i
+        return -1
+
+
+    def tagString(self, elements, decorated=False):
+        """ Given an element set, returns a binary string to be used as a packet tag.
+            If decorated, padding bits are replaced with *, and the identifier and mask are
+            separated by a - character.
+        """
+        subset = set(elements)
+        ssIndex = self.getSupersetIndex(subset)
         if ssIndex == -1:
             self.logger("Asking for a tag for an unseen element set: ", elements)
             return ""
         if not self.codeBuilt:
             self.buildCode()
 
-        subset = set(elements)
         superset = self.supersets[ssIndex]
 
-        identifier = self.codes[ssIndex]
+        identifier = superset.codeword
 
         mask = ''.join("1" if element in subset else "0" for element in superset)
 
         paddingLen = self.maxWidth - ((len(identifier) + len(mask)))
-        padding = '0' * paddingLen
+        padding = ('*' if decorated else '0') * paddingLen
 
-        return identifier + padding + mask
+        separator = '-' if decorated else ''
 
-
-    def kraftsInequality(self, base, depths):
-        """ Helper method. Computes some messed up version of kraft's inequality.
-        """
-
-        return sum(2**(base - depth) for depth in depths)
+        return identifier + separator + padding + mask
 
 
     def buildCode(self):
         """ Rebuilds all identifiers. Sets codeBuilt to True.
         """
+        self.logger("Building codewords... ")
 
-        self.logger("Building encoding... ")
-        self.supersets = [list(superset) for superset in removeSubsets(self.supersets)]
-        self.codes = [""] * len(self.supersets)
-
-        minWidth = bitsRequiredVariableID(self.supersets)
+        minWidth = self.minimumWidth()
         # indices of supersets that have no codes yet
         uncodedIndices = [i for i in range(len(self.supersets))]
         # sort it in descending order of available code widths
         uncodedIndices.sort(key = lambda index: minWidth - len(self.supersets[index]), reverse = True)
         codeLens = [minWidth - len(self.supersets[i]) for i in uncodedIndices]
 
-        freeCodes = ['']
-        currDepth = 0
+        freeCodes = queue(['']) # right is head, left is tail
 
-        # print("After merging, sets ",self.supersets)
-        # print("Before code, superset lengths: ",[len(self.supersets[i]) for i in uncodedIndices])
-        # print("Minimum width: ", minWidth)
-        # print(self.kraftsInequality(currDepth, codeLens), len(freeCodes), len(freeCodes)/2.0)
-
-
-
-        # unassigned codewords are kept in an ordered list, and deleted from the end when assigned
-        # the unassigned codeword set will always be continuous
         while len(uncodedIndices) > 0:
-            # print(self.kraftsInequality(currDepth, codeLens), len(freeCodes), len(freeCodes)/2.0)
-            if len(freeCodes) >= len(uncodedIndices)*2:
-                # print("HI1")
-                freeCodes = [freeCodes[i][:-1] for i in range(0, len(freeCodes), 2)]
-            elif codeLens[-1] == currDepth:
-                # print(codeLens[-1], "HI2")
-                newCode = freeCodes.pop()
-                index = uncodedIndices.pop()
+            # If we have enough unused codes for all supersets,
+            #  OR if the current shortest codeword length is the limit for the longest uncoded superset
+            if len(freeCodes) >= len(uncodedIndices) or len(freeCodes[-1]) == codeLens[-1]:
+                ssindex = uncodedIndices.pop()
                 codeLens.pop()
-                self.codes[index] = newCode
-            elif self.kraftsInequality(currDepth, codeLens) < len(freeCodes)/2.0:
-                # print("HI3")
-                currDepth += 1
+                self.supersets[ssindex].codeword = freeCodes.pop()
+            # else, we split the shortest codeword
             else:
-                # print("HI4")
-                nextFreeCodes = []
-                for freeCode in freeCodes:
-                    nextFreeCodes.extend([freeCode + '0', freeCode + '1'])
-                freeCodes = nextFreeCodes
-                currDepth += 1
-
-        if self.isOrdered:
-            pass  # If we have a total ordering, set orderings are already decided
-        # Otherwise, we need to order the supersets. Easy method: making them lists
-        else:
-            for (i, superset) in enumerate(self.supersets):
-                self.supersets[i] = list(superset)
+                codeToSplit = freeCodes.pop()
+                freeCodes.extendleft([codeToSplit + c for c in ['1','0']])
 
 
-        self.freeCodes = freeCodes
+        self.freeCodes = list(freeCodes)
         self.codeBuilt = True
-        self.logger("Done building encoding.\n")
+        self.logger("Done building codewords.")
 
 
     def _bestCodewordToSplit(self, newSet):
@@ -355,9 +408,9 @@ class RCode:
             after splitting into two codewords, minimizes the decrease in padding size
             available for all tags. Returns -1 if no codeword can be split.
         """
-        splitCosts = [min(self.maxWidth - (len(superset) + len(self.codes[i])+1),
-                          self.maxWidth - (len(newSet)   + len(self.codes[i])+1))
-                      for (i, superset) in enumerate(self.supersets)]
+        splitCosts = [min(self.maxWidth - (len(superset) + len(superset.codeword)+1),
+                          self.maxWidth - (len(newSet)   + len(superset.codeword)+1))
+                      for superset in self.supersets]
 
         bestSplitCost = max(splitCosts)
         if bestSplitCost < 0:
@@ -480,3 +533,34 @@ class RCode:
         changes["add"] = {element:newStrings[element] for element in newElements}
         return changes
 
+
+
+def unit_test():
+    matrix = [[1,2,3],
+              [2,3,4],
+              [6,7,8],
+              [7,8],
+              [1,2],
+              [1]]
+    matrix = [[1,2,3],
+              [2,3],
+              [3,1],
+              [3,4],
+              [4,5],
+              [5,3]]
+    rcode = RCode(matrix)
+    rcode.removePadding()
+    print("pre-width-optimization")
+    for row in matrix:
+        print(row, "has tag", rcode.tagString(row, True))
+    print(rcode.allMatchStrings(rcode.elements))
+    print("Post-width-optimization")
+    rcode.optimizeWidth()
+    print(rcode.supersets)
+    for row in matrix:
+        print(row, "has tag", rcode.tagString(row, True))
+
+
+
+if __name__=="__main__":
+    unit_test()
