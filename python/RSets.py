@@ -192,11 +192,13 @@ class RCode:
             unsieved_supersets = sieved_supersets
 
 
-    def allMatchStrings(self):
-        """ Returns every match string in the encoding. If the elements are [1,2,3],
+    def allMatchStrings(self, elements=None):
+        """ Returns every match string in the encoding for the given elements. If the elements are [1,2,3],
             the return value will something look like {1:["0*1*"], 2:["0**1", "1*1*"], 3:["1**1"]}.
         """
-        return {element : self.matchStrings(element) for element in self.elements}
+        if elements == None:
+            elements = self.elements
+        return {element : self.matchStrings(element) for element in elements}
 
 
     def allSupersets(self):
