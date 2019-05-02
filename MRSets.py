@@ -1,5 +1,5 @@
 from typing import List,Set,Dict
-from RSets import RCode
+from .RSets import RCode
 
 
 

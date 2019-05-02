@@ -1,5 +1,5 @@
-from optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets
-from analyze import getSupersetIndex, bitsRequiredVariableID
+from .optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets
+from .analyze import getSupersetIndex, bitsRequiredVariableID
 import math
 from bidict import bidict
 from collections import deque as queue
@@ -210,9 +210,9 @@ class RCode:
         allSets = {}
         for (i,superset) in enumerate(self.supersets):
             if self.isOrdered:
-                allSets[self.codes[i]] = self._orderSuperset(superset)
+                allSets[superset.codeword] = self._orderSuperset(superset)
             else:
-                allSets[self.codes[i]] = superset
+                allSets[superset.codeword] = superset
 
         return allSets
 
@@ -240,8 +240,7 @@ class RCode:
             WARNING: wipes out an existing code!
         """
         self.codeBuilt = False
-        supersets = mergeIntersectingSets(self.supersets)
-        self.supersets = [list(superset) for superset in supersets]
+        self.supersets = mergeIntersectingSets(self.supersets)
 
 
     def optimizeMemory(self, padding = 0):
@@ -249,8 +248,7 @@ class RCode:
             WARNING: wipes out an existing code!
         """
         self.codeBuilt = False
-        supersets = minimizeRulesGreedy(self.supersets, self.elementWeights, self.maxWidth - padding)
-        self.supersets = [list(superset) for superset in supersets]
+        self.supersets = minimizeRulesGreedy(self.supersets, self.elementWeights, self.maxWidth - padding)
 
 
     def memoryRequired(self):
@@ -429,7 +427,7 @@ class RCode:
         bestIndex = -1
         for (i, superset) in enumerate(self.supersets):
             union = set(superset).union(newSet)
-            if len(union) + len(self.codes[i]) > self.maxWidth:
+            if len(union) + len(superset.codeword) > self.maxWidth:
                 continue
             newElements = union.difference(superset)
             increase = sum(self.elementWeights[element] for element in newElements)
@@ -476,21 +474,15 @@ class RCode:
             Note that you may need to add or remove rules for elements which weren't in the new set!
             If there is a failure to add the set, returns None.
         """
-        newSet = list(newSet)
+        newSet = SuperSet(newSet)
         for element in newSet:
             if element not in self.elementWeights:
                 self.elementWeights[element] = 1
 
         changes = {"add":{}, "remove":{}}
-        if getSupersetIndex(newSet, self.supersets) != -1:
+        if self.getSupersetIndex(newSet) != -1:
             self.logger("Adding a set which already exists in some superset:", newSet)
             return changes
-
-        if self.isOrdered:
-            newSetOrdered = self._orderSuperset(newSet)
-            if newSet != newSetOrdered:
-                self.logger("Attempting to add a sequence which does not match the original ordering:", newSet)
-                return None
 
         if not self.codeBuilt:
             self.supersets.append(newSet)
@@ -504,35 +496,50 @@ class RCode:
             expandIndex = self._bestSetToExpandOrdered(newSet)
 
 
-        ## Code block for allocating a new superset with its own codeword
         if expandIndex == -1:
+            ## Code block for allocating a new superset with its own codeword
             splitIndex = self._bestCodewordToSplit(newSet)
             if splitIndex == -1:
                 self.logger("Not enough tag space for adding set:", newSet)
                 return None
             # split logic goes here
-            changes["remove"] = self.allSupersetStrings(self.supersets[splitIndex])
-            splitCode = self.codes[splitIndex]
-            self.codes[splitIndex] = splitCode + '0'
+            changes["remove"] = self.allMatchStrings(self.supersets[splitIndex])
+            splitCode = self.supersets[splitIndex].codeword
+            self.supersets[splitIndex].codeword = splitCode + '0'
 
-            self.codes.append(splitCode + '1')
+            newSet.codeword = splitCode + '1'
             self.supersets.append(newSet)
 
-            changes["add"] = self.allSupersetStrings(self.supersets[splitIndex])
-            moreAddChanges = self.allSupersetStrings(newSet)
-            for element, strings in moreAddChanges.iteritems():
+            changes["add"] = self.allMatchStrings(self.supersets[splitIndex])
+            moreAddChanges = self.allMatchStrings(newSet)
+            for element, strings in moreAddChanges.items():
                 if element not in changes["add"]:
                     changes["add"][element] = []
                 changes["add"][element].extend(strings)
-            return changes
 
-        ## Code block for merging the new set into an existing superset
-        oldSet = self.supersets[expandIndex]
-        newElements = set(newSet).difference(oldSet)
-        self.supersets[expandIndex] = list(newElements) + oldSet
-        newStrings = self.allSupersetStrings(self.supersets[expandIndex])
+        else:
+            ## Code block for merging the new set into an existing superset
+            # TODO: remove the need for changes["remove"]
+            oldStrings = {elem:set(strings) for (elem,strings) in self.allMatchStrings(self.supersets[expandIndex]).items()}
 
-        changes["add"] = {element:newStrings[element] for element in newElements}
+            self.supersets[expandIndex].update(newSet)
+            newStrings = self.allMatchStrings(self.supersets[expandIndex])
+
+            deletedStrings = {}
+            # remove strings that arent in the new string set
+            for elem in oldStrings:
+                deletedStrings[elem] = oldStrings[elem].difference(newStrings[elem])
+
+            addedStrings = {}
+            for elem in newStrings:
+                if elem in oldStrings:
+                    addedStrings[elem] = newStrings[elem].difference(oldStrings[elem])
+                else:
+                    addedStrings[elem] = newStrings[elem]
+
+            changes["remove"] = deletedStrings
+            changes["add"] = addedStrings
+
         return changes
 
 

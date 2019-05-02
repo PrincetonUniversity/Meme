@@ -1,7 +1,7 @@
 import copy
 from collections import Counter
-from analyze import bitsRequiredVariableID
-from optimize import removeSubsets
+from .analyze import bitsRequiredVariableID
+from .optimize import removeSubsets
 from bisect import bisect_left
 import numpy as np
 
@@ -29,15 +29,15 @@ def supersets2Matrix(supersetsList1, supersetsList2 = None, colSet = None):
     # append the total number of rules
     tagNumMatrix = [l + [np.prod(l[1 : ])] for l in tagNumMatrix]
     tagNumMatrix.sort(key = lambda l : l[numDFAs + 1], reverse =True)
-    
+
     if supersetsList2:
-        # merge the flatlist from supersetsList2 
+        # merge the flatlist from supersetsList2
         flatlist = [flatlist[i] + [item for superset in supersetsList2[i] for item in superset] for i in range(numDFAs)]
         counts = [Counter(l) for l in flatlist]
         numTags = np.sum(np.prod([[counts[i][col] for i in range(numDFAs)] for col in colSet], axis = 1))
-    else: 
+    else:
         numTags = np.sum([l[numDFAs + 1] for l in tagNumMatrix])
-    
+
     return tagNumMatrix, numTags
 
 # objective function to optimize over, which is the total memory in bits here
@@ -47,10 +47,10 @@ def objectiveFunction(supersetsList1, supersetsList2 = None, colSet = None):
     # calculate the tag width
     widthTag1 = [bitsRequiredVariableID(supersets) for supersets in supersetsList1rmss]
 
-    if supersetsList2: 
+    if supersetsList2:
         supersetsList2rmss = [removeSubsets(supersets) for supersets in supersetsList2]
         widthTag2 = [bitsRequiredVariableID(supersets) for supersets in supersetsList2rmss]
-    else: 
+    else:
         supersetsList2rmss = None
         widthTag2 = 0
 
