@@ -1,5 +1,5 @@
 import math
-from analyze import bitsRequiredFixedID, bitsRequiredVariableID
+from .analyze import bitsRequiredFixedID, bitsRequiredVariableID
 from itertools import combinations
 
 

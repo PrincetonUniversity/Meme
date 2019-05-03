@@ -1,5 +1,5 @@
 from typing import List,Set,Dict
-from RSets import RCode
+from .RSets import RCode
 
 
 
@@ -73,7 +73,7 @@ class MRCode(object):
             self.elements[element] = rcodeDstIndex
 
 
-    def tagWidth(self):
+    def width(self):
         return sum(code.widthUsed() for code in self.rcodes)
 
 
@@ -102,7 +102,7 @@ class MRCode(object):
         if elements == None:
             elements = set(self.elements.keys())
         padChar = '*'
-        totalWidth = self.tagWidth()
+        totalWidth = self.width()
         lPaddingLen = 0
         strings = {}
         for code in self.rcodes:
