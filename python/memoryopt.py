@@ -1,9 +1,10 @@
 import copy
 from collections import Counter
-from analyze import bitsRequiredVariableID
-from optimize import removeSubsets
+from .analyze import bitsRequiredVariableID
+from .optimize import removeSubsets
 from bisect import bisect_left
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 # Convert a list of supersets to a matrix of the number of tags
@@ -40,6 +41,7 @@ def supersets2Matrix(supersetsList1, supersetsList2 = None, colSet = None):
     
     return tagNumMatrix, numTags
 
+
 # objective function to optimize over, which is the total memory in bits here
 def objectiveFunction(supersetsList1, supersetsList2 = None, colSet = None):
     # remove subsets
@@ -52,7 +54,7 @@ def objectiveFunction(supersetsList1, supersetsList2 = None, colSet = None):
         widthTag2 = [bitsRequiredVariableID(supersets) for supersets in supersetsList2rmss]
     else: 
         supersetsList2rmss = None
-        widthTag2 = 0
+        widthTag2 = [0, 0, 0, 0]
 
     # calculate the total number of tags and obtain the updated TagNumMatrix heap
     newTagNumMatrix, numTags = supersets2Matrix(supersetsList1rmss, supersetsList2rmss, colSet)
@@ -61,7 +63,7 @@ def objectiveFunction(supersetsList1, supersetsList2 = None, colSet = None):
     return newTagNumMatrix, numTags * (np.sum(widthTag1) + np.sum(widthTag2))
 
 
-def extractOverlaps(supersetsList):
+def extractOverlaps(supersetsList, round = 1):
     # removing subsets (okay for objectiveFunction since neither widthTag nor numTags would be affected)
     supersetsList = [removeSubsets(supersets) for supersets in supersetsList]
 
@@ -80,11 +82,11 @@ def extractOverlaps(supersetsList):
     fwidth = len(str(int(thresholdList[0])))
 
     # save all supersets for removeSubsets
-    supersetsList1 = supersetsList
+    supersetsList1 = copy.deepcopy(supersetsList)
     supersetsList2 = [[set()] * numCols] * numDFAs
 
     # optimizing record
-    colList = [[[] * numDFAs]]
+    colList = [[[]] * numDFAs]
     costList = [ cost ]
 
     print('Threshold: %*s \tCost: %d' % (fwidth, "None", cost))
@@ -118,9 +120,28 @@ def extractOverlaps(supersetsList):
         costList.append(cost)
         print('Threshold: %*d \tCost: %d' % (fwidth, t, cost))
 
+    plt.figure()
+    plt.plot(thresholdList, costList[1:])
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel("Threshold")
+    plt.ylabel("Cost")
+    plt.savefig('round%d.png' % (round))
+
+    # find best threshold
+    optIndex = np.argmin(costList)
+    optCol = [set([])] * numDFAs
+    for cols in colList[ : optIndex + 1]:
+        for i in range(numDFAs):
+            optCol[i] = optCol[i].union(cols[i])
+
+    supersetsList2 = [[s.intersection(optCol[i]) for s in supersetsList[i]] for i in range(numDFAs)]
+    supersetsList1 = [[s.difference(optCol[i]) for s in supersetsList[i]] for i in range(numDFAs)]
+
+    return supersetsList1, supersetsList2
 
 
-
-
-
+def iterateExtraction(supersetsList):
+    [[[],[],[],[]],[[],[],[],[]],[[],[],[],[]],[[],[],[],[]]]
+    pass
 

@@ -26,14 +26,13 @@ def bitsRequiredFixedID(supersets):
     return int(logM + maxS)
 
 
-
 def bitsRequiredVariableID(supersets):
     """ How many bits are needed to represent any set in this superset grouping?
         Assumes optimal variable-width superset identifiers.
     """
     kraftSum = sum(2**len(superset) for superset in supersets)
     # return ceil(log_2(kraftSum))
-    return len("{0:b}".format(kraftSum - 1)) + 1 # math.log hits floating point precision issues for very large inputs
+    return len("{0:b}".format(kraftSum - 1)) # math.log hits floating point precision issues for very large inputs
 
 
 def rulesRequired(supersets, ruleCounts):
