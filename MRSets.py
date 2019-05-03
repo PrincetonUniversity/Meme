@@ -32,9 +32,11 @@ class MRCode(object):
         # find any elements in the code that occur more than twice
         occurrences = rcode.elementOccurrences()
         expensiveElements = [elem for elem in rcode.elements if occurrences[elem] > threshold]
-        if len(expensiveElements) == 0: return
+        if len(expensiveElements) == 0: return False
 
         self.spawnSubCode(extractionSet=expensiveElements)
+
+        return True
 
 
 

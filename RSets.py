@@ -6,7 +6,6 @@ from collections import deque as queue
 
 from typing import List,Set,Dict
 
-LOGGING = "Sure why not"
 
 class SuperSet(set):
     codeword : str = None
@@ -93,7 +92,7 @@ class RCode:
     isOrdered       : bool = False
     freeCodes       : List[str] = None
     extractions     : Set = None # elements that were removed from the input matrix
-
+    logging         : bool = False
 
     # pep8 can go suck it
 
@@ -101,15 +100,16 @@ class RCode:
     def logger(self, *args):
         """ Placeholder logger.
         """
-        if LOGGING:
+        if self.logging:
             print(' '.join(str(arg) for arg in args))
 
 
     def __init__(self, elementSets, maxWidth=None,
-                    elementOrdering=None, elementWeights=None):
+                    elementOrdering=None, elementWeights=None, logging=False):
         """ elementSets preferably will have no duplicate sets.
             Duplicate sets do not impact correctness, only efficiency.
         """
+        self.logging=logging
         # what elements appear across all the supersets?
         self.elements = set([])
         for es in elementSets:
