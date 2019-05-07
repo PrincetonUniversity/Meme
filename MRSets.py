@@ -1,5 +1,8 @@
 from typing import List,Set,Dict
-from .RSets import RCode
+try:
+    from .RSets import RCode
+except:
+    from RSets import RCode
 
 
 
@@ -7,8 +10,32 @@ class MRCode(object):
     rcodes : List = None
     elements : Dict = None # maps elements to rcode indices
 
+    shadowElements : Dict = None # maps elements to elements for which they have identical behavior
 
     def __init__(self, elementSets):
+        # remove duplicates
+        elementSets = set([frozenset(es) for es in elementSets])
+
+
+        # find shadow elements
+        self.shadowElements = {}
+        colIDs = set.union(*[set(es) for es in elementSets])
+        # transpose
+        transposed = {colID:frozenset([rowID for (rowID,row) in enumerate(elementSets) if colID in row]) for colID in colIDs}
+        uniqueRows = {}
+        for colID, row in transposed.items():
+            cols = uniqueRows.get(row, None)
+            if cols is not None:
+                cols.append(colID)
+                self.shadowElements[colID] = cols[0]
+            else:
+                uniqueRows[row] = [colID]
+        print("Input had %d columns, %d were unique" % (len(colIDs), len(uniqueRows)))
+
+        # remove shadow elements
+        shadows = set(self.shadowElements.keys())
+        elementSets = [es.difference(shadows) for es in elementSets]
+
 
         # we start off with a single code
         rcode = RCode(elementSets)
@@ -85,7 +112,7 @@ class MRCode(object):
         """ Given a set of elements, returns a string which represents
             that set in compressed form.
         """
-        elements = set(elements)
+        elements = set([self.shadowElements.get(e, e) for e in elements])
         subtags = []
         for code in self.rcodes:
             subelements = elements.intersection(code.elements)
@@ -104,6 +131,10 @@ class MRCode(object):
         """
         if elements == None:
             elements = set(self.elements.keys())
+            elements.update(self.shadowElements.keys())
+        inputElements = elements.copy()
+        elements = set([self.shadowElements.get(e, e) for e in elements])
+
         padChar = '*'
         totalWidth = self.width()
         lPaddingLen = 0
@@ -119,15 +150,16 @@ class MRCode(object):
 
             lPaddingLen += subTagWidth
 
+        strings = {e:strings[self.shadowElements.get(e,e)] for e in inputElements}
         return strings
 
 
 
 
 if __name__=="__main__":
-    matrix = [[1,2,3],
+    matrix = [[1,2,3,4],
               [3,4,5],
-              [3,6,7]]
+              [3,4,6,7]]
 
     cols = set()
     for row in matrix:

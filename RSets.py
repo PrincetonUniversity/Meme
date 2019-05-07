@@ -1,5 +1,10 @@
-from .optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets
-from .analyze import getSupersetIndex, bitsRequiredVariableID
+try:
+    from .optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets
+    from .analyze import getSupersetIndex, bitsRequiredVariableID
+except:
+    from optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets
+    from analyze import getSupersetIndex, bitsRequiredVariableID
+
 import math
 from bidict import bidict
 from collections import deque as queue
