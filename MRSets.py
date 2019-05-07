@@ -20,7 +20,8 @@ class MRCode(object):
     def optimize(self):
         """ TODO: Do something more clever.
         """
-        self.extractHeavyHitters()
+        while self.extractHeavyHitters(1):
+            pass
 
     def extractHeavyHitters(self, threshold=2):
         """ Placeholder implementation. Not to be treated as an intelligent algorithm.
