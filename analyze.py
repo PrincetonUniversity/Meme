@@ -1,11 +1,31 @@
 import math
 
+
+
+
+def groupIdenticalColumns(elementSets):
+    colIDs = set.union(*[set(es) for es in elementSets])
+    # transpose the element matrix (so its a collection of columns instead of rows)
+    transposed = {colID:frozenset([rowID for (rowID,row) in enumerate(elementSets) if colID in row]) for colID in colIDs}
+    # build lists of columnIDs for columns that are identical
+    identicalColGroups = {}
+    for colID, col in transposed.items():
+        group = identicalColGroups.get(col, None)
+        if group is not None:
+            group.append(colID)
+        else:
+            identicalColGroups[col] = [colID]
+    return list(identicalColGroups.values())
+
+
+
 def isSubsetOfSuperset(subset, supersets):
 
     for superset in supersets:
         if (set(superset)).issuperset(subset):
             return True
     return False
+
 
 
 def getSupersetIndex(subset, supersets):

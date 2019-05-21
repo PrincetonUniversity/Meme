@@ -1,8 +1,10 @@
 from typing import List,Set,Dict
 try:
     from .RSets import RCode
+    from .analyze import groupIdenticalColumns
 except:
     from RSets import RCode
+    from analyze import groupIdenticalColumns
 
 
 
@@ -19,18 +21,11 @@ class MRCode(object):
 
         # find shadow elements
         self.shadowElements = {}
-        colIDs = set.union(*[set(es) for es in elementSets])
-        # transpose
-        transposed = {colID:frozenset([rowID for (rowID,row) in enumerate(elementSets) if colID in row]) for colID in colIDs}
-        uniqueRows = {}
-        for colID, row in transposed.items():
-            cols = uniqueRows.get(row, None)
-            if cols is not None:
-                cols.append(colID)
-                self.shadowElements[colID] = cols[0]
-            else:
-                uniqueRows[row] = [colID]
-        print("Input had %d columns, %d were unique" % (len(colIDs), len(uniqueRows)))
+        identicalElementGroups = groupIdenticalColumns(elementSets)
+        # for every set of elements that behave identically, arbitrarily make the first element in the set the "parent" of all the rest. All elements but the parents are now shadows
+        for elemGroup in identicalElementGroups:
+            for elem in elemGroup[1:]:
+                self.shadowElements[elem] = elemGroup[0]
 
         # remove shadow elements
         shadows = set(self.shadowElements.keys())
@@ -42,6 +37,7 @@ class MRCode(object):
         rcode.optimizeWidth()
         self.rcodes = [rcode]
 
+        # initially every element belongs to the 0th (and only) rcode
         self.elements = {element : 0 for element in rcode.elements}
 
     def optimize(self):
