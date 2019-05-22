@@ -1,10 +1,11 @@
 import copy
 from collections import Counter
-from .analyze import bitsRequiredVariableID
+from .analyze import bitsRequiredVariableID, groupIdenticalColumns
 from .optimize import removeSubsets
 from bisect import bisect_left
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 
 # Convert a list of supersets to a matrix of the number of tags
@@ -63,7 +64,24 @@ def objectiveFunction(supersetsList1, supersetsList2 = None, colSet = None):
     return newTagNumMatrix, numTags * (np.sum(widthTag1) + np.sum(widthTag2))
 
 
+def getRedundantCols(supersetsList):
+    parent2shadowMappings = []
+
+    for i, supersets in enumerate(supersetsList):
+        redundantCols = set([])
+        columnGroups = groupIdenticalColumns(supersets)
+        parent2shadow = {group[0] : group[1:] for group in columnGroups}
+        for group in columnGroups:
+            redundantCols.update(group[1:])
+        parent2shadowMappings.append(parent2shadow)
+
+    return parent2shadowMappings
+
+
 def extractOverlaps(supersetsList, round = 1):
+
+    parent2shadowMappings = getRedundantCols(supersetsList)
+
     # removing subsets (okay for objectiveFunction since neither widthTag nor numTags would be affected)
     supersetsList = [removeSubsets(supersets) for supersets in supersetsList]
 
