@@ -164,6 +164,7 @@ class RCode:
         """ Remove the given elements'columns from the matrix, and return
             the removed columns as a submatrix
         """
+        self.codeBuilt = False
         elements = set(elements)
         submatrix = [elements.intersection(row) for row in self.originalSets]
         for superset in self.supersets:
@@ -227,16 +228,22 @@ class RCode:
             WARNING: wipes out an existing code!
         """
         self.codeBuilt = False
+        startingWidth = self.minimumWidth()
         self.supersets = minimizeVariableWidthGreedy(self.supersets)
+        endingWidth = self.minimumWidth()
+        if startingWidth < endingWidth:
+            raise Exception("Optimize width did not optimize width??")
 
 
     def removePadding(self):
         """ Set the maximum tag width to be the minimum possible.
         """
         if self.codeBuilt:
-            self.maxWidth = self.minimumWidth()
-        else:
             self.maxWidth = self.widthUsed()
+        else:
+            self.maxWidth = self.minimumWidth()
+
+
 
 
     def mergeOverlaps(self):
@@ -246,6 +253,7 @@ class RCode:
         """
         self.codeBuilt = False
         self.supersets = mergeIntersectingSets(self.supersets)
+        self.maxWidth = max(self.maxWidth, self.minimumWidth())
 
 
     def optimizeMemory(self, padding = 0):
@@ -281,6 +289,12 @@ class RCode:
         return bitsRequiredVariableID(self.supersets)
 
 
+    def width(self):
+        """ What is the actual width of the tags currently, including padding?
+        """
+        return self.maxWidth
+
+
     def widthUsed(self):
         """ Returns the maximum width of any tag (if there was no padding)
         """
@@ -304,6 +318,7 @@ class RCode:
         """
         if not self.codeBuilt:
             self.buildCode()
+
 
         strings = []
         for superset in self.supersets:
@@ -353,13 +368,14 @@ class RCode:
             If decorated, padding bits are replaced with *, and the identifier and mask are
             separated by a - character.
         """
+        if not self.codeBuilt:
+            self.buildCode()
+
         subset = set(elements)
         ssIndex = self.getSupersetIndex(subset)
         if ssIndex == -1:
             self.logger("Asking for a tag for an unseen element set: ", elements)
             return ""
-        if not self.codeBuilt:
-            self.buildCode()
 
         superset = self.supersets[ssIndex]
 
@@ -368,7 +384,7 @@ class RCode:
         mask = ''.join("1" if element in subset else "0" for element in superset)
 
         paddingLen = self.maxWidth - ((len(identifier) + len(mask)))
-        padding = ('*' if decorated else '0') * paddingLen
+        padding = ('~' if decorated else '0') * paddingLen
 
         separator = '-' if decorated else ''
 

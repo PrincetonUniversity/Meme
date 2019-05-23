@@ -61,8 +61,8 @@ def mergeIntersectingSets(supersets):
 
     mergedSets = []
     for overlapGroup in overlappingSets:
-        mergedSet = set()
-        for setIndex in overlapGroup:
+        mergedSet = supersets[overlapGroup[0]]
+        for setIndex in overlapGroup[1:]:
             mergedSet.update(supersets[setIndex])
         mergedSets.append(mergedSet)
     return mergedSets

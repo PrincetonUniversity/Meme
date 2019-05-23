@@ -1,3 +1,5 @@
+import networkx as nx
+import itertools
 from typing import List,Set,Dict
 try:
     from .RSets import RCode
@@ -31,7 +33,6 @@ class MRCode(object):
         shadows = set(self.shadowElements.keys())
         elementSets = [es.difference(shadows) for es in elementSets]
 
-
         # we start off with a single code
         rcode = RCode(elementSets)
         rcode.optimizeWidth()
@@ -43,15 +44,51 @@ class MRCode(object):
     def optimize(self):
         """ TODO: Do something more clever.
         """
+        return self.optimizeVertexCuts()
+        #return self.optimizeRecursiveHeavyHitters()
+
+
+    def optimizeRecursiveHeavyHitters(self, threshold=1):
         while self.extractHeavyHitters(1):
             pass
 
-    def extractHeavyHitters(self, threshold=2):
+
+    def optimizeVertexCuts(self, threshold=10, index=-1):
+        """ Threshold is the maximum size of a connected component we allow.
+        """
+        rcode = self.rcodes[index]
+        matrix = rcode.originalSets
+
+        # a node for every column, and an edge for every pair of columns that occur together in any row
+        G = nx.Graph()
+        for row in matrix:
+            for i1, i2 in itertools.combinations(row, 2):
+                G.add_edge(i1, i2)
+
+        extractions = set()
+        queue = [G.subgraph(nodes) for nodes in nx.connected_components(G)]
+        while len(queue) > 0:
+            cc = queue.pop()
+            if len(cc) < threshold: continue
+            cut = nx.minimum_node_cut(cc)
+            extractions.update(cut)
+            subG = cc.subgraph([n for n in cc if n not in set(cut)])
+            queue.extend([subG.subgraph(nodes) for nodes in nx.connected_components(subG)])
+
+        if len(extractions) == 0:
+            return
+        self.spawnSubCode(extractionSet=extractions)
+
+        for rcode in self.rcodes:
+            rcode.mergeOverlaps()
+
+
+    def extractHeavyHitters(self, threshold=2, index=-1):
         """ Placeholder implementation. Not to be treated as an intelligent algorithm.
             Extracts all elements that appear in more than 'threshold' supersets.
         """
-        # grab the 'latest' code
-        rcode = self.rcodes[-1]
+        # grab the target rcode
+        rcode = self.rcodes[index]
 
         # find any elements in the code that occur more than twice
         occurrences = rcode.elementOccurrences()
@@ -64,39 +101,43 @@ class MRCode(object):
 
 
 
-    def spawnSubCode(self, extractionSet, rcodeSrcIndex=-1, rcodeDstIndex=None):
+    def spawnSubCode(self, extractionSet, srcIndex=-1, dstIndex=None):
         """ Given a set of columns and two rcode indices, extract the columns from the src rset,
             and insert them into the dst rset.
         """
         # grab the src rcode
-        rcode = self.rcodes[rcodeSrcIndex]
+        rcode = self.rcodes[srcIndex]
 
 
         # remove them from the code, and then re-optimize that code
         submatrix = rcode.extract(extractionSet)
+        if sum(len(row) for row in submatrix) == 0:
+            raise Exception("Attempting to spawn a subcode from an extraction that yields an empty matrix!")
+
         rcode.removeSubsets()
         rcode.optimizeWidth()
         rcode.removePadding()
 
         dstCode = None
-        if rcodeDstIndex != None:
-            # place the extractions in an existing rcode
-            dstCode = self.rcodes[rcodeDstIndex]
+        if dstIndex != None:
             # TODO: this
             raise NotImplemented
+            # place the extractions in an existing rcode
+            dstCode = self.rcodes[dstIndex]
         else:
             # place the removed elements into a new code
             dstCode = RCode(submatrix)
             # add the new code to the list of codes
-            rcodeDstindex = len(self.rcodes)
+            dstindex = len(self.rcodes)
             self.rcodes.append(dstCode)
         dstCode.optimizeWidth()
         dstCode.removePadding()
+        dstCode.buildCode()
 
 
         # update the location of the elements
         for element in extractionSet:
-            self.elements[element] = rcodeDstIndex
+            self.elements[element] = dstIndex
 
 
     def width(self):
@@ -163,12 +204,18 @@ if __name__=="__main__":
 
     code = MRCode(matrix)
     for row in matrix:
-        print(row, "->", code.tagString(row, True))
+        print(row, "->", code.tagString(row, False))
 
     code.extractHeavyHitters()
     for row in matrix:
-        print(row, "->", code.tagString(row, True))
+        print(row, "->", code.tagString(row, False))
 
     print(code.matchStrings(cols))
 
+    code = MRCode(matrix)
+    code.optimize()
+    code = MRCode(matrix)
+    code.optimizeRecursiveHeavyHitters()
+    code = MRCode(matrix)
+    code.optimizeVertexCuts()
 
