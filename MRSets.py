@@ -13,12 +13,15 @@ except:
 class MRCode(object):
     rcodes : List = None
     elements : Dict = None # maps elements to rcode indices
+    originalSets : List = None
 
     shadowElements : Dict = None # maps elements to elements for which they have identical behavior
 
     def __init__(self, elementSets):
         # remove duplicates
         elementSets = set([frozenset(es) for es in elementSets])
+
+        self.originalSets = list(elementSets)
 
 
         # find shadow elements
@@ -40,6 +43,19 @@ class MRCode(object):
 
         # initially every element belongs to the 0th (and only) rcode
         self.elements = {element : 0 for element in rcode.elements}
+
+
+    def useStrategy(self, strategy):
+        """ A strategy is a list of groupings. A grouping is a list of supersets.
+        """
+        itemSets = [set.union(*[set(ss) for ss in grouping]) for grouping in strategy]
+        matrices = [[os.intersection(itemSet) for os in self.originalSets] for itemSet in itemSets]
+
+        self.rcodes = [RCode(matrix) for matrix in matrices]
+
+        for rcode, grouping in zip(self.rcodes, strategy):
+            rcode.groupingStrategy(grouping)
+
 
     def optimize(self):
         """ TODO: Do something more clever.
@@ -204,11 +220,11 @@ if __name__=="__main__":
 
     code = MRCode(matrix)
     for row in matrix:
-        print(row, "->", code.tagString(row, False))
+        print(row, "->", code.tagString(row, True))
 
     code.extractHeavyHitters()
     for row in matrix:
-        print(row, "->", code.tagString(row, False))
+        print(row, "->", code.tagString(row, True))
 
     print(code.matchStrings(cols))
 
@@ -218,4 +234,9 @@ if __name__=="__main__":
     code.optimizeRecursiveHeavyHitters()
     code = MRCode(matrix)
     code.optimizeVertexCuts()
+
+    code = MRCode(matrix)
+    code.useStrategy([[[3,4]], [[1,2], [5,6,7]]])
+    for row in matrix:
+        print(row, "->", code.tagString(row, True))
 

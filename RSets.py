@@ -51,26 +51,7 @@ class SuperSet(set):
         other.absolutes = self.absolutes.copy()
         return other
 
-    """
-    def merge(self, other):
-        self.absolutes.intersection_update(other.absolutes)
-        self.elements.update(other.elements)
-    def issubset(self, other):
-        if type(other) is set:
-            return other.issubset(self.elements)
-        else:
-            return other.elements.issubset(self.elements)
-    """
     ###
-
-
-"""
-rows = []
-active_rows = []
-deactivated_rows = []
-elem2active = {}
-"""
-
 
 
 
@@ -147,6 +128,21 @@ class RCode:
                 raise Exception("Weighted RCode was given an incomplete weighting!")
         else:
             self.elementWeights = {elem:1 for elem in self.elements}
+
+    def groupingStrategy(self, groups):
+        self.codeBuilt = False
+        self.supersets = [SuperSet(g) for g in groups]
+        originals = list(self.originalSets)
+        while len(originals) > 0:
+            subset = originals.pop()
+            for superset in self.supersets:
+                if superset.issuperset(subset):
+                    superset.update(subset)
+                    break
+            else:
+                raise Exception("The given grouping does not cover every input set!")
+
+        self.expandIfNecessary()
 
 
     def elementOccurrences(self):
@@ -243,6 +239,8 @@ class RCode:
         else:
             self.maxWidth = self.minimumWidth()
 
+    def expandIfNecessary(self):
+        self.maxWidth = max(self.maxWidth, self.minimumWidth())
 
 
 
@@ -253,7 +251,7 @@ class RCode:
         """
         self.codeBuilt = False
         self.supersets = mergeIntersectingSets(self.supersets)
-        self.maxWidth = max(self.maxWidth, self.minimumWidth())
+        self.expandIfNecessary()
 
 
     def optimizeMemory(self, padding = 0):
@@ -587,6 +585,11 @@ def unit_test():
     print("Post-width-optimization")
     rcode.optimizeWidth()
     print(rcode.supersets)
+    for row in matrix:
+        print(row, "has tag", rcode.tagString(row, True))
+
+    rcode = RCode(matrix)
+    rcode.groupingStrategy([[1,2,3,4,5], [6,7,8]])
     for row in matrix:
         print(row, "has tag", rcode.tagString(row, True))
 
