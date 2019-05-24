@@ -2,6 +2,15 @@ import math
 
 
 
+def ternary_compare(str1, str2):
+    if len(str1) != len(str2):
+        raise Exception("strings of unequal length compared: %s and %s" %(str1, str2))
+    for (c,d) in zip(str1,str2):
+        # compare every pair of bits. failure short-circuits
+        if not ((c=='*') or (d=='*') or (c==d)):
+            return False
+    return True
+
 
 def groupIdenticalColumns(elementSets):
     colIDs = set.union(*[set(es) for es in elementSets])

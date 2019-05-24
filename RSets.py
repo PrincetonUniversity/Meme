@@ -1,9 +1,9 @@
 try:
     from .optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets, generateCodeWords
-    from .analyze import getSupersetIndex, bitsRequiredVariableID
+    from .analyze import getSupersetIndex, bitsRequiredVariableID, ternary_compare
 except:
     from optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets, generateCodeWords
-    from analyze import getSupersetIndex, bitsRequiredVariableID
+    from analyze import getSupersetIndex, bitsRequiredVariableID, ternary_compare
 
 import math
 from bidict import bidict
@@ -12,46 +12,161 @@ from collections import deque as queue
 from typing import List,Set,Dict
 
 
-class SuperSet(set):
+class SuperSet(object):
     codeword : str = None
-    rowIDs : List[int] = None # the original matrix rows that were merged to produce this superset
-    absolutes : set = None # the items that appeared in every row that was merged to produce this superset
+    rowIDs : List[int] = None # the IDs of original matrix rows that were merged to produce this superset
 
-    def __init__(self, elements, firstRowID=None):
-        self.absolutes = set(elements)
+    ordered : bool = False
+    ordering  : Dict[int,int] = None # Maps elements to their ordering positions
+    elements  : Set[int] = None # All elements in this superset
+    absolutes : Set[int]  = None # elements that appeared in every row that was merged to produce this superset
+    variables : Set[int]  = None # items that are not absolutes
+    # TODO: for the unordered case, absolutes should only be assigned a position once converted to a variable
+
+    def __init__(self, elements, firstRowID=None, ordering=None):
+        self.elements = set(elements)
+
+        self.ordered = (ordering != None)
+        if self.ordered:
+            self.ordering = {elem:ordering[elem] for elem in elements}
+            # in the ordered superset case, we will see every subset of the elements, so nothing is absolute
+            self.absolutes = set()
+            self.variables = self.elements.copy()
+        else:
+            # order them arbitrarily
+            # there is no ordering on absolutes (they arent in the mask), so initially the ordering is blank
+            self.ordering = {}
+            self.absolutes = self.elements.copy()
+            self.variables = set()
+
         if firstRowID != None:
             self.rowIDs = [firstRowID]
         else:
             self.rowIDs = []
-        return super().__init__(elements)
+
+
 
     def update(self, other):
+        self.elements.update(other)
+
         if type(other) == type(self):
+            if self.ordered != other.ordered:
+                raise Exception("Attempting to merge an ordered superset with an unordered superset!")
             self.absolutes.intersection_update(other.absolutes)
             self.rowIDs.extend(other.rowIDs)
+            if self.ordered:
+                self.ordering.update(other.ordering)
         else:
             self.absolutes.intersection_update(other)
-        return super().update(other)
 
-    def remove(self, elem):
-        self.absolutes.discard(elem)
-        return super().remove(elem)
+        oldVariables= self.variables.copy()
+        self.variables = set(self.elements).difference(self.absolutes)
+
+        if not self.ordered:
+            # assign mask positions (after existing variables) to all new variables
+            newVariables = self.variables.difference(oldVariables)
+            firstNewPos = 0 if (len(self.ordering)==0) else max(self.ordering.values())
+            self.ordering.update({newVar:firstNewPos+i for i,newVar in enumerate(newVariables)})
+
+    def updateWouldGrowMask(self, other):
+        """ If we were to merge the 'other' superset with this superset, would this delta mask expand?
+        """
+        if type(self) == type(other):
+            newElements = self.elements.union(other.elements)
+            newAbsolutes = self.absolutes.intersection(other.absolutes)
+        else:
+            newElements = self.elements.union(other)
+            newAbsolutes = self.absolutes.intersection(other)
+        newVariables = newElements.difference(newAbsolutes)
+        return len(newVariables) > len(self.variables)
+
+
+    def union(self, other):
+        ss = self.copy()
+        ss.update(other)
+        return ss
+
+
+    def __contains__(self, elem):
+        return self.elements.__contains__(elem)
+
+    def __iter__(self):
+        return self.elements.__iter__()
+
+    def __len__(self):
+        return self.elements.__len__()
+
+    def issuperset(self, other):
+        return self.elements.issuperset(other)
+
+    def issubset(self, other):
+        return self.elements.issubset(other)
+
+    def containsTagFor(self, subset):
+        """ Determines if a tag for the given subset can be produced from this superset.
+        """
+        subset = set(subset)
+        # All the absolutes must appear in the given subset
+        if not self.absolutes.issubset(subset): return False
+        varSubset = set(subset).difference(self.absolutes)
+        # every non-absolute in the given subset must appear in our variables
+        if not varSubset.issubset(self.variables): return False
+        return True
+
+    def mask(self, subset):
+        """
+        """
+        subset = set(subset)
+        sortedVars = list(self.variables)
+        sortedVars.sort(key=lambda x:self.ordering[x])
+        bits = ['1' if elem in subset else '0' for elem in sortedVars]
+        # The mask is reversed because it grows from the end of tag towards the front
+        return ''.join(reversed(bits))
+
+    def queryMask(self, elem):
+        """ What should the query mask be for this item
+        """
+        bits = ['*']*len(self.variables)
+        if elem not in self.absolutes:
+            sortedVars = list(self.variables)
+            sortedVars.sort(key=lambda x:self.ordering[x])
+            elemPos = sortedVars.index(elem)
+            bits[elemPos] = '1'
+            # in the ordered case, a query should only succeed if all preceding elements are absent
+            if self.ordered:
+                for i in range(elemPos):
+                    bits[i] = '0'
+        # The mask is reversed because it grows from the end of tag towards the front
+        return ''.join(reversed(bits))
+
+    def maskLen(self):
+        return len(self.variables)
+
 
     def discard(self, elem):
-        self.absolutes.discard(elem)
-        return super().discard(elem)
+        if elem in self.elements:
+            del self.ordering[elem]
+            self.elements.discard(elem)
+            self.absolutes.discard(elem)
+            self.variables.discard(item)
 
     def difference_update(self, elements):
+        for elem in elements:
+            self.ordering.pop(elem, None)
+        self.elements.difference_update(elements)
         self.absolutes.difference_update(elements)
-        return super().difference_update(elements)
+        self.variables.difference_update(elements)
 
     def copy(self):
-        other = SuperSet([i for i in self])
-        other.rowIDs = self.rowIDs.copy()
-        other.absolutes = self.absolutes.copy()
-        return other
+        ss = SuperSet(self.elements)
+        ss.codeword = self.codeword
+        ss.rowIDs = self.rowIDs.copy()
+        ss.ordered = self.ordered
+        ss.ordering = self.ordering.copy()
+        ss.absolutes = self.absolutes.copy()
+        ss.variables = self.variables.copy()
+        return ss
 
-    ###
 
 
 
@@ -298,16 +413,8 @@ class RCode:
         """
         if not self.codeBuilt:
             self.buildCode()
-        return max(len(superset.codeword) + len(superset) for superset in self.supersets)
+        return max(len(superset.codeword) + superset.maskLen() for superset in self.supersets)
 
-
-    def _orderSuperset(self, superset):
-        """ Private method. Applies elementOrdering to the given superset and returns it in the correct order.
-        """
-        orderedSS = list(superset)
-        if self.isOrdered:
-            orderedSS.sort(key = lambda x : self.elementOrdering[x])
-        return orderedSS
 
 
     def matchStrings(self, element):
@@ -324,12 +431,8 @@ class RCode:
                 continue
 
             identifier = superset.codeword
-            mask = ['*'] * len(superset)
+            mask = superset.queryMask(element)
 
-            orderedSS = self._orderSuperset(superset)
-
-            mask[orderedSS.index(element)] = '1'
-            mask = ''.join(mask)
 
             paddingLen = self.maxWidth - (len(identifier) + len(mask))
             padding = '*' * paddingLen
@@ -342,12 +445,14 @@ class RCode:
         return strings
 
 
-    def allMatchStrings(self, elements):
+    def allMatchStrings(self, elements=None):
         """ Given a set of elements, return a dictionary which maps elements to lists of wildcard strings.
             The wildcard strings determine, when matched against a tag, if the corresponding  element is present in a tag.
         """
         if not self.codeBuilt:
             self.buildCode()
+        if elements == None:
+            elements = self.elements
         return {elem:self.matchStrings(elem) for elem in elements}
 
 
@@ -356,7 +461,7 @@ class RCode:
             Returns -1 if no superset exists.
         """
         for i, superset in enumerate(self.supersets):
-            if superset.issuperset(elements):
+            if superset.containsTagFor(elements):
                 return i
         return -1
 
@@ -378,8 +483,8 @@ class RCode:
         superset = self.supersets[ssIndex]
 
         identifier = superset.codeword
+        mask = superset.mask(subset)
 
-        mask = ''.join("1" if element in subset else "0" for element in superset)
 
         paddingLen = self.maxWidth - ((len(identifier) + len(mask)))
         padding = ('~' if decorated else '0') * paddingLen
@@ -543,6 +648,35 @@ class RCode:
 
         return changes
 
+    def elemIsInTag(self, elem, tag, queryDict):
+        """ Slow. Essentially simulates a TCAM table.
+        """
+        for query in queryDict[elem]:
+            if ternary_compare(query, tag):
+                return True
+        return False
+
+    def setFromTag(self, tag, queryDict):
+        """ Brute-force inverts an encoded set. Slow, should only be used for debugging.
+        """
+        return set([elem for elem in self.elements if self.elemIsInTag(elem, tag, queryDict)])
+
+    def validate(self):
+        self.buildCode()
+
+        queryDict = self.allMatchStrings()
+
+        for originalSet in self.originalSets:
+            tag = self.tagString(originalSet)
+            recovered = set(self.setFromTag(tag, queryDict))
+            if recovered != set(originalSet):
+                print("True PMV:", set(originalSet))
+                print("Recovered PMV:", recovered)
+                print("Tag:", tag)
+                raise Exception("A PMV recovered from the compression module was not equal to the original PMV!")
+        print("Encoding verified successfully.")
+
+
 
 
 def unit_test():
@@ -560,20 +694,24 @@ def unit_test():
               [5,3]]
     rcode = RCode(matrix)
     rcode.removePadding()
+    rcode.validate()
     print("pre-width-optimization")
     for row in matrix:
         print(row, "has tag", rcode.tagString(row, True))
     print(rcode.allMatchStrings(rcode.elements))
     print("Post-width-optimization")
     rcode.optimizeWidth()
+    rcode.validate()
     print(rcode.supersets)
     for row in matrix:
         print(row, "has tag", rcode.tagString(row, True))
 
     rcode = RCode(matrix)
+    rcode.validate()
     rcode.groupingStrategy([[1,2,3,4,5], [6,7,8]])
     for row in matrix:
         print(row, "has tag", rcode.tagString(row, True))
+    rcode.validate()
 
 
 
