@@ -5,6 +5,7 @@ except:
     from analyze import bitsRequiredFixedID, bitsRequiredVariableID
 
 from itertools import combinations
+from collections import deque as queue
 
 
 class UnionFind:
@@ -67,6 +68,37 @@ def mergeIntersectingSets(supersets):
         mergedSets.append(mergedSet)
     return mergedSets
 
+
+def generateCodeWords(supersets):
+    """ Given a list of supersets of varying with, produce a prefix-free code for labeling those supersets.
+        Longer supersets will be assigned shorter codewords.
+    """
+    minWidth = bitsRequiredVariableID(supersets)
+    # indices of supersets that have no codes yet
+    uncodedIndices = [i for i in range(len(supersets))]
+    # sort it in descending order of available code widths
+    uncodedIndices.sort(key = lambda index: minWidth - len(supersets[index]), reverse = True)
+    codeLens = [minWidth - len(supersets[i]) for i in uncodedIndices]
+
+    freeCodes = queue(['']) # right is head, left is tail
+    assignedCodes = ['']*len(supersets)
+
+    while len(uncodedIndices) > 0:
+        # If we have enough unused codes for all supersets,
+        #  OR if the current shortest codeword length is the limit for the longest uncoded superset
+        if len(freeCodes) >= len(uncodedIndices) or len(freeCodes[-1]) == codeLens[-1]:
+            ssIndex = uncodedIndices.pop()
+            codeLens.pop()
+            assignedCodes[ssIndex] = freeCodes.pop()
+        # else, we split the shortest codeword
+        else:
+            codeToSplit = freeCodes.pop()
+            freeCodes.extendleft([codeToSplit + c for c in ['1','0']])
+
+
+    freeCodes = list(freeCodes)
+
+    return (assignedCodes, freeCodes)
 
 
 def removeSubsets(supersets):

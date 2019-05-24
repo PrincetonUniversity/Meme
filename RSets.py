@@ -1,8 +1,8 @@
 try:
-    from .optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets
+    from .optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets, generateCodeWords
     from .analyze import getSupersetIndex, bitsRequiredVariableID
 except:
-    from optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets
+    from optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets, generateCodeWords
     from analyze import getSupersetIndex, bitsRequiredVariableID
 
 import math
@@ -394,29 +394,11 @@ class RCode:
         """
         self.logger("Building codewords... ")
 
-        minWidth = self.minimumWidth()
-        # indices of supersets that have no codes yet
-        uncodedIndices = [i for i in range(len(self.supersets))]
-        # sort it in descending order of available code widths
-        uncodedIndices.sort(key = lambda index: minWidth - len(self.supersets[index]), reverse = True)
-        codeLens = [minWidth - len(self.supersets[i]) for i in uncodedIndices]
+        codewords, self.freeCodes = generateCodeWords(self.supersets)
 
-        freeCodes = queue(['']) # right is head, left is tail
+        for codeword, superset in zip(codewords, self.supersets):
+            superset.codeword = codeword
 
-        while len(uncodedIndices) > 0:
-            # If we have enough unused codes for all supersets,
-            #  OR if the current shortest codeword length is the limit for the longest uncoded superset
-            if len(freeCodes) >= len(uncodedIndices) or len(freeCodes[-1]) == codeLens[-1]:
-                ssindex = uncodedIndices.pop()
-                codeLens.pop()
-                self.supersets[ssindex].codeword = freeCodes.pop()
-            # else, we split the shortest codeword
-            else:
-                codeToSplit = freeCodes.pop()
-                freeCodes.extendleft([codeToSplit + c for c in ['1','0']])
-
-
-        self.freeCodes = list(freeCodes)
         self.codeBuilt = True
         self.logger("Done building codewords.")
 
