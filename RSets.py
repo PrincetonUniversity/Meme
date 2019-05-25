@@ -45,6 +45,12 @@ class SuperSet(object):
             self.rowIDs = []
 
 
+    def setAbsolutes(self, absolutes):
+        self.absolutes = set(absolutes)
+        self.variables = self.elements.difference(self.absolutes)
+        if not self.ordered:
+            self.ordering = {elem:i for i,elem in enumerate(self.variables)}
+
 
     def update(self, other):
         self.elements.update(other)
@@ -309,29 +315,15 @@ class RCode:
             unsieved_supersets = sieved_supersets
 
 
-    def allMatchStrings(self, elements=None):
+    def allMatchStrings(self, elements=None, decorated=False):
         """ Returns every match string in the encoding for the given elements. If the elements are [1,2,3],
             the return value will something look like {1:["0*1*"], 2:["0**1", "1*1*"], 3:["1**1"]}.
         """
-        if elements == None:
-            elements = self.elements
-        return {element : self.matchStrings(element) for element in elements}
-
-
-    def allSupersets(self):
-        """ Returns a dictionary where keys are codewords and values are supersets.
-            Cool for debugging.
-        """
         if not self.codeBuilt:
             self.buildCode()
-        allSets = {}
-        for (i,superset) in enumerate(self.supersets):
-            if self.isOrdered:
-                allSets[superset.codeword] = self._orderSuperset(superset)
-            else:
-                allSets[superset.codeword] = superset
-
-        return allSets
+        if elements == None:
+            elements = self.elements
+        return {element : self.matchStrings(element, decorated) for element in elements}
 
 
     def optimizeWidth(self):
@@ -417,13 +409,17 @@ class RCode:
 
 
 
-    def matchStrings(self, element):
+    def matchStrings(self, element, decorated=False):
         """ Given an element, return a wildcard string for every superset that element appears in. This
             set of wildcard strings, when matched against a packet's tag, determines if that element is present.
         """
         if not self.codeBuilt:
             self.buildCode()
 
+
+        separator, padChar = '', '*'
+        if decorated:
+            separator, padChar = '-', '~'
 
         strings = []
         for superset in self.supersets:
@@ -435,25 +431,14 @@ class RCode:
 
 
             paddingLen = self.maxWidth - (len(identifier) + len(mask))
-            padding = '*' * paddingLen
+            padding = padChar * paddingLen
 
-            matchString = identifier + padding + mask
+            matchString = identifier + separator + padding + mask
 
             strings.append(matchString)
         if len(strings) == 0:
             self.logger("No match strings generated for element:", element)
         return strings
-
-
-    def allMatchStrings(self, elements=None):
-        """ Given a set of elements, return a dictionary which maps elements to lists of wildcard strings.
-            The wildcard strings determine, when matched against a tag, if the corresponding  element is present in a tag.
-        """
-        if not self.codeBuilt:
-            self.buildCode()
-        if elements == None:
-            elements = self.elements
-        return {elem:self.matchStrings(elem) for elem in elements}
 
 
     def getSupersetIndex(self, elements):
@@ -468,7 +453,7 @@ class RCode:
 
     def tagString(self, elements, decorated=False):
         """ Given an element set, returns a binary string to be used as a packet tag.
-            If decorated, padding bits are replaced with *, and the identifier and mask are
+            If decorated, padding bits are replaced with ~, and the identifier and mask are
             separated by a - character.
         """
         if not self.codeBuilt:
@@ -499,7 +484,9 @@ class RCode:
         """
         self.logger("Building codewords... ")
 
-        codewords, self.freeCodes = generateCodeWords(self.supersets)
+        maskSets = [superset.variables for superset in self.supersets]
+
+        codewords, self.freeCodes = generateCodeWords(maskSets)
 
         for codeword, superset in zip(codewords, self.supersets):
             superset.codeword = codeword
@@ -701,6 +688,7 @@ def unit_test():
     print(rcode.allMatchStrings(rcode.elements))
     print("Post-width-optimization")
     rcode.optimizeWidth()
+    rcode.removePadding()
     rcode.validate()
     print(rcode.supersets)
     for row in matrix:

@@ -38,7 +38,7 @@ class MRCode(object):
 
         # we start off with a single code
         rcode = RCode(elementSets)
-        rcode.optimizeWidth()
+        #rcode.optimizeWidth()
         self.rcodes = [rcode]
 
         # initially every element belongs to the 0th (and only) rcode
@@ -131,7 +131,7 @@ class MRCode(object):
             raise Exception("Attempting to spawn a subcode from an extraction that yields an empty matrix!")
 
         rcode.removeSubsets()
-        rcode.optimizeWidth()
+        #rcode.optimizeWidth()
         rcode.removePadding()
 
         dstCode = None
@@ -146,7 +146,7 @@ class MRCode(object):
             # add the new code to the list of codes
             dstindex = len(self.rcodes)
             self.rcodes.append(dstCode)
-        dstCode.optimizeWidth()
+        #dstCode.optimizeWidth()
         dstCode.removePadding()
         dstCode.buildCode()
 
@@ -177,7 +177,7 @@ class MRCode(object):
 
 
 
-    def matchStrings(self, elements=None):
+    def matchStrings(self, elements=None, decorated=False):
         """ For every element in elements, return a list of of ternary strings which,
             when compared to a compressed tag, will determine if the respective
             element is present in the tag or not.
@@ -188,20 +188,26 @@ class MRCode(object):
         inputElements = elements.copy()
         elements = set([self.shadowElements.get(e, e) for e in elements])
 
-        padChar = '*'
-        totalWidth = self.width()
-        lPaddingLen = 0
+        separator, padChar = '', '*'
+        if decorated:
+            separator, padChar = '-', '*'
         strings = {}
-        for code in self.rcodes:
+        blankCodes = [padChar*rcode.widthUsed() for rcode in self.rcodes]
+        for i, code in enumerate(self.rcodes):
             subset = elements.intersection(code.elements)
-            substrings = code.allMatchStrings(subset)
-            subTagWidth = code.widthUsed()
-            rPaddingLen = totalWidth - subTagWidth - lPaddingLen
+            substrings = code.allMatchStrings(subset, decorated=decorated)
+
+            lPadding = separator.join(blankCodes[:i])
+            rPadding = separator.join(blankCodes[i+1:])
+
+            if i != 0:
+                lPadding = lPadding + separator
+            if i == len(blankCodes):
+                rPadding = separator + rPadding
+
 
             for elem in subset:
-                strings[elem] = [padChar*lPaddingLen + substring + padChar*rPaddingLen for substring in substrings[elem]]
-
-            lPaddingLen += subTagWidth
+                strings[elem] = [lPadding + substring + rPadding for substring in substrings[elem]]
 
         strings = {e:strings[self.shadowElements.get(e,e)] for e in inputElements}
         return strings
@@ -218,10 +224,12 @@ if __name__=="__main__":
     for row in matrix:
         cols.update(row)
 
+    print("===================")
     code = MRCode(matrix)
     for row in matrix:
         print(row, "->", code.tagString(row, True))
 
+    print("===================")
     code.extractHeavyHitters()
     for row in matrix:
         print(row, "->", code.tagString(row, True))
@@ -235,8 +243,9 @@ if __name__=="__main__":
     code = MRCode(matrix)
     code.optimizeVertexCuts()
 
+    print("===================")
     code = MRCode(matrix)
-    code.useStrategy([[[3,4]], [[1,2], [5,6,7]]])
+    code.useStrategy([[[3,4,5]], [[1,2], [6,7]]])
     for row in matrix:
         print(row, "->", code.tagString(row, True))
 
