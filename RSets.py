@@ -391,7 +391,7 @@ class RCode:
 
 
     def minimumWidth(self):
-        return bitsRequiredVariableID(self.supersets)
+        return bitsRequiredVariableID([ss.variables for ss in self.supersets])
 
 
     def width(self):
@@ -648,7 +648,7 @@ class RCode:
         """
         return set([elem for elem in self.elements if self.elemIsInTag(elem, tag, queryDict)])
 
-    def validate(self):
+    def verifyCompression(self):
         self.buildCode()
 
         queryDict = self.allMatchStrings()
@@ -657,10 +657,10 @@ class RCode:
             tag = self.tagString(originalSet)
             recovered = set(self.setFromTag(tag, queryDict))
             if recovered != set(originalSet):
-                print("True PMV:", set(originalSet))
-                print("Recovered PMV:", recovered)
+                print("True row:", set(originalSet))
+                print("Recovered row:", recovered)
                 print("Tag:", tag)
-                raise Exception("A PMV recovered from the compression module was not equal to the original PMV!")
+                raise Exception("A row recovered from the compression module was not equal to the original row!")
         print("Encoding verified successfully.")
 
 

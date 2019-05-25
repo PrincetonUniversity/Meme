@@ -63,6 +63,14 @@ class MRCode(object):
         return self.optimizeVertexCuts()
         #return self.optimizeRecursiveHeavyHitters()
 
+    def verifyCompression(self):
+        for i, rcode in enumerate(self.rcodes):
+            try:
+                rcode.verifyCompression()
+            except:
+                raise Exception("Code %d failed to verify!" % i)
+        print("MRSets verified successfully")
+
 
     def optimizeRecursiveHeavyHitters(self, threshold=1):
         while self.extractHeavyHitters(1):
