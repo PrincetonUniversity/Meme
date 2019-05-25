@@ -198,7 +198,7 @@ class MRCode(object):
 
         separator, padChar = '', '*'
         if decorated:
-            separator, padChar = '-', '*'
+            separator, padChar = '|', '*'
         strings = {}
         blankCodes = [padChar*rcode.widthUsed() for rcode in self.rcodes]
         for i, code in enumerate(self.rcodes):
