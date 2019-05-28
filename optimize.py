@@ -1,11 +1,14 @@
 import math
 try:
     from .analyze import bitsRequiredFixedID, bitsRequiredVariableID
+    from .biclustering import AbsNode
 except:
     from analyze import bitsRequiredFixedID, bitsRequiredVariableID
+    from biclustering import AbsNode
 
 from itertools import combinations
 from collections import deque as queue
+
 
 
 class UnionFind:
@@ -69,36 +72,87 @@ def mergeIntersectingSets(supersets):
     return mergedSets
 
 
-def generateCodeWords(supersets):
+def generateCodeWords(supersets, absHierarchy=False, prefix = ''):
     """ Given a list of supersets of varying with, produce a prefix-free code for labeling those supersets.
         Longer supersets will be assigned shorter codewords.
     """
-    minWidth = bitsRequiredVariableID(supersets)
-    # indices of supersets that have no codes yet
-    uncodedIndices = [i for i in range(len(supersets))]
-    # sort it in descending order of available code widths
-    uncodedIndices.sort(key = lambda index: minWidth - len(supersets[index]), reverse = True)
-    codeLens = [minWidth - len(supersets[i]) for i in uncodedIndices]
+    if not absHierarchy:
+        minWidth = bitsRequiredVariableID(supersets)
+        # indices of supersets that have no codes yet
+        uncodedIndices = [i for i in range(len(supersets))]
+        # sort it in descending order of available code widths
+        uncodedIndices.sort(key = lambda index: minWidth - len(supersets[index]), reverse = True)
+        codeLens = [minWidth - len(supersets[i]) for i in uncodedIndices]
+
+        freeCodes = queue(['']) # right is head, left is tail
+        assignedCodes = ['']*len(supersets)
+
+        while len(uncodedIndices) > 0:
+            # If we have enough unused codes for all supersets,
+            #  OR if the current shortest codeword length is the limit for the longest uncoded superset
+            if len(freeCodes) >= len(uncodedIndices) or len(freeCodes[-1]) == codeLens[-1]:
+                ssIndex = uncodedIndices.pop()
+                codeLens.pop()
+                assignedCodes[ssIndex] = freeCodes.pop()
+            # else, we split the shortest codeword
+            else:
+                codeToSplit = freeCodes.pop()
+                freeCodes.extendleft([codeToSplit + c for c in ['1','0']])
+
+        freeCodes = list(freeCodes)
+
+        return (assignedCodes, freeCodes)
+    else:
+        assignedCodes, freeCodes, absCodes = generateCodeWordsRec(prefix, supersets)
+        return (assignedCodes, freeCodes, absCodes)
+
+def generateCodeWordsRec(prefix, supersets):
+    if isinstance(supersets, AbsNode):
+        absNode = supersets
+        minWidth = len(supersets)
+        supersets = supersets.getChildren()
+    else:
+        absNode = None
+        supersets = sorted(supersets, key = lambda x: len(x))
+        minWidth = bitsRequiredVariableID(supersets)
+
+    codeLens = [minWidth - len(superset) for superset in supersets]
 
     freeCodes = queue(['']) # right is head, left is tail
-    assignedCodes = ['']*len(supersets)
+    assignedCodes = {}
+    absCodes = {}
 
-    while len(uncodedIndices) > 0:
+    maxcodeLen = codeLens[0]
+    extraCodes = False
+    while len(supersets) > 0:
         # If we have enough unused codes for all supersets,
         #  OR if the current shortest codeword length is the limit for the longest uncoded superset
-        if len(freeCodes) >= len(uncodedIndices) or len(freeCodes[-1]) == codeLens[-1]:
-            ssIndex = uncodedIndices.pop()
+        if len(freeCodes) >= len(supersets) and not extraCodes and maxcodeLen > len(freeCodes[-1]):
+            codeToSplit = freeCodes.pop()
+            freeCodes.extendleft([codeToSplit + c for c in ['1','0']])
+            extraCodes = True
+        elif len(freeCodes) >= len(supersets) or len(freeCodes[-1]) == codeLens[-1]:
             codeLens.pop()
-            assignedCodes[ssIndex] = freeCodes.pop()
+            superset = supersets.pop()
+            if isinstance(superset, AbsNode):
+                newprefix = freeCodes.pop()
+                # TODO: take use of freeCodes2
+                assignedCodes2, freeCodes2, absCodes2 = generateCodeWordsRec(prefix + newprefix, superset)
+                assignedCodes.update(assignedCodes2)
+                absCodes.update(absCodes2)
+            else:
+                if absNode and absNode.strict and frozenset([absNode.absCol]) == superset:
+                    absCodes[absNode.absCol] = (prefix, prefix + freeCodes.pop())
+                else:
+                    assignedCodes[superset] = prefix + freeCodes.pop()
         # else, we split the shortest codeword
         else:
             codeToSplit = freeCodes.pop()
             freeCodes.extendleft([codeToSplit + c for c in ['1','0']])
-
-
+    if absNode and not absNode.strict:
+        absCodes[absNode.absCol] = (prefix, prefix)
     freeCodes = list(freeCodes)
-
-    return (assignedCodes, freeCodes)
+    return assignedCodes, freeCodes, absCodes
 
 
 def removeSubsets(supersets):

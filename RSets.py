@@ -1,9 +1,11 @@
 try:
     from .optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets, generateCodeWords
     from .analyze import getSupersetIndex, bitsRequiredVariableID, ternary_compare
+    from .biclustering import AbsNode
 except:
     from optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets, generateCodeWords
     from analyze import getSupersetIndex, bitsRequiredVariableID, ternary_compare
+    from biclustering import AbsNode
 
 import math
 from bidict import bidict
@@ -23,8 +25,11 @@ class SuperSet(object):
     variables : Set[int]  = None # items that are not absolutes
     # TODO: for the unordered case, absolutes should only be assigned a position once converted to a variable
 
-    def __init__(self, elements, firstRowID=None, ordering=None):
-        self.elements = set(elements)
+    def __init__(self, elements, firstRowID=None, ordering=None, absoluteGiven = False):
+        if not absoluteGiven:
+            self.elements = set(elements)
+        else:
+            self.elements = set(elements[0]).union(elements[1])
 
         self.ordered = (ordering != None)
         if self.ordered:
@@ -36,8 +41,13 @@ class SuperSet(object):
             # order them arbitrarily
             # there is no ordering on absolutes (they arent in the mask), so initially the ordering is blank
             self.ordering = {}
-            self.absolutes = self.elements.copy()
-            self.variables = set()
+            if not absoluteGiven:
+                self.absolutes = self.elements.copy()
+                self.variables = set()
+            else:
+                self.variables = set(elements[0])
+                self.absolutes = set(elements[1])
+                self.ordering = {elem:i for i,elem in enumerate(self.variables)}
 
         if firstRowID != None:
             self.rowIDs = [firstRowID]
@@ -201,6 +211,10 @@ class RCode:
     extractions     : Set = None # elements that were removed from the input matrix
     logging         : bool = False
 
+    absHierarchy : List = None # list of encoding
+    absCodes : Dict = None # prefix coding for absolute elements
+    emptyCode = ''
+
     # pep8 can go suck it
 
 
@@ -212,28 +226,43 @@ class RCode:
 
 
     def __init__(self, elementSets, maxWidth=None,
-                    elementOrdering=None, elementWeights=None, logging=False):
+                    elementOrdering=None, elementWeights=None, logging=False, absHierarchy=None):
         """ elementSets preferably will have no duplicate sets.
             Duplicate sets do not impact correctness, only efficiency.
         """
         self.logging=logging
+
+        self.absHierarchy = absHierarchy
+        self.absCodes = {}
+        self.emptyCode = ''
+
         # what elements appear across all the supersets?
         self.elements = set([])
-        for es in elementSets:
-            self.elements.update(es)
 
-        self.originalSets = [frozenset(es) for es in elementSets]
-        # self.originalSets = bidict({i:s for i,s in enumerate(deduplicatedSets)})
+        if not absHierarchy:
+            for es in elementSets:
+                self.elements.update(es)
+
+            self.originalSets = [frozenset(es) for es in elementSets]
+            # self.originalSets = bidict({i:s for i,s in enumerate(deduplicatedSets)})
+
+            self.supersets = [SuperSet(elementSet, i) for (i,elementSet) in enumerate(self.originalSets)]
+            self.removeSubsets()
+
+        else:
+            # don't know the purpose of originalSets for hierarchy case, SHOULD BE USELESS, maybe BUGGY
+            self.originalSets = [frozenset(set(vares).union(abses)) for vares, abses in elementSets]
+            for es in self.originalSets:
+                self.elements.update(es)
+
+            self.supersets = [SuperSet(elementSet, i, absoluteGiven = True) for (i, elementSet) in enumerate(elementSets)]
 
 
-        self.supersets = [SuperSet(elementSet, i) for (i,elementSet) in enumerate(self.originalSets)]
-        self.removeSubsets()
-
-        self.maxWidth = maxWidth
-        if self.maxWidth is None:
+        if maxWidth is None:
             # assume the smallest possible max width if none given
             self.maxWidth = self.minimumWidth()
-
+        else:
+            self.maxWidth = maxWidth
 
         # ordering
         if elementOrdering is not None:
@@ -346,9 +375,9 @@ class RCode:
         else:
             self.maxWidth = self.minimumWidth()
 
+
     def expandIfNecessary(self):
         self.maxWidth = max(self.maxWidth, self.minimumWidth())
-
 
 
     def mergeOverlaps(self):
@@ -391,6 +420,8 @@ class RCode:
 
 
     def minimumWidth(self):
+        if self.absHierarchy != None:
+            return bitsRequiredVariableID(self.absHierarchy)
         return bitsRequiredVariableID([ss.variables for ss in self.supersets])
 
 
@@ -409,7 +440,7 @@ class RCode:
 
 
 
-    def matchStrings(self, element, decorated=False):
+    def matchStrings(self, element, decorated=False, printD=False):
         """ Given an element, return a wildcard string for every superset that element appears in. This
             set of wildcard strings, when matched against a packet's tag, determines if that element is present.
         """
@@ -421,6 +452,13 @@ class RCode:
         if decorated:
             separator, padChar = '-', '~'
 
+        if self.absHierarchy != None and element in self.absCodes:
+            identifier = self.absCodes[element][0]
+            paddingLen = self.maxWidth - (len(identifier))
+            padding = padChar * paddingLen
+            matchString = identifier + separator + padding
+            return [matchString]
+
         strings = []
         for superset in self.supersets:
             if element not in superset:
@@ -428,7 +466,6 @@ class RCode:
 
             identifier = superset.codeword
             mask = superset.queryMask(element)
-
 
             paddingLen = self.maxWidth - (len(identifier) + len(mask))
             padding = padChar * paddingLen
@@ -460,16 +497,26 @@ class RCode:
             self.buildCode()
 
         subset = set(elements)
-        ssIndex = self.getSupersetIndex(subset)
-        if ssIndex == -1:
-            self.logger("Asking for a tag for an unseen element set: ", elements)
-            return ""
 
-        superset = self.supersets[ssIndex]
+        if self.absHierarchy != None and len(subset) == 0:
+            identifier = self.emptyCode
+            mask = ''
+        elif self.absHierarchy != None and subset.issubset(self.absCodes.keys()):
+            # print(self.absHierarchy)
+            # print([(superset.variables, superset.absolutes) for superset in self.supersets])
 
-        identifier = superset.codeword
-        mask = superset.mask(subset)
+            identifier = max([self.absCodes[element] for element in subset], key=lambda x : len(x[0]))[1]
+            mask = ''
+        else:
+            ssIndex = self.getSupersetIndex(subset)
+            if ssIndex == -1:
+                self.logger("Asking for a tag for an unseen element set: ", elements)
+                return ""
 
+            superset = self.supersets[ssIndex]
+
+            identifier = superset.codeword
+            mask = superset.mask(subset)
 
         paddingLen = self.maxWidth - ((len(identifier) + len(mask)))
         padding = ('~' if decorated else '0') * paddingLen
@@ -484,15 +531,24 @@ class RCode:
         """
         self.logger("Building codewords... ")
 
-        maskSets = [superset.variables for superset in self.supersets]
-
-        codewords, self.freeCodes = generateCodeWords(maskSets)
-
-        for codeword, superset in zip(codewords, self.supersets):
-            superset.codeword = codeword
+        if self.absHierarchy != None:
+            codewordMap, self.freeCodes, self.absCodes = generateCodeWords(self.absHierarchy, absHierarchy=True)
+            supersetMap = {frozenset(superset.variables) : superset for superset in self.supersets}
+            for k,v in codewordMap.items():
+                supersetMap[k].codeword = v
+        else:
+            maskSets = [superset.variables for superset in self.supersets]
+            codewords, self.freeCodes = generateCodeWords(maskSets)
+            for codeword, superset in zip(codewords, self.supersets):
+                superset.codeword = codeword
 
         self.codeBuilt = True
         self.logger("Done building codewords.")
+        return self.freeCodes
+
+
+    def setEmptyCode(self, emptyCode):
+        self.emptyCode = emptyCode
 
 
     def _bestCodewordToSplit(self, newSet):

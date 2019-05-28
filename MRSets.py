@@ -4,9 +4,11 @@ from typing import List,Set,Dict
 try:
     from .RSets import RCode
     from .analyze import groupIdenticalColumns
+    from .biclustering import biclusteringHierarchy
 except:
     from RSets import RCode
     from analyze import groupIdenticalColumns
+    from biclustering import biclusteringHierarchy
 
 
 
@@ -16,13 +18,17 @@ class MRCode(object):
     originalSets : List = None
 
     shadowElements : Dict = None # maps elements to elements for which they have identical behavior
+    hierarchy : bool = False
+    nonShadowElements : Set = None
+    strict : bool = False
 
-    def __init__(self, elementSets):
+    def __init__(self, elementSets, hierarchy = False, strict = False):
         # remove duplicates
         elementSets = set([frozenset(es) for es in elementSets])
 
         self.originalSets = list(elementSets)
-
+        self.strict = strict
+        self.hierarchy = hierarchy
 
         # find shadow elements
         self.shadowElements = {}
@@ -36,13 +42,19 @@ class MRCode(object):
         shadows = set(self.shadowElements.keys())
         elementSets = [es.difference(shadows) for es in elementSets]
 
-        # we start off with a single code
-        rcode = RCode(elementSets)
-        #rcode.optimizeWidth()
-        self.rcodes = [rcode]
+        if not hierarchy:
+            # we start off with a single code
+            rcode = RCode(elementSets)
+            #rcode.optimizeWidth()
+            self.rcodes = [rcode]
 
-        # initially every element belongs to the 0th (and only) rcode
-        self.elements = {element : 0 for element in rcode.elements}
+            # initially every element belongs to the 0th (and only) rcode
+            self.elements = {element : 0 for element in rcode.elements}
+            self.nonShadowElements = None
+        else:
+            self.rcodes = []
+            self.elements = {}
+            self.nonShadowElements = elementSets
 
 
     def useStrategy(self, strategy):
@@ -57,10 +69,36 @@ class MRCode(object):
             rcode.groupingStrategy(grouping)
 
 
-    def optimize(self):
+    def useHierarchyStrategy(self, newsupersetsList, absHierarchyList):
+        """ A strategy is a list of groupings. A absHierarchy is a list of trees of absolute element dependency. 
+        """
+        self.rcodes = [RCode(supersets, absHierarchy=absHierarchy) for supersets, absHierarchy in zip(newsupersetsList, absHierarchyList)]
+        self.elements = {element : i for i, rcode in enumerate(self.rcodes) for element in rcode.elements}
+
+        # testing purpose: 1th element as parent
+        freeCodeSet = False
+        for i, rcode in enumerate(self.rcodes):
+            freeCodes = rcode.buildCode()
+            print("freeCodes: ", i, " ", freeCodes)
+            
+            for freeCode in freeCodes:
+                if not freeCodeSet:
+                    rcode.setEmptyCode(freeCode)
+                    print("Empty Code: ", freeCode)
+                    freeCodeSet = True
+        if not freeCodeSet:
+            raise Exception("Sorry, need one more bit for empty code!")
+
+
+
+    def optimize(self, parameters = None):
         """ TODO: Do something more clever.
         """
-        return self.optimizeVertexCuts()
+        if self.hierarchy:
+            newsupersetsList, absHierarchyList = biclusteringHierarchy(self.nonShadowElements, parameters, self.strict)
+            return self.useHierarchyStrategy(newsupersetsList, absHierarchyList)
+        else:
+            return self.optimizeVertexCuts()
         #return self.optimizeRecursiveHeavyHitters()
 
     def verifyCompression(self):
@@ -124,7 +162,6 @@ class MRCode(object):
         return True
 
 
-
     def spawnSubCode(self, extractionSet, srcIndex=-1, dstIndex=None):
         """ Given a set of columns and two rcode indices, extract the columns from the src rset,
             and insert them into the dst rset.
@@ -168,7 +205,6 @@ class MRCode(object):
         return sum(code.widthUsed() for code in self.rcodes)
 
 
-
     def tagString(self, elements, decorated=False):
         """ Given a set of elements, returns a string which represents
             that set in compressed form.
@@ -181,8 +217,6 @@ class MRCode(object):
 
         separator = '|' if decorated else ''
         return separator.join(subtags)
-
-
 
 
     def matchStrings(self, elements=None, decorated=False):
