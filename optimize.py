@@ -97,7 +97,7 @@ def generateCodeWords(supersets, absHierarchy=False, prefix = ''):
             # else, we split the shortest codeword
             else:
                 codeToSplit = freeCodes.pop()
-                freeCodes.extendleft([codeToSplit + c for c in ['1','0']])
+                freeCodes.extendleft([codeToSplit + c for c in ['0','1']])
 
         freeCodes = list(freeCodes)
 

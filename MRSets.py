@@ -79,7 +79,7 @@ class MRCode(object):
         freeCodeSet = False
         for i, rcode in enumerate(self.rcodes):
             freeCodes = rcode.buildCode()
-            print("freeCodes: ", i, " ", freeCodes)
+            # print("freeCodes: ", i, " ", freeCodes)
             
             for freeCode in freeCodes:
                 if not freeCodeSet:

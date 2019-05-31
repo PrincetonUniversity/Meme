@@ -220,15 +220,23 @@ def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, nu
 
     if num_clusters < 2:
         col_counts = np.asarray(np.sum(data, axis=0)).reshape(-1)
-        sel_threshold = max(max(col_counts) // sel_factor, min(col_counts) + 1)
+        sel_threshold = max(int(max(col_counts) / sel_factor), min(col_counts) + 1)
+        addselcols = [colmap[col] for col in np.where(col_counts >= sel_threshold)[0]]
+        print()
+        print(addselcols)
+        print(selcols)
+        print(col_counts)
+        print(colmap.values())
+        print(sel_threshold)
+        print()
 
-        selcols.extend([colmap[col] for col in np.where(col_counts >= sel_threshold)[0]])
+        selcols.extend(addselcols)
         data = data[:, np.where(col_counts < sel_threshold)[0]]
         nonzero = ~np.all(data == 0, axis=1)
         nonzero = np.asarray(nonzero).reshape(-1)
         data = data[nonzero]
         colmap = {k : colmap[v] for k, v in enumerate(np.where(col_counts < sel_threshold)[0].tolist())}
-        extractRec(data, colmap, absmap, abscolcand, abscols2, selcols, supersets, min(data.shape), col_threshold, sel_factor + 1, layer)
+        extractRec(data, colmap, absmap, abscolcand, abscols2, selcols, supersets, min(data.shape), col_threshold, sel_factor, layer)
         return 
     else:
 #             if layer == 0:
@@ -319,15 +327,15 @@ def biclusteringHierarchy(matrix, parameters, strict):
     warnings.simplefilter("ignore", category = ConvergenceWarning)
     warnings.filterwarnings("error", message = ".*divide by zero.*")
 
-    matrix, absColCand = removeSubsetsGetAbsCandidate(matrix)
+    dfaMatrix, absColCand = removeSubsetsGetAbsCandidate(matrix)
 
-    allCols = set.union(*[set(row) for row in matrix])
+    allCols = set.union(*[set(row) for row in dfaMatrix])
     newColID2oldColID = {newCol : oldCol for newCol, oldCol in enumerate(allCols)}
     oldColID2newColID = {oldCol : newCol for newCol, oldCol in enumerate(allCols)}
 
-    integerMatrix = np.matrix([[1 if col in row else 0 for col in allCols] for row in matrix], dtype=int)
+    integerMatrix = np.matrix([[1 if col in row else 0 for col in allCols] for row in dfaMatrix], dtype=int)
 
-    selFactor = 2
+    selFactor = 1.5
     if parameters != None:
         colThreshold = parameters[0]
         goal = int(parameters[1]) + 0.5
@@ -357,9 +365,18 @@ def biclusteringHierarchy(matrix, parameters, strict):
         widthsum += width
         infoList += info
 
-        subColThreshold = max(3, colThreshold // 2)
+        if colThreshold != 10:
+            subColThreshold = colThreshold
+        else:
+            subColThreshold = max(3, colThreshold // 2)
         while selcols:
-            
+            matrix2 = [set(row).intersection(selcols) for row in matrix]
+            print("0\n", [row for row in matrix2 if len(row) > 0])
+            dfaMatrix2, absColCand2 = removeSubsetsGetAbsCandidate(matrix2)
+            print("1 \n", dfaMatrix2)
+            submatrix = np.matrix([[1 if col in row else 0 for col in selcols] for row in dfaMatrix2], dtype=int)
+            print()
+
             subInitNumClusters = None
             colmap = {k : v for k, v in enumerate(selcols)}
             selcolsnewindices = [oldColID2newColID[col] for col in selcols]
@@ -370,7 +387,7 @@ def biclusteringHierarchy(matrix, parameters, strict):
             submatrix = submatrix[nonzero]
             
             supersets, selcols, absmap = extractCols(submatrix, subInitNumClusters, colmap, absColCand, subColThreshold, selFactor)
-            newsupersets, absHierarchy, _ = outputTransform(supersets, absmap, newColID2oldColID, strict, absThreshold = None)
+            newsupersets, absHierarchy, _ = outputTransform(supersets, absmap, newColID2oldColID, strict, absThreshold = 10)
 
             width, info = getCodingInformation(newsupersetsList, absHierarchy, selcols, oldColID2newColID, integerMatrix)
             widthsum += width
