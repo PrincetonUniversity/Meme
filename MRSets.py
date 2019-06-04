@@ -20,14 +20,12 @@ class MRCode(object):
     shadowElements : Dict = None # maps elements to elements for which they have identical behavior
     hierarchy : bool = False
     nonShadowElements : Set = None
-    strict : bool = False
 
-    def __init__(self, elementSets, hierarchy = False, strict = False):
+    def __init__(self, elementSets, hierarchy = False):
         # remove duplicates
         elementSets = set([frozenset(es) for es in elementSets])
 
         self.originalSets = list(elementSets)
-        self.strict = strict
         self.hierarchy = hierarchy
 
         # find shadow elements
@@ -75,27 +73,15 @@ class MRCode(object):
         self.rcodes = [RCode(supersets, absHierarchy=absHierarchy) for supersets, absHierarchy in zip(newsupersetsList, absHierarchyList)]
         self.elements = {element : i for i, rcode in enumerate(self.rcodes) for element in rcode.elements}
 
-        # testing purpose: 1th element as parent
-        freeCodeSet = False
-        for i, rcode in enumerate(self.rcodes):
-            freeCodes = rcode.buildCode()
-            # print("freeCodes: ", i, " ", freeCodes)
-            
-            for freeCode in freeCodes:
-                if not freeCodeSet:
-                    rcode.setEmptyCode(freeCode)
-                    print("Empty Code: ", freeCode)
-                    freeCodeSet = True
-        if not freeCodeSet:
-            raise Exception("Sorry, need one more bit for empty code!")
-
+        for rcode in self.rcodes:
+            rcode.buildCode()
 
 
     def optimize(self, parameters = None):
         """ TODO: Do something more clever.
         """
         if self.hierarchy:
-            newsupersetsList, absHierarchyList = biclusteringHierarchy(self.nonShadowElements, parameters, self.strict)
+            newsupersetsList, absHierarchyList = biclusteringHierarchy(self.nonShadowElements, parameters)
             return self.useHierarchyStrategy(newsupersetsList, absHierarchyList)
         else:
             return self.optimizeVertexCuts()

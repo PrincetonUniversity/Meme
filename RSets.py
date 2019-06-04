@@ -439,7 +439,6 @@ class RCode:
         return max(len(superset.codeword) + superset.maskLen() for superset in self.supersets)
 
 
-
     def matchStrings(self, element, decorated=False, printD=False):
         """ Given an element, return a wildcard string for every superset that element appears in. This
             set of wildcard strings, when matched against a packet's tag, determines if that element is present.
@@ -535,7 +534,10 @@ class RCode:
             codewordMap, self.freeCodes, self.absCodes = generateCodeWords(self.absHierarchy, absHierarchy=True)
             supersetMap = {frozenset(superset.variables) : superset for superset in self.supersets}
             for k,v in codewordMap.items():
-                supersetMap[k].codeword = v
+                if k == frozenset(["E"]):
+                    self.emptyCode = v
+                else:
+                    supersetMap[k].codeword = v
         else:
             maskSets = [superset.variables for superset in self.supersets]
             codewords, self.freeCodes = generateCodeWords(maskSets)
@@ -544,11 +546,6 @@ class RCode:
 
         self.codeBuilt = True
         self.logger("Done building codewords.")
-        return self.freeCodes
-
-
-    def setEmptyCode(self, emptyCode):
-        self.emptyCode = emptyCode
 
 
     def _bestCodewordToSplit(self, newSet):

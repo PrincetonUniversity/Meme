@@ -31,13 +31,11 @@ class AbsNode:
     absNodes = None # List
     absCol : int = 0
     height : int = 0
-    strict : bool = False
 
-    def __init__(self, absCol, supersets, posssibleChildren, strict = True):
+    def __init__(self, absCol, supersets, posssibleChildren):
         self.absCol = absCol
         self.fullSupersets = set(supersets)
         self.absNodes = []
-        self.strict = strict
         
         childSupersets = set([])
         for node in posssibleChildren:
@@ -46,15 +44,29 @@ class AbsNode:
                 self.absNodes.append(node)
 
         self.ownSupersets = list(self.fullSupersets.difference(childSupersets))
-
         self.height = bitsRequiredVariableID(self.getChildren())
     
     def getChildren(self):
-        allItems = self.ownSupersets + self.absNodes
-        if self.strict:
-            allItems = allItems + [frozenset([self.absCol])]
-        return sorted(allItems, key = lambda x: len(x))
-    
+        return sorted(self.ownSupersets + self.absNodes, key = lambda x: len(x))
+
+    def checkPrefix(self, frozenMatrix, parentAbsCols):
+        if not self.absNodes: return []
+
+        newparentAbsCols = copy.deepcopy(parentAbsCols)
+        newparentAbsCols.append(self.absCol)
+        result = []
+
+        if frozenset(newparentAbsCols) in frozenMatrix:
+            self.ownSupersets.append(frozenset([self.absCol]))
+            result = [self.absCol]
+
+        for node in self.absNodes:
+            result.extend(node.checkPrefix(frozenMatrix, newparentAbsCols))
+
+        self.height = bitsRequiredVariableID(self.getChildren())
+        return result
+
+
     def __len__(self):
         return self.height
 
@@ -63,13 +75,22 @@ class AbsNode:
         string +=  "absNodes: " + str([absNode.absCol for absNode in self.absNodes]) + "\n"
         string +=  "ownSupersets: " + str(self.ownSupersets) + "\n"
         return string
+
     def getAbsCount(self):
         return 1 + sum([node.getAbsCount() for node in self.absNodes])
+
+    def getAbsCols(self):
+        if not self.absNodes: return set([self.absCol])
+
+        result = set.union(*[node.getAbsCols() for node in self.absNodes])
+        result.add(self.absCol)
+        return result
         
 
-def removeSubsetsGetAbsCandidate(setList):
+def removeSubsetsGetAbsCandidate(matrix):
     """ Removes all subsets from a list of sets and return absCol candidates.
     """
+    setList = copy.deepcopy(matrix)
     absColCandMap = {}
     finalAnswer = []
     # defensive copy
@@ -164,13 +185,19 @@ def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, nu
 #             if allone[i] != allone2[i]:
 #                 print("allone", [colmap[col] for col in np.where(allone)[0]])
 #                 print("allone2", [colmap[col] for col in np.where(allone2)[0]])
-        temp = [colmap[col] for col in np.where(allone)[0]]
+        newabscol = [colmap[col] for col in np.where(allone)[0]]
+        assert(len(newabscol) <= 1)
 
         abscols2.extend([colmap[col] for col in np.where(allone)[0]])
         notallone = ~allone
         data = data[:, notallone]
         notallone = np.asarray(notallone).reshape(-1)
         colmap = {k : colmap[v] for k, v in enumerate(np.where(notallone)[0])}
+
+        nonzero = ~np.all(data == 0, axis=1)
+        nonzero = np.asarray(nonzero).reshape(-1)
+        data = data[nonzero]
+
 # Testing
 #         if data.shape[1] == 0:
 #             print("Alert!!!!!")
@@ -222,13 +249,13 @@ def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, nu
         col_counts = np.asarray(np.sum(data, axis=0)).reshape(-1)
         sel_threshold = max(int(max(col_counts) / sel_factor), min(col_counts) + 1)
         addselcols = [colmap[col] for col in np.where(col_counts >= sel_threshold)[0]]
-        print()
-        print(addselcols)
-        print(selcols)
-        print(col_counts)
-        print(colmap.values())
-        print(sel_threshold)
-        print()
+        # print()
+        # print(addselcols)
+        # print(selcols)
+        # print(col_counts)
+        # print(colmap.values())
+        # print(sel_threshold)
+        # print()
 
         selcols.extend(addselcols)
         data = data[:, np.where(col_counts < sel_threshold)[0]]
@@ -267,7 +294,7 @@ def extractCols(integerMatrix, initNumClusters, colmap, absColCand, colThreshold
     return supersets, selcols, absmap
 
 
-def outputTransform(supersets, absmap, newColID2oldColID, strict, absThreshold = None):
+def outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThreshold = None):
     # Back to old ColID   
     supersets1 = supersets
     absmap1 = absmap
@@ -285,7 +312,7 @@ def outputTransform(supersets, absmap, newColID2oldColID, strict, absThreshold =
     addselcols = []
     superset2absMap = defaultdict(list)
     for k, v in absmapTuples:
-        newNode = AbsNode(k, v, list(absRoot.values()), strict)
+        newNode = AbsNode(k, v, list(absRoot.values()))
         if absThreshold == None or len(newNode) < absThreshold:
             absRoot[k] = newNode
             for node in newNode.absNodes:
@@ -297,8 +324,14 @@ def outputTransform(supersets, absmap, newColID2oldColID, strict, absThreshold =
                 supersets1.append(superset)
             addselcols.append(k)
 
+    separatePrefix = []
+    for node in absRoot.values():
+        separatePrefix.extend(node.checkPrefix(frozenMatrix, []))
+    print("separatePrefix", separatePrefix)
+
     absHierarchy = copy.deepcopy(supersets1)
     absHierarchy.extend(absRoot.values())
+    absHierarchy.append(frozenset("E"))
 
     newsupersets = [(superset, []) for superset in supersets1]
     newsupersets.extend([(k, v) for k,v in superset2absMap.items()])
@@ -314,20 +347,30 @@ def getCodingInformation(supersets, absHierarchy, selcols, oldColID2newColID, in
         supersetGroupings = sorted([len(superset) for superset in supersets])
         tagwidth = bitsRequiredVariableID(supersets)
 
+    numabscol = sum([rootNode.getAbsCount() for rootNode in absHierarchy if isinstance(rootNode, AbsNode)])
+
+
     info = "Superset groupings\n" + str(supersetGroupings) \
            + "\nTag width\n" + str(tagwidth) \
            + "\nSelected columns\n" + str(selcols) \
            + "\nCounts of Selected columns\n" + str([np.count_nonzero(integerMatrix[:, oldColID2newColID[col]]) for col in selcols]) \
-           + "\nDoes absolute columns exit?\n" +  str(sum([rootNode.getAbsCount() for rootNode in absHierarchy if isinstance(rootNode, AbsNode)]))
+           + "\nDoes absolute columns exit?\n" +  str(numabscol)
+
+    if numabscol > 0:
+        info += "\nAbsolute columns:\n" +  str(set.union(*[rootNode.getAbsCols() for rootNode in absHierarchy if isinstance(rootNode, AbsNode)]))
+    info += "\n\n"
     return tagwidth, info
 
 
-def biclusteringHierarchy(matrix, parameters, strict):
+def biclusteringHierarchy(matrix, parameters):
 
     warnings.simplefilter("ignore", category = ConvergenceWarning)
     warnings.filterwarnings("error", message = ".*divide by zero.*")
 
+    frozenMatrix = set([frozenset(row) for row in matrix])
+
     dfaMatrix, absColCand = removeSubsetsGetAbsCandidate(matrix)
+
 
     allCols = set.union(*[set(row) for row in dfaMatrix])
     newColID2oldColID = {newCol : oldCol for newCol, oldCol in enumerate(allCols)}
@@ -351,11 +394,12 @@ def biclusteringHierarchy(matrix, parameters, strict):
 
     while widthsum >= goal:
         widthsum = 0
+        widths = []
         infoList = ''
         colmap = copy.deepcopy(newColID2oldColID)
 
         supersets, selcols, absmap = extractCols(integerMatrix, initNumClusters, colmap, absColCand, colThreshold, selFactor)
-        newsupersets, absHierarchy, addselcols = outputTransform(supersets, absmap, newColID2oldColID, strict, absThreshold = None)
+        newsupersets, absHierarchy, addselcols = outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThreshold = None)
 
         selcols.extend(addselcols)
         newsupersetsList = [newsupersets]
@@ -363,6 +407,7 @@ def biclusteringHierarchy(matrix, parameters, strict):
 
         width, info = getCodingInformation(newsupersetsList, absHierarchy, selcols, oldColID2newColID, integerMatrix)
         widthsum += width
+        widths.append(width)
         infoList += info
 
         if colThreshold != 10:
@@ -371,11 +416,11 @@ def biclusteringHierarchy(matrix, parameters, strict):
             subColThreshold = max(3, colThreshold // 2)
         while selcols:
             matrix2 = [set(row).intersection(selcols) for row in matrix]
-            print("0\n", [row for row in matrix2 if len(row) > 0])
+            # print("0\n", [row for row in matrix2 if len(row) > 0])
             dfaMatrix2, absColCand2 = removeSubsetsGetAbsCandidate(matrix2)
-            print("1 \n", dfaMatrix2)
+            # print("1 \n", dfaMatrix2)
             submatrix = np.matrix([[1 if col in row else 0 for col in selcols] for row in dfaMatrix2], dtype=int)
-            print()
+            # print()
 
             subInitNumClusters = None
             colmap = {k : v for k, v in enumerate(selcols)}
@@ -387,16 +432,17 @@ def biclusteringHierarchy(matrix, parameters, strict):
             submatrix = submatrix[nonzero]
             
             supersets, selcols, absmap = extractCols(submatrix, subInitNumClusters, colmap, absColCand, subColThreshold, selFactor)
-            newsupersets, absHierarchy, _ = outputTransform(supersets, absmap, newColID2oldColID, strict, absThreshold = 10)
+            newsupersets, absHierarchy, _ = outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThreshold = 10)
 
             width, info = getCodingInformation(newsupersetsList, absHierarchy, selcols, oldColID2newColID, integerMatrix)
             widthsum += width
+            widths.append(width)
             infoList += info
 
             newsupersetsList.append(newsupersets)
             absHierarchyList.append(absHierarchy)
 
-        print("Trying ", counter, "th time, reaching width: ", widthsum, " goal: ", goal)
+        print("Trying ", counter, "th time, reaching width: ", widthsum, " (", str(widths), " ) goal: ", goal)
         if goal < 0:
             goal = widthsum - 1
         if counter > 20:

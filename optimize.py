@@ -117,21 +117,16 @@ def generateCodeWordsRec(prefix, supersets):
         minWidth = bitsRequiredVariableID(supersets)
 
     codeLens = [minWidth - len(superset) for superset in supersets]
-
     freeCodes = queue(['']) # right is head, left is tail
     assignedCodes = {}
     absCodes = {}
 
-    maxcodeLen = codeLens[0]
-    extraCodes = False
+    absColCoded= False
     while len(supersets) > 0:
         # If we have enough unused codes for all supersets,
-        #  OR if the current shortest codeword length is the limit for the longest uncoded superset
-        if len(freeCodes) >= len(supersets) and not extraCodes and maxcodeLen > len(freeCodes[-1]):
-            codeToSplit = freeCodes.pop()
-            freeCodes.extendleft([codeToSplit + c for c in ['1','0']])
-            extraCodes = True
-        elif len(freeCodes) >= len(supersets) or len(freeCodes[-1]) == codeLens[-1]:
+        # OR if the current shortest codeword length is the limit for the longest uncoded superset
+
+        if len(freeCodes) >= len(supersets) or len(freeCodes[-1]) == codeLens[-1]:
             codeLens.pop()
             superset = supersets.pop()
             if isinstance(superset, AbsNode):
@@ -141,15 +136,16 @@ def generateCodeWordsRec(prefix, supersets):
                 assignedCodes.update(assignedCodes2)
                 absCodes.update(absCodes2)
             else:
-                if absNode and absNode.strict and frozenset([absNode.absCol]) == superset:
+                if absNode and frozenset([absNode.absCol]) == superset:
                     absCodes[absNode.absCol] = (prefix, prefix + freeCodes.pop())
+                    absColCoded = True
                 else:
                     assignedCodes[superset] = prefix + freeCodes.pop()
         # else, we split the shortest codeword
         else:
             codeToSplit = freeCodes.pop()
-            freeCodes.extendleft([codeToSplit + c for c in ['1','0']])
-    if absNode and not absNode.strict:
+            freeCodes.extendleft([codeToSplit + c for c in ['0','1']])
+    if absNode and not absColCoded:
         absCodes[absNode.absCol] = (prefix, prefix)
     freeCodes = list(freeCodes)
     return assignedCodes, freeCodes, absCodes
