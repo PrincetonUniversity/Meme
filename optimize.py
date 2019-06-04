@@ -107,6 +107,9 @@ def generateCodeWords(supersets, absHierarchy=False, prefix = ''):
         return (assignedCodes, freeCodes, absCodes)
 
 def generateCodeWordsRec(prefix, supersets):
+    '''
+        recursive function of assigning codes
+    '''
     if isinstance(supersets, AbsNode):
         absNode = supersets
         minWidth = len(supersets)
@@ -125,7 +128,6 @@ def generateCodeWordsRec(prefix, supersets):
     while len(supersets) > 0:
         # If we have enough unused codes for all supersets,
         # OR if the current shortest codeword length is the limit for the longest uncoded superset
-
         if len(freeCodes) >= len(supersets) or len(freeCodes[-1]) == codeLens[-1]:
             codeLens.pop()
             superset = supersets.pop()

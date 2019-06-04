@@ -88,24 +88,27 @@ class AbsNode:
         
 
 def removeSubsetsGetAbsCandidate(matrix):
-    """ Removes all subsets from a list of sets and return absCol candidates.
+    """ 
+        Removes all subsets from a list of sets and return absCol candidates.
     """
-    setList = copy.deepcopy(matrix)
-    absColCandMap = {}
-    finalAnswer = []
-    # defensive copy
+    setList = copy.deepcopy(matrix)  # defensive copy
+    absColCandMap = {}               # map from column to True/False
+    finalAnswer = []                 # matrix after subset merging
     setList.sort(key=len, reverse=True)
     i = 0
+
     while i < len(setList):
         finalAnswer.append(setList[i])
-        absColCandidate = setList[i]
-        absColCandidate2 = setList[i]
+        absColCandidate = setList[i]    # keep track of original columns
+        absColCandidate2 = setList[i]   # keep track of maybe absolute candidates in this superset
 
         for j in reversed(range(i+1, len(setList))):
             if setList[j].issubset(setList[i]):
+                # Find columns that are absolute in this superset
                 absColCandidate2 = absColCandidate2.intersection(setList[j])
                 del setList[j]
 
+        # Only columns that are always absolute in all supersets can be absolute candidates
         for col in absColCandidate:
             if absColCandMap.get(col, True) and col in absColCandidate2:
                 absColCandMap[col] = True
@@ -113,6 +116,7 @@ def removeSubsetsGetAbsCandidate(matrix):
                 absColCandMap[col] = False
 
         i += 1
+
     absColCand = [k for k, v in absColCandMap.items() if v]
     return finalAnswer, absColCand
 
@@ -129,8 +133,10 @@ def get_cluster_cols(model):
     return cluster_cols
 
 
-# Testing code of non-convergence
 def good_form(model, data):
+    '''
+        test the biclustering result of convergence
+    '''
     data_count = np.count_nonzero(data)
     bicluster_count = 0
     
@@ -142,8 +148,10 @@ def good_form(model, data):
     return True
 
 
-# Loop for fitting to find n_svd_vecs
 def fitLoop(model, data):
+    '''
+        Loop for fitting to find n_svd_vecs
+    '''
     i = 0
     j = 0
     while True:
@@ -156,12 +164,14 @@ def fitLoop(model, data):
             model.set_params(n_svd_vecs= min(min(data.shape), max(2*6 + 1, 20) + i))
             if j > 100:
                 raise Exception("Fit fails with %d columns!" % (data.shape[1]))
-                
+
     return model
 
 
-# Plotting
 def plot(model, data, layer):
+    '''
+        plot the matrix
+    '''
     fit_data = data[np.argsort(model.row_labels_)]
     fit_data = fit_data[:, np.argsort(model.column_labels_)]
 
@@ -171,20 +181,21 @@ def plot(model, data, layer):
     plt.show()
 
 
-def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, num_clusters, col_threshold, sel_factor, layer, final=False):    
+def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, num_clusters, col_threshold, sel_factor, layer, final=False):
+    '''
+        recursive function to cluster biclusters into smaller chunks, by finding abscols and extracting selcols.
+    '''
+    # base case
     if data.shape[1] == 0:
         return
 
+    # find absolute columns
     abscols2 = copy.deepcopy(abscols)
     if data.shape[1] != 1:
         allone = np.all(data == 1, axis=0)
         allone = np.asarray(allone).reshape(-1)
         allone = np.array([False if colmap[k[0]] not in abscolcand else v for k, v in np.ndenumerate(allone)])
-# Testing
-#         for i in range(len(allone)):
-#             if allone[i] != allone2[i]:
-#                 print("allone", [colmap[col] for col in np.where(allone)[0]])
-#                 print("allone2", [colmap[col] for col in np.where(allone2)[0]])
+
         newabscol = [colmap[col] for col in np.where(allone)[0]]
         assert(len(newabscol) <= 1)
 
@@ -198,10 +209,7 @@ def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, nu
         nonzero = np.asarray(nonzero).reshape(-1)
         data = data[nonzero]
 
-# Testing
-#         if data.shape[1] == 0:
-#             print("Alert!!!!!")
-#             print(colmap)
+    # base case "final": add absolute column mappings from abscol to variable column supersets; append supersets without absolute columns
     if final:
         if len(abscols2) != 0:
             for abscol in abscols2:
@@ -210,12 +218,12 @@ def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, nu
             supersets.append(frozenset(colmap.values()))
         return
 
+    # iteratively calling biclustering algorithm to find the largest n_clusters as possible
     model = SpectralCoclustering(n_clusters=num_clusters, random_state=RANSDOMSTATE, svd_method='arpack')
     while num_clusters > 1:
         try:
             model = fitLoop(model, data)
         except Exception as e: 
-            #print(e)
             if len(abscols2) != 0:
                 for abscol in abscols2:
                     absmap[abscol].append(frozenset(colmap.values()))
@@ -223,20 +231,23 @@ def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, nu
                 supersets.append(frozenset(colmap.values()))
             return
 
+        # check if biclustering succeeds
         if good_form(model, data):
             break
 
+        # iteratively cut the n_clusters
         if layer == 0:
             num_clusters = num_clusters - 1
         else:
             num_clusters = num_clusters // 2
         model.set_params(n_clusters=num_clusters)
 
+    # if the original bicluster is smaller then the col_threshold, call the base case "final" to add the results to absmap and supersets;
+    # the reason of such the condition is to try splitting the bicluster one more time when it is below the threshold.
+    # For instance, if the bicluster is of size 9 < threshold 10, try splitting one more time may yield 9 one-element bisluters and optimize
+    # the grouping.
     if data.shape[1] < col_threshold:
         if num_clusters < 2:
-# Testing
-#             if len(set(abscols2).intersection(set(colmap.values()))) != 0:
-#                 print("1",abscols2, colmap.values())
             extractRec(data, colmap, absmap, abscolcand, abscols2, selcols, supersets, min(data.shape), col_threshold, sel_factor, layer + 1, final = True)
         else:
             for j in range(num_clusters):
@@ -245,17 +256,11 @@ def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, nu
                 extractRec(data2, colmap2, absmap, abscolcand, abscols2, selcols, supersets, min(data2.shape), col_threshold, sel_factor, layer + 1, final = True)
         return
 
+    # if the biclustering fails (num_clusters = 1), extract heavy hitter columns to the next submatrix
     if num_clusters < 2:
         col_counts = np.asarray(np.sum(data, axis=0)).reshape(-1)
         sel_threshold = max(int(max(col_counts) / sel_factor), min(col_counts) + 1)
         addselcols = [colmap[col] for col in np.where(col_counts >= sel_threshold)[0]]
-        # print()
-        # print(addselcols)
-        # print(selcols)
-        # print(col_counts)
-        # print(colmap.values())
-        # print(sel_threshold)
-        # print()
 
         selcols.extend(addselcols)
         data = data[:, np.where(col_counts < sel_threshold)[0]]
@@ -265,6 +270,8 @@ def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, nu
         colmap = {k : colmap[v] for k, v in enumerate(np.where(col_counts < sel_threshold)[0].tolist())}
         extractRec(data, colmap, absmap, abscolcand, abscols2, selcols, supersets, min(data.shape), col_threshold, sel_factor, layer)
         return 
+
+    # if biclustering succeeds, recursively call extractRec on each biclusters.
     else:
 #             if layer == 0:
 #                 plot(model, data, DFA, layer)
@@ -275,6 +282,9 @@ def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, nu
         return 
 
 def extractCols(integerMatrix, initNumClusters, colmap, absColCand, colThreshold = 5, selFactor = 2):
+    '''
+        Main algorithm: cluster columns (supersets), extract columns for the next submatrix (selcols), and find absolute columns (absmap)
+    '''
     if initNumClusters == None: 
         initNumClusters = min(integerMatrix.shape)
 
@@ -289,24 +299,28 @@ def extractCols(integerMatrix, initNumClusters, colmap, absColCand, colThreshold
     abscols = []
     absmap = defaultdict(list)
 
+    # recursive function of the algorithm
     extractRec(integerMatrix, colmap, absmap, absColCand, abscols, selcols, supersets, initNumClusters, colThreshold, selFactor, layer = 0)
 
     return supersets, selcols, absmap
 
 
 def outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThreshold = None):
-    # Back to old ColID   
+    '''
+        construct absolute column hierarchy, find absolute columns that needs unque coding for itself
+        newsupersets is a list of tuples (variable columns, absolute columns)
+        absHierarchy is a list of mixture of supersets and AbsNodes
+    '''
+    
     supersets1 = supersets
     absmap1 = absmap
-    # supersets1 = [frozenset([newColID2oldColID[col] for col in group]) for group in supersets]
-    # absmap1 = {newColID2oldColID[k] : [frozenset([newColID2oldColID[col] for col in superset])
-    #            for superset in v] for k, v in absmap.items()}
 
     if len(absmap1) == 0:
         absHierarchy = copy.deepcopy(supersets1)
         newsupersets = [(superset, []) for superset in supersets1]
         return newsupersets, absHierarchy, []
     
+    # construct absolute column hierarchy
     absmapTuples = sorted([(k, v) for k,v in absmap1.items()], key = lambda x: len(x[1]))
     absRoot = {}
     addselcols = []
@@ -324,6 +338,7 @@ def outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThres
                 supersets1.append(superset)
             addselcols.append(k)
 
+    # find absolute columns that needs unque coding for itself
     separatePrefix = []
     for node in absRoot.values():
         separatePrefix.extend(node.checkPrefix(frozenMatrix, []))
@@ -363,28 +378,35 @@ def getCodingInformation(supersets, absHierarchy, selcols, oldColID2newColID, in
 
 
 def biclusteringHierarchy(matrix, parameters):
-
+    '''
+        Main algorithm. Iterate the randomized algorithm to cluster submatrices to meet the goal of tag width.
+    '''
+    # warning message filtering
     warnings.simplefilter("ignore", category = ConvergenceWarning)
     warnings.filterwarnings("error", message = ".*divide by zero.*")
 
+    # keep a frozenset of matrix for the search of absoluate columns that needs unique coding
     frozenMatrix = set([frozenset(row) for row in matrix])
 
+    # remove subsets and get the absolute column candidates
     dfaMatrix, absColCand = removeSubsetsGetAbsCandidate(matrix)
 
-
+    # construct a bidict mapping
     allCols = set.union(*[set(row) for row in dfaMatrix])
     newColID2oldColID = {newCol : oldCol for newCol, oldCol in enumerate(allCols)}
     oldColID2newColID = {oldCol : newCol for newCol, oldCol in enumerate(allCols)}
 
+    # construct integer matrix
     integerMatrix = np.matrix([[1 if col in row else 0 for col in allCols] for row in dfaMatrix], dtype=int)
 
-    selFactor = 1.5
+    # parameters for the initial call of extractCols
+    selFactor = 1.5                         # recursive factor to kick out heavy hitter columns preventing biclustering split; smaller -> more conservative
     if parameters != None:
-        colThreshold = parameters[0]
-        goal = int(parameters[1]) + 0.5
+        colThreshold = parameters[0]        # threshold of bicluster size in #columns
+        goal = int(parameters[1]) + 0.5     # prevent rounding errors
     else:
         colThreshold = 10
-        goal = -1
+        goal = -1                           # if no goal is given, make the algorihm end in one iteration
     initNumClusters = 80
 
     widthsum = goal + 1
@@ -392,44 +414,43 @@ def biclusteringHierarchy(matrix, parameters):
     absHierarchyList = []
     counter = 1
 
+    # iteration to reach the goal
     while widthsum >= goal:
         widthsum = 0
         widths = []
         infoList = ''
         colmap = copy.deepcopy(newColID2oldColID)
 
+        # call the main agorithm to get supersets, selcols and absmap
         supersets, selcols, absmap = extractCols(integerMatrix, initNumClusters, colmap, absColCand, colThreshold, selFactor)
+        # construct supersets and absHierarchy
         newsupersets, absHierarchy, addselcols = outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThreshold = None)
 
+        # save information; if additional columns are selected to the second submatrix, extend selcols 
         selcols.extend(addselcols)
         newsupersetsList = [newsupersets]
         absHierarchyList = [absHierarchy]
 
+        # get width and message of the grouping
         width, info = getCodingInformation(newsupersetsList, absHierarchy, selcols, oldColID2newColID, integerMatrix)
         widthsum += width
         widths.append(width)
         infoList += info
 
+        # parameters for the following rounds of submatrices
         if colThreshold != 10:
             subColThreshold = colThreshold
         else:
             subColThreshold = max(3, colThreshold // 2)
+
+        # while there are still columns for the next submatrix
         while selcols:
             matrix2 = [set(row).intersection(selcols) for row in matrix]
-            # print("0\n", [row for row in matrix2 if len(row) > 0])
             dfaMatrix2, absColCand2 = removeSubsetsGetAbsCandidate(matrix2)
-            # print("1 \n", dfaMatrix2)
             submatrix = np.matrix([[1 if col in row else 0 for col in selcols] for row in dfaMatrix2], dtype=int)
-            # print()
 
             subInitNumClusters = None
             colmap = {k : v for k, v in enumerate(selcols)}
-            selcolsnewindices = [oldColID2newColID[col] for col in selcols]
-
-            submatrix = integerMatrix[:, selcolsnewindices]
-            nonzero = ~np.all(submatrix == 0, axis=1)
-            nonzero = np.asarray(nonzero).reshape(-1)
-            submatrix = submatrix[nonzero]
             
             supersets, selcols, absmap = extractCols(submatrix, subInitNumClusters, colmap, absColCand, subColThreshold, selFactor)
             newsupersets, absHierarchy, _ = outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThreshold = 10)
@@ -443,15 +464,18 @@ def biclusteringHierarchy(matrix, parameters):
             absHierarchyList.append(absHierarchy)
 
         print("Trying ", counter, "th time, reaching width: ", widthsum, " (", str(widths), " ) goal: ", goal)
+        
+        # ends after the first iteraton if there is no goal
         if goal < 0:
             goal = widthsum - 1
+
+        # ends after iterate for 20 times failing to reach the goal
         if counter > 20:
             raise Exception("Failing to meet the goal after ", counter, " trials!")
         counter += 1
+
     print(infoList)
     return newsupersetsList, absHierarchyList
 
-# TODO
-#absmap.keys()
 
 

@@ -50,6 +50,7 @@ class MRCode(object):
             self.elements = {element : 0 for element in rcode.elements}
             self.nonShadowElements = None
         else:
+            # Initialization for biclustering hierarchy algorithm
             self.rcodes = []
             self.elements = {}
             self.nonShadowElements = elementSets
@@ -69,6 +70,7 @@ class MRCode(object):
 
     def useHierarchyStrategy(self, newsupersetsList, absHierarchyList):
         """ A strategy is a list of groupings. A absHierarchy is a list of trees of absolute element dependency. 
+            Build rcodes from newsupersetsList and absHierarchyList
         """
         self.rcodes = [RCode(supersets, absHierarchy=absHierarchy) for supersets, absHierarchy in zip(newsupersetsList, absHierarchyList)]
         self.elements = {element : i for i, rcode in enumerate(self.rcodes) for element in rcode.elements}
@@ -81,6 +83,7 @@ class MRCode(object):
         """ TODO: Do something more clever.
         """
         if self.hierarchy:
+            # Get the heirarchy from biclustering hierarchy algorithm
             newsupersetsList, absHierarchyList = biclusteringHierarchy(self.nonShadowElements, parameters)
             return self.useHierarchyStrategy(newsupersetsList, absHierarchyList)
         else:
