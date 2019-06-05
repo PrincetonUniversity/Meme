@@ -87,7 +87,7 @@ class MRCode(object):
             newsupersetsList, absHierarchyList = biclusteringHierarchy(self.nonShadowElements, parameters)
             return self.useHierarchyStrategy(newsupersetsList, absHierarchyList)
         else:
-            return self.optimizeVertexCuts()
+            return self.optimizeVertexCuts(parameters = parameters)
         #return self.optimizeRecursiveHeavyHitters()
 
     def verifyCompression(self):
@@ -104,9 +104,16 @@ class MRCode(object):
             pass
 
 
-    def optimizeVertexCuts(self, threshold=10, index=-1):
+    def optimizeVertexCuts(self, parameters = None):
         """ Threshold is the maximum size of a connected component we allow.
         """
+        if parameters == None:
+            threshold = 10
+            index = -1
+        else:
+            threshold = parameters[0]
+            index = parameters[1]
+
         rcode = self.rcodes[index]
         matrix = rcode.originalSets
 

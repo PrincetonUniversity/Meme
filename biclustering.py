@@ -467,7 +467,7 @@ def biclusteringHierarchy(matrix, parameters):
         
         # ends after the first iteraton if there is no goal
         if goal < 0:
-            goal = widthsum - 1
+            goal = widthsum + 1
 
         # ends after iterate for 20 times failing to reach the goal
         if counter > 20:
