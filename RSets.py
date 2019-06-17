@@ -364,7 +364,7 @@ class RCode:
         self.supersets = minimizeVariableWidthGreedy(self.supersets)
         endingWidth = self.minimumWidth()
         if startingWidth < endingWidth:
-            raise Exception("Optimize width did not optimize width??")
+            raise Exception("Optimize width did not optimize width?? Went from %d to %d" % (startingWidth, endingWidth))
 
 
     def removePadding(self):
@@ -734,7 +734,7 @@ def unit_test():
               [5,3]]
     rcode = RCode(matrix)
     rcode.removePadding()
-    rcode.validate()
+    rcode.verifyCompression()
     print("pre-width-optimization")
     for row in matrix:
         print(row, "has tag", rcode.tagString(row, True))
@@ -742,17 +742,17 @@ def unit_test():
     print("Post-width-optimization")
     rcode.optimizeWidth()
     rcode.removePadding()
-    rcode.validate()
+    rcode.verifyCompression()
     print(rcode.supersets)
     for row in matrix:
         print(row, "has tag", rcode.tagString(row, True))
 
     rcode = RCode(matrix)
-    rcode.validate()
+    rcode.verifyCompression()
     rcode.groupingStrategy([[1,2,3,4,5], [6,7,8]])
     for row in matrix:
         print(row, "has tag", rcode.tagString(row, True))
-    rcode.validate()
+    rcode.verifyCompression()
 
 
 

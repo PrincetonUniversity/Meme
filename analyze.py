@@ -49,7 +49,7 @@ def bitsRequiredFixedID(supersets):
     """
     logM = 0
     if len(supersets) > 1:
-        logM = math.ceil(math.log(len(supersets) - 1, 2))
+        logM = (len(supersets)-1).bit_length()
     maxS = max(len(superset) for superset in supersets)
 
     return int(logM + maxS)
@@ -60,8 +60,7 @@ def bitsRequiredVariableID(supersets):
         Assumes optimal variable-width superset identifiers.
     """
     kraftSum = sum(2**len(superset) for superset in supersets)
-    # return ceil(log_2(kraftSum))
-    return len("{0:b}".format(kraftSum - 1)) # math.log hits floating point precision issues for very large inputs
+    return (kraftSum-1).bit_length()
 
 
 def rulesRequired(supersets, ruleCounts):
