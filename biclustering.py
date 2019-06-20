@@ -181,7 +181,7 @@ def plot(model, data, layer):
     plt.show()
 
 
-def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, num_clusters, col_threshold, sel_factor, layer, final=False):
+def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, num_clusters, col_threshold, sel_factor, layer, final=False, allmin=False):
     '''
         recursive function to cluster biclusters into smaller chunks, by finding abscols and extracting selcols.
     '''
@@ -246,7 +246,7 @@ def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, nu
     # the reason of such the condition is to try splitting the bicluster one more time when it is below the threshold.
     # For instance, if the bicluster is of size 9 < threshold 10, try splitting one more time may yield 9 one-element bisluters and optimize
     # the grouping.
-    if data.shape[1] < col_threshold:
+    if data.shape[1] < col_threshold or allmin:
         if num_clusters < 2:
             extractRec(data, colmap, absmap, abscolcand, abscols2, selcols, supersets, min(data.shape), col_threshold, sel_factor, layer + 1, final = True)
         else:
@@ -268,7 +268,11 @@ def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, nu
         nonzero = np.asarray(nonzero).reshape(-1)
         data = data[nonzero]
         colmap = {k : colmap[v] for k, v in enumerate(np.where(col_counts < sel_threshold)[0].tolist())}
-        extractRec(data, colmap, absmap, abscolcand, abscols2, selcols, supersets, min(data.shape), col_threshold, sel_factor, layer)
+
+        if len(set(col_counts)) == 1:
+            extractRec(data, colmap, absmap, abscolcand, abscols2, selcols, supersets, min(data.shape), col_threshold, sel_factor, layer, allmin = True)
+        else:
+            extractRec(data, colmap, absmap, abscolcand, abscols2, selcols, supersets, min(data.shape), col_threshold, sel_factor, layer)
         return 
 
     # if biclustering succeeds, recursively call extractRec on each biclusters.
@@ -342,7 +346,7 @@ def outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThres
     separatePrefix = []
     for node in absRoot.values():
         separatePrefix.extend(node.checkPrefix(frozenMatrix, []))
-    print("separatePrefix", separatePrefix)
+    #print("separatePrefix", separatePrefix)
 
     absHierarchy = copy.deepcopy(supersets1)
     absHierarchy.extend(absRoot.values())
@@ -400,7 +404,8 @@ def biclusteringHierarchy(matrix, parameters):
     integerMatrix = np.matrix([[1 if col in row else 0 for col in allCols] for row in dfaMatrix], dtype=int)
 
     # parameters for the initial call of extractCols
-    selFactor = 1.5                         # recursive factor to kick out heavy hitter columns preventing biclustering split; smaller -> more conservative
+    selFactor = 1.5                         # recursive factor to kick out heavy hitter columns preventing biclustering split;
+                                            # must be > 1; smaller -> more conservative
     if parameters != None:
         colThreshold = parameters[0]        # threshold of bicluster size in #columns
         goal = int(parameters[1]) + 0.5     # prevent rounding errors
@@ -453,8 +458,9 @@ def biclusteringHierarchy(matrix, parameters):
             colmap = {k : v for k, v in enumerate(selcols)}
             
             supersets, selcols, absmap = extractCols(submatrix, subInitNumClusters, colmap, absColCand, subColThreshold, selFactor)
-            newsupersets, absHierarchy, _ = outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThreshold = 10)
-
+            newsupersets, absHierarchy, addselcols = outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThreshold = None)
+            selcols.extend(addselcols)
+            
             width, info = getCodingInformation(newsupersetsList, absHierarchy, selcols, oldColID2newColID, integerMatrix)
             widthsum += width
             widths.append(width)
