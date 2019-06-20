@@ -114,28 +114,29 @@ class MRCode(object):
             threshold = parameters[0]
             index = parameters[1]
 
-        rcode = self.rcodes[index]
-        matrix = rcode.originalSets
+        while True:
+            rcode = self.rcodes[-1]
+            matrix = rcode.originalSets
 
-        # a node for every column, and an edge for every pair of columns that occur together in any row
-        G = nx.Graph()
-        for row in matrix:
-            for i1, i2 in itertools.combinations(row, 2):
-                G.add_edge(i1, i2)
+            # a node for every column, and an edge for every pair of columns that occur together in any row
+            G = nx.Graph()
+            for row in matrix:
+                for i1, i2 in itertools.combinations(row, 2):
+                    G.add_edge(i1, i2)
 
-        extractions = set()
-        queue = [G.subgraph(nodes) for nodes in nx.connected_components(G)]
-        while len(queue) > 0:
-            cc = queue.pop()
-            if len(cc) < threshold: continue
-            cut = nx.minimum_node_cut(cc)
-            extractions.update(cut)
-            subG = cc.subgraph([n for n in cc if n not in set(cut)])
-            queue.extend([subG.subgraph(nodes) for nodes in nx.connected_components(subG)])
+            extractions = set()
+            queue = [G.subgraph(nodes) for nodes in nx.connected_components(G)]
+            while len(queue) > 0:
+                cc = queue.pop()
+                if len(cc) < threshold: continue
+                cut = nx.minimum_node_cut(cc)
+                extractions.update(cut)
+                subG = cc.subgraph([n for n in cc if n not in set(cut)])
+                queue.extend([subG.subgraph(nodes) for nodes in nx.connected_components(subG)])
 
-        if len(extractions) == 0:
-            return
-        self.spawnSubCode(extractionSet=extractions)
+            if len(extractions) == 0:
+                break
+            self.spawnSubCode(extractionSet=extractions)
 
         for rcode in self.rcodes:
             rcode.mergeOverlaps()
