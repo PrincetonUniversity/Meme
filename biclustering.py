@@ -72,9 +72,9 @@ class AbsNode:
         return self.height
 
     def __str__(self):
-        string = "absCol: " + str(self.absCol) + "\n"
-        string +=  "absNodes: " + str([absNode.absCol for absNode in self.absNodes]) + "\n"
-        string +=  "ownSupersets: " + str(self.ownSupersets) + "\n"
+        string = "absCol: " + str(self.absCol) + " "
+        string +=  "absNodes: " + str([str(absNode) for absNode in self.absNodes]) + " "
+        string +=  "ownSupersets: " + str(self.ownSupersets) + "    "
         return string
 
     def getAbsCount(self):
@@ -153,8 +153,7 @@ def fitLoop(model, data):
     '''
         Loop for fitting to find n_svd_vecs
     '''
-    num_clusters = model.get_params()["n_clusters"]
-
+    #num_clusters = model.get_params()["n_clusters"]
     try:
         model.fit(data)
     except Exception as e:
@@ -221,7 +220,8 @@ def extractRec(data, colmap, absmap, abscolcand, abscols, selcols, supersets, nu
     model = SpectralCoclustering(n_clusters=num_clusters, random_state=RANSDOMSTATE, svd_method='arpack')
     while num_clusters > 1:
         try:
-            model = fitLoop(model, data)
+            model.fit(data)
+            #model = fitLoop(model, data)
             # check if biclustering succeeds
             if good_form(model, data):
                 break
@@ -343,6 +343,8 @@ def outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThres
             addselcols.append(k)
 
     # find absolute columns that needs unque coding for itself
+    if len(addselcols) > 0:
+        frozenMatrix = set([frozenset(row.difference(addselcols)) for row in frozenMatrix])
     separatePrefix = []
     for node in absRoot.values():
         separatePrefix.extend(node.checkPrefix(frozenMatrix, []))
@@ -389,9 +391,6 @@ def biclusteringHierarchy(matrix, parameters):
     warnings.simplefilter("ignore", category = ConvergenceWarning)
     warnings.filterwarnings("error", message = ".*divide by zero.*")
 
-    # keep a frozenset of matrix for the search of absoluate columns that needs unique coding
-    frozenMatrix = set([frozenset(row) for row in matrix])
-
     # remove subsets and get the absolute column candidates
     dfaMatrix, absColCand = removeSubsetsGetAbsCandidate(matrix)
 
@@ -429,6 +428,7 @@ def biclusteringHierarchy(matrix, parameters):
         # call the main agorithm to get supersets, selcols and absmap
         supersets, selcols, absmap = extractCols(integerMatrix, initNumClusters, colmap, absColCand, colThreshold, selFactor)
         # construct supersets and absHierarchy
+        frozenMatrix = set([frozenset(row.difference(selcols)) for row in matrix])
         newsupersets, absHierarchy, addselcols = outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThreshold = None)
 
         # save information; if additional columns are selected to the second submatrix, extend selcols 
@@ -458,6 +458,7 @@ def biclusteringHierarchy(matrix, parameters):
             colmap = {k : v for k, v in enumerate(selcols)}
 
             supersets, selcols, absmap = extractCols(submatrix, subInitNumClusters, colmap, absColCand2, subColThreshold, selFactor)
+            frozenMatrix = set([frozenset(row.difference(selcols)) for row in matrix])
             newsupersets, absHierarchy, addselcols = outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThreshold = subColThreshold)
             selcols.extend(addselcols)
             
