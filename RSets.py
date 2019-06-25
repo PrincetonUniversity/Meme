@@ -538,6 +538,11 @@ class RCode:
                     self.emptyCode = v
                 else:
                     supersetMap[k].codeword = v
+            for ss in self.supersets:
+                if ss.codeword == None:
+                    print("abs", ss.absolutes)
+                    print("var", ss.variables)
+                    print()
         else:
             maskSets = [superset.variables for superset in self.supersets]
             codewords, self.freeCodes = generateCodeWords(maskSets)

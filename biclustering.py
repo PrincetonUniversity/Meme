@@ -7,6 +7,8 @@ from sklearn.cluster.bicluster import SpectralCoclustering
 from sklearn.metrics import consensus_score
 from collections import defaultdict
 import matplotlib.pyplot as plt
+import networkx as nx
+import itertools
 import random
 import pickle
 import numpy as np
@@ -27,64 +29,120 @@ except:
 RANSDOMSTATE = RandomState()
 
 class AbsNode:
-    ownSupersets = None # List
-    fullSupersets = None # Set
-    absNodes = None # List
+    ownSupersets = None     # List of frozenset
+    fullSupersets = None    # Set of frozenset (optional, can be None)
+    absChildren = None      # List of AbsNodes
     absCol : int = 0
     height : int = 0
+    ownPrefix : bool = False
 
-    def __init__(self, absCol, supersets, posssibleChildren):
+    def __init__(self, absCol, supersets=None, posssibleChildren=None):
         self.absCol = absCol
-        self.fullSupersets = set(supersets)
-        self.absNodes = []
-        
-        childSupersets = set([])
-        for node in posssibleChildren:
-            if node.fullSupersets.issubset(supersets):
-                childSupersets.update(node.fullSupersets)
-                self.absNodes.append(node)
+        self.absChildren = []
+        self.ownPrefix = False
+        if supersets and posssibleChildren:
+            self.fullSupersets = set(supersets)
+            
+            
+            childSupersets = set([])
+            for node in posssibleChildren:
+                if node.fullSupersets.issubset(supersets):
+                    childSupersets.update(node.fullSupersets)
+                    self.absChildren.append(node)
 
-        self.ownSupersets = list(self.fullSupersets.difference(childSupersets))
+            self.ownSupersets = list(self.fullSupersets.difference(childSupersets))
+            self.height = bitsRequiredVariableID(self.getChildren())
+        else:
+            self.fullSupersets = None
+            self.ownSupersets = []
+            self.height = 0
+
+
+    def addChild(self, child):
+        self.absChildren.append(child)
+
+
+    # expected argument: frozenset!
+    def addSuperset(self, superset):
+        self.ownSupersets.append(superset)
+
+
+    def calculateHeight(self):
         self.height = bitsRequiredVariableID(self.getChildren())
-    
-    def getChildren(self):
-        return sorted(self.ownSupersets + self.absNodes, key = lambda x: len(x))
 
-    def checkPrefix(self, frozenMatrix, parentAbsCols):
-        if not self.absNodes: return []
+
+    def getChildren(self):
+        childrenList = self.ownSupersets + self.absChildren
+        if self.ownPrefix:
+            childrenList.append(frozenset([self.absCol]))
+        return sorted(childrenList, key = lambda x: len(x))
+
+
+    # always get self.height with this function to guarantee it is up to date
+    def __len__(self):
+        self.calculateHeight()
+        return self.height
+
+
+    def checkPrefix(self, frozenMatrix, parentAbsCols = []):
+        # If there is no child, the confusion is avoided!
+        if len(self.absChildren) == 0: return []
 
         newparentAbsCols = copy.deepcopy(parentAbsCols)
         newparentAbsCols.append(self.absCol)
-        result = []
 
         if frozenset(newparentAbsCols) in frozenMatrix:
-            self.ownSupersets.append(frozenset([self.absCol]))
-            result = [self.absCol]
+            self.ownPrefix = True
+            result = [self.absCol] # for printing purpose
+        else:
+            result = [] # for printing purpose
 
-        for node in self.absNodes:
+        for node in self.absChildren:
             result.extend(node.checkPrefix(frozenMatrix, newparentAbsCols))
 
         self.height = bitsRequiredVariableID(self.getChildren())
         return result
 
 
-    def __len__(self):
-        return self.height
+    def getSupersetPairs(self, parentAbsCols = []):
+
+        newparentAbsCols = copy.deepcopy(parentAbsCols)
+        newparentAbsCols.append(self.absCol)
+        result = [(superset, newparentAbsCols) for superset in self.ownSupersets]
+
+        for node in self.absChildren:
+            result.extend(node.getSupersetPairs(newparentAbsCols))
+
+        return result
+
 
     def __str__(self):
         string = "absCol: " + str(self.absCol) + " "
-        string +=  "absNodes: " + str([str(absNode) for absNode in self.absNodes]) + " "
+        string +=  "absChildren: " + str([str(absNode) for absNode in self.absChildren]) + " "
         string +=  "ownSupersets: " + str(self.ownSupersets) + "    "
+        string +=  "ownPrefix: " + str(self.ownPrefix) + "    "
         return string
 
     def getAbsCount(self):
-        return 1 + sum([node.getAbsCount() for node in self.absNodes])
+        return 1 + sum([node.getAbsCount() for node in self.absChildren])
 
     def getAbsCols(self):
-        if not self.absNodes: return set([self.absCol])
+        if not self.absChildren: return set([self.absCol])
 
-        result = set.union(*[node.getAbsCols() for node in self.absNodes])
+        result = set.union(*[node.getAbsCols() for node in self.absChildren])
         result.add(self.absCol)
+        return result
+
+    def getAllCols(self):
+        if len(self.ownSupersets) == 0:
+            result = set([])
+        else:
+            result = set.union(*[set(superset) for superset in self.ownSupersets])
+        result.add(self.absCol)
+
+        for node in self.absChildren:
+            result.update(node.getAllCols())
+
         return result
         
 
@@ -309,7 +367,7 @@ def extractCols(integerMatrix, initNumClusters, colmap, absColCand, colThreshold
     return supersets, selcols, absmap
 
 
-def outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThreshold = None):
+def outputTransform(supersets, absmap, frozenMatrix, absThreshold = None):
     '''
         construct absolute column hierarchy, find absolute columns that needs unque coding for itself
         newsupersets is a list of tuples (variable columns, absolute columns)
@@ -333,7 +391,7 @@ def outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThres
         newNode = AbsNode(k, v, list(absRoot.values()))
         if absThreshold == None or len(newNode) < absThreshold:
             absRoot[k] = newNode
-            for node in newNode.absNodes:
+            for node in newNode.absChildren:
                 absRoot.pop(node.absCol)
             for superset in v:
                 superset2absMap[superset].append(k)
@@ -429,7 +487,7 @@ def biclusteringHierarchy(matrix, parameters):
         supersets, selcols, absmap = extractCols(integerMatrix, initNumClusters, colmap, absColCand, colThreshold, selFactor)
         # construct supersets and absHierarchy
         frozenMatrix = set([frozenset(row.difference(selcols)) for row in matrix])
-        newsupersets, absHierarchy, addselcols = outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThreshold = None)
+        newsupersets, absHierarchy, addselcols = outputTransform(supersets, absmap, frozenMatrix, absThreshold = None)
 
         # save information; if additional columns are selected to the second submatrix, extend selcols 
         selcols.extend(addselcols)
@@ -459,7 +517,7 @@ def biclusteringHierarchy(matrix, parameters):
 
             supersets, selcols, absmap = extractCols(submatrix, subInitNumClusters, colmap, absColCand2, subColThreshold, selFactor)
             frozenMatrix = set([frozenset(row.difference(selcols)) for row in matrix])
-            newsupersets, absHierarchy, addselcols = outputTransform(supersets, absmap, newColID2oldColID, frozenMatrix, absThreshold = subColThreshold)
+            newsupersets, absHierarchy, addselcols = outputTransform(supersets, absmap, frozenMatrix, absThreshold = subColThreshold)
             selcols.extend(addselcols)
             
             width, info = getCodingInformation(newsupersetsList, absHierarchy, selcols, oldColID2newColID, integerMatrix)
@@ -482,5 +540,185 @@ def biclusteringHierarchy(matrix, parameters):
     print(infoList)
     return newsupersetsList, absHierarchyList
 
+
+def getGraphCodingInformation(absHierarchy, selCols, separatePrefix):
+
+    supersetGroupings = sorted([len(superset) for superset in absHierarchy])
+    tagwidth = bitsRequiredVariableID(absHierarchy)
+    numabscol = sum([rootNode.getAbsCount() for rootNode in absHierarchy if isinstance(rootNode, AbsNode)])
+
+    info = "Superset groupings\n" + str(supersetGroupings) \
+           + "\nTag width\n" + str(tagwidth) \
+           + "\nSelected columns\n" + str(selCols) \
+           + "\nNumber of absolute columns\n" +  str(numabscol)
+
+    if numabscol > 0:
+        info += "\nAbsolute columns:\n" +  str(set.union(*[rootNode.getAbsCols() for rootNode in absHierarchy if isinstance(rootNode, AbsNode)]))
+        info += "\nNumber of absolute columns with own encoding:\n" + str(len(separatePrefix))
+        info += "\nAbsolute columns with own encoding:\n" + str(separatePrefix)
+    info += "\n\n"
+    return tagwidth, info
+
+
+def graphOutputTransform(supersets, absRoots, frozenMatrix, absThreshold = None):
+    '''
+        construct absolute column hierarchy, find absolute columns that needs unque coding for itself
+        newsupersets is a list of tuples (variable columns, absolute columns)
+        absHierarchy is a list of mixture of supersets and AbsNodes
+    '''
+    # add unique encoding for absolute columns
+    separatePrefix = []
+    for absNode in absRoots:
+        separatePrefix.extend(absNode.checkPrefix(frozenMatrix))
+
+    # move absolute columns to the next submatrix if the size is above the absThreshold
+    addSelCols = []
+    if absThreshold:
+        absNodesToExamine = absRoots
+        absRoots = []
+        while len(absNodesToExamine) > 0:
+            absNode = absNodesToExamine.pop()
+            if len(absNode) >= absThreshold:
+                addSelCols.append(absNode.absCol)
+                supersets.extend(absNode.ownSupersets)
+                absNodesToExamine.extend(absNode.absChildren)
+            else:
+                absRoots.append(absNode)
+
+    absHierarchy = copy.deepcopy(supersets)
+    absHierarchy.extend(absRoots)
+    absHierarchy.append(frozenset("E")) # empty code holder
+
+    supersets = [(superset, []) for superset in supersets]
+    for absNode in absRoots:
+        supersets.extend(absNode.getSupersetPairs())
+
+    return supersets, absHierarchy, addSelCols, separatePrefix
+
+
+def extractGraphRec(graph, absRoots, absParent, selCols, supersets, threshold):
+
+    if len(graph) == 0:
+        print("WHY!!!!!!!")
+        return 
+
+    # if graph contains more than 1 node, find absolute columns; otherwise, force into base case.
+    if len(graph) != 1:
+        possibleAbsColTup = max(graph.nodes(data=True), key= lambda x : len(x[1]['rows']))
+        possibleAbsCol = possibleAbsColTup[0]
+        maxRows = possibleAbsColTup[1]['rows']
+        isAbsCol = True
+        for col in graph:
+            if not graph.node[col]['rows'].issubset(maxRows):
+                isAbsCol = False
+                break
+    else:
+        isAbsCol = False
+
+    # if there is an absolute column => if there is no parent, add to the absRoots; otherwise, add to parent's children list.
+    #                                   update absParent.
+    #                                   delete the column, and continue to split.
+    if isAbsCol:
+        newAbsNode = AbsNode(possibleAbsCol)
+        if absParent:
+            absParent.addChild(newAbsNode)
+        else:
+            absRoots.append(newAbsNode)
+        absParent = newAbsNode
+        graph.remove_node(possibleAbsCol)
+
+    # if there is no absolute column => if the size is below threshold, add to superests/parent's ownSupersets and stop (Base Case);
+    #                                   otherwise, if the graph is connected => take out minimum vertex cuts and split;
+    #                                                                           else, split.
+    else:
+        if len(graph) < threshold:
+            if absParent:
+                absParent.addSuperset(frozenset(graph.nodes()))
+            else:
+                supersets.append(frozenset(graph.nodes()))
+            return
+        else:
+            if nx.is_connected(graph):
+                cut = nx.minimum_node_cut(graph)
+                selCols.update(cut)
+                graph.remove_nodes_from(cut)
+
+    # split into connected components
+    # for each connected component, call extractGraphRec().
+    for cc in nx.connected_components(graph):
+        subgraph = graph.subgraph(cc).copy()
+        extractGraphRec(subgraph, absRoots, absParent, selCols, supersets, threshold)
+    return
+
+
+def extractGraphNodes(matrix, threshold = 10):
+    if len(matrix) == 0 :
+        print("Empty matrix. Skipped!")
+        return [], [], []
+
+    colMap = defaultdict(list)
+    allCols = set([])
+    for i, row in enumerate(matrix):
+        allCols.update(row)
+        for col in row:
+            colMap[col].append(i)
+
+    graph = nx.Graph()
+    for col in allCols:
+        graph.add_node(col, rows = set(colMap[col]))
+
+    for row in matrix:
+        for i1, i2 in itertools.combinations(row, 2):
+            graph.add_edge(i1, i2)
+
+    absRoots = []
+    absParent = None
+    selCols = set([])
+    supersets = []
+
+    extractGraphRec(graph, absRoots, absParent, selCols, supersets, threshold)
+
+    return supersets, selCols, absRoots
+
+
+def graphHierarchy(matrix, parameters):
+    if parameters != None:
+        threshold = parameters
+    else:
+        threshold = 10
+
+    widthsum = 0
+    widths = []
+    infoList = []
+    supersetsList = []
+    absHierarchyList = []
+    matrix2 = matrix
+
+    while True:
+        # call the main agorithm to get supersets, selCols and absRoots
+        supersets, selCols, absRoots = extractGraphNodes(matrix2, threshold)
+        # construct supersets and absHierarchy
+        frozenMatrix = set([frozenset(row.difference(selCols)) for row in matrix])
+        supersets, absHierarchy, addSelCols, separatePrefix = graphOutputTransform(supersets, absRoots, frozenMatrix, absThreshold = None)
+
+        # save information; if additional columns are selected to the second submatrix, extend selcols 
+        selCols.update(addSelCols)
+        supersetsList.append(supersets)
+        absHierarchyList.append(absHierarchy)
+
+        # get width and message of the grouping
+        width, info = getGraphCodingInformation(absHierarchy, selCols, separatePrefix)
+        widthsum += width
+        widths.append(width)
+        infoList.append(info)
+
+        if len(selCols) == 0:
+            break
+        else:
+            matrix2 = [set(row).intersection(selCols) for row in matrix2]
+
+    print("Reaching width: ", widthsum, " (", str(widths), " )")
+    for info in infoList: print(info)
+    return supersetsList, absHierarchyList
 
 

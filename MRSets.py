@@ -4,11 +4,11 @@ from typing import List,Set,Dict
 try:
     from .RSets import RCode
     from .analyze import groupIdenticalColumns
-    from .biclustering import biclusteringHierarchy
+    from .biclustering import biclusteringHierarchy, graphHierarchy
 except:
     from RSets import RCode
     from analyze import groupIdenticalColumns
-    from biclustering import biclusteringHierarchy
+    from biclustering import biclusteringHierarchy, graphHierarchy
 
 
 
@@ -68,11 +68,11 @@ class MRCode(object):
             rcode.groupingStrategy(grouping)
 
 
-    def useHierarchyStrategy(self, newsupersetsList, absHierarchyList):
+    def useHierarchyStrategy(self, supersetsList, absHierarchyList):
         """ A strategy is a list of groupings. A absHierarchy is a list of trees of absolute element dependency. 
-            Build rcodes from newsupersetsList and absHierarchyList
+            Build rcodes from supersetsList and absHierarchyList
         """
-        self.rcodes = [RCode(supersets, absHierarchy=absHierarchy) for supersets, absHierarchy in zip(newsupersetsList, absHierarchyList)]
+        self.rcodes = [RCode(supersets, absHierarchy=absHierarchy) for supersets, absHierarchy in zip(supersetsList, absHierarchyList)]
         self.elements = {element : i for i, rcode in enumerate(self.rcodes) for element in rcode.elements}
 
         for rcode in self.rcodes:
@@ -84,11 +84,12 @@ class MRCode(object):
         """
         if self.hierarchy:
             # Get the heirarchy from biclustering hierarchy algorithm
-            newsupersetsList, absHierarchyList = biclusteringHierarchy(self.nonShadowElements, parameters)
-            return self.useHierarchyStrategy(newsupersetsList, absHierarchyList)
+            supersetsList, absHierarchyList = graphHierarchy(self.nonShadowElements, parameters)
+            return self.useHierarchyStrategy(supersetsList, absHierarchyList)
         else:
             return self.optimizeVertexCuts(parameters = parameters)
         #return self.optimizeRecursiveHeavyHitters()
+
 
     def verifyCompression(self):
         for i, rcode in enumerate(self.rcodes):
