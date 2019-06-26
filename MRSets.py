@@ -4,11 +4,11 @@ from typing import List,Set,Dict
 try:
     from .RSets import RCode
     from .analyze import groupIdenticalColumns
-    from .biclustering import biclusteringHierarchy, graphHierarchy
+    from .graphAlgorithm import graphHierarchy
 except:
     from RSets import RCode
     from analyze import groupIdenticalColumns
-    from biclustering import biclusteringHierarchy, graphHierarchy
+    from graphAlgorithm import graphHierarchy
 
 
 

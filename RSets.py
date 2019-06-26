@@ -1,11 +1,11 @@
 try:
     from .optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets, generateCodeWords
     from .analyze import getSupersetIndex, bitsRequiredVariableID, ternary_compare
-    from .biclustering import AbsNode
+    from .AbsNode import AbsNode
 except:
     from optimize import removeSubsets, minimizeVariableWidthGreedy, minimizeRulesGreedy, mergeIntersectingSets, generateCodeWords
     from analyze import getSupersetIndex, bitsRequiredVariableID, ternary_compare
-    from biclustering import AbsNode
+    from AbsNode import AbsNode
 
 import math
 from bidict import bidict

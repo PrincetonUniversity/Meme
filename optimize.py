@@ -1,10 +1,10 @@
 import math
 try:
     from .analyze import bitsRequiredFixedID, bitsRequiredVariableID
-    from .biclustering import AbsNode
+    from .AbsNode import AbsNode
 except:
     from analyze import bitsRequiredFixedID, bitsRequiredVariableID
-    from biclustering import AbsNode
+    from AbsNode import AbsNode
 
 from itertools import combinations
 from collections import deque as queue
