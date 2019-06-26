@@ -23,7 +23,6 @@ class AbsNode:
         if supersets and posssibleChildren:
             self.fullSupersets = set(supersets)
             
-            
             childSupersets = set([])
             for node in posssibleChildren:
                 if node.fullSupersets.issubset(supersets):
@@ -52,9 +51,7 @@ class AbsNode:
             childrenList.append(frozenset([self.absCol]))
         return sorted(childrenList, key = lambda x: len(x))
 
-    # always get self.height with this function to guarantee it is up to date
     def __len__(self):
-        self.calculateHeight()
         return self.height
 
     def __str__(self):
@@ -66,7 +63,9 @@ class AbsNode:
 
     def checkPrefix(self, frozenMatrix, parentAbsCols = []):
         # If there is no child, the confusion is avoided!
-        if len(self.absChildren) == 0: return []
+        if len(self.absChildren) == 0:
+            self.calculateHeight()
+            return []
 
         newparentAbsCols = copy.deepcopy(parentAbsCols)
         newparentAbsCols.append(self.absCol)
@@ -79,8 +78,9 @@ class AbsNode:
 
         for node in self.absChildren:
             result.extend(node.checkPrefix(frozenMatrix, newparentAbsCols))
+            node.calculateHeight()
 
-        self.height = bitsRequiredVariableID(self.getChildren())
+        self.calculateHeight()
         return result
 
     def getSupersetPairs(self, parentAbsCols = []):

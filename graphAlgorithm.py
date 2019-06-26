@@ -41,7 +41,7 @@ def graphOutputTransform(supersets, absRoots, frozenMatrix, absThreshold = None)
         absHierarchy is a list of mixture of supersets and AbsNodes
     '''
 
-    # add unique encoding for absolute columns
+    # add unique encoding for absolute columns and ***update the height***
     separatePrefix = []
     for absNode in absRoots:
         separatePrefix.extend(absNode.checkPrefix(frozenMatrix))
@@ -96,7 +96,7 @@ def extractGraphRec(graph, absRoots, absParent, selCols, supersets, threshold):
     #                                   delete the column, and continue to split.
     if isAbsCol:
         newAbsNode = AbsNode(possibleAbsCol)
-        if absParent:
+        if absParent != None:
             absParent.addChild(newAbsNode)
         else:
             absRoots.append(newAbsNode)
@@ -108,7 +108,7 @@ def extractGraphRec(graph, absRoots, absParent, selCols, supersets, threshold):
     #                                                                           else, split.
     else:
         if len(graph) < threshold:
-            if absParent:
+            if absParent != None:
                 absParent.addSuperset(frozenset(graph.nodes()))
             else:
                 supersets.append(frozenset(graph.nodes()))
