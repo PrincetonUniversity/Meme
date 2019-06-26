@@ -103,6 +103,12 @@ class AbsNode:
         result.add(self.absCol)
         return result
 
+    def getAllSupersets(self):
+        result = copy.deepcopy(self.ownSupersets)
+        for node in self.absChildren:
+            result.extend(node.getAllSupersets())
+        return result
+    
     def getAllCols(self):
         if len(self.ownSupersets) == 0:
             result = set([])
@@ -112,4 +118,5 @@ class AbsNode:
 
         for node in self.absChildren:
             result.update(node.getAllCols())
+        
         return result

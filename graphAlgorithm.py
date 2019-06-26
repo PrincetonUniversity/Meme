@@ -13,15 +13,25 @@ except:
     from AbsNode import AbsNode
 
 
-def getGraphCodingInformation(absHierarchy, selCols, separatePrefix):
+def getCodingInformation(absHierarchy, selCols, separatePrefix):
     '''
         Get basic information of encoding
     '''
     supersetGroupings = sorted([len(superset) for superset in absHierarchy])
+    
+    absNodeGroupings = sorted([len(superset) for superset in absHierarchy if isinstance(superset, AbsNode)])
+    absSupersetGroupings = []
+    for node in absHierarchy:
+        if isinstance(node, AbsNode):
+            absSupersetGroupings.extend(node.getAllSupersets())
+    absSupersetGroupings = [len(superset) for superset in absSupersetGroupings]
+
     tagwidth = bitsRequiredVariableID(absHierarchy)
     numabscol = sum([rootNode.getAbsCount() for rootNode in absHierarchy if isinstance(rootNode, AbsNode)])
 
     info = "Superset groupings\n" + str(supersetGroupings) \
+           + "\nAbsolute node groupings\n" + str(absNodeGroupings) \
+           + "\nSuperset groupings in absolute hierarchy\n" + str(absSupersetGroupings)\
            + "\nTag width\n" + str(tagwidth) \
            + "\nSelected columns\n" + str(selCols) \
            + "\nNumber of absolute columns\n" +  str(numabscol)
@@ -34,7 +44,7 @@ def getGraphCodingInformation(absHierarchy, selCols, separatePrefix):
     return tagwidth, info
 
 
-def graphOutputTransform(supersets, absRoots, frozenMatrix, absThreshold = None):
+def outputTransform(supersets, absRoots, frozenMatrix, absThreshold = None):
     '''
         Construct absolute column hierarchy, find absolute columns that needs unque coding for itself
         newsupersets is a list of tuples (variable columns, absolute columns)
@@ -72,7 +82,7 @@ def graphOutputTransform(supersets, absRoots, frozenMatrix, absThreshold = None)
     return supersets, absHierarchy, addSelCols, separatePrefix
 
 
-def extractGraphRec(graph, absRoots, absParent, selCols, supersets, threshold):
+def extractRec(graph, absRoots, absParent, selCols, supersets, threshold):
     '''
         Recursive function to disconnect graphs into small connected components, 
         by extracting absolute columns (absRoots) and columns for the next matrix (selCols).
@@ -123,11 +133,11 @@ def extractGraphRec(graph, absRoots, absParent, selCols, supersets, threshold):
     # for each connected component, call extractGraphRec().
     for cc in nx.connected_components(graph):
         subgraph = graph.subgraph(cc).copy()
-        extractGraphRec(subgraph, absRoots, absParent, selCols, supersets, threshold)
+        extractRec(subgraph, absRoots, absParent, selCols, supersets, threshold)
     return
 
 
-def extractGraphNodes(matrix, threshold = 10):
+def extractNodes(matrix, threshold = 10):
     '''
         Main algorithm: find connected components as grouping (supersets), 
                         select columns for the next submatrix (selcols), 
@@ -157,7 +167,7 @@ def extractGraphNodes(matrix, threshold = 10):
     selCols = set([])
     supersets = []
 
-    extractGraphRec(graph, absRoots, absParent, selCols, supersets, threshold)
+    extractRec(graph, absRoots, absParent, selCols, supersets, threshold)
 
     return supersets, selCols, absRoots
 
@@ -183,12 +193,12 @@ def graphHierarchy(matrix, parameters):
 
     while True:
         # call the main agorithm to get supersets, selCols and absRoots
-        supersets, selCols, absRoots = extractGraphNodes(matrix2, threshold)
+        supersets, selCols, absRoots = extractNodes(matrix2, threshold)
         # construct supersets and absHierarchy;
         # extract additional columns if need to keep the superset tag wid under certain absThreshold;
         # find absolute columns that need its own unique encoding
         frozenMatrix = set([frozenset(row.difference(selCols)) for row in matrix])
-        supersets, absHierarchy, addSelCols, separatePrefix = graphOutputTransform(supersets, absRoots, frozenMatrix, absThreshold = absThreshold)
+        supersets, absHierarchy, addSelCols, separatePrefix = outputTransform(supersets, absRoots, frozenMatrix, absThreshold = absThreshold)
 
         # save information; if additional columns are selected to the next submatrix, extend selcols 
         selCols.update(addSelCols)
@@ -196,7 +206,7 @@ def graphHierarchy(matrix, parameters):
         absHierarchyList.append(absHierarchy)
 
         # get width and information of the grouping
-        width, info = getGraphCodingInformation(absHierarchy, selCols, separatePrefix)
+        width, info = getCodingInformation(absHierarchy, selCols, separatePrefix)
         widthsum += width
         widths.append(width)
         infoList.append(info)
