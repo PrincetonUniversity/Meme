@@ -62,7 +62,7 @@ class AbsNode:
         return string
 
     def checkPrefix(self, frozenMatrix, parentAbsCols = []):
-        # If there is no child, the confusion is avoided!
+        # If there is no child, the confusion is avoided due to the MASK
         if len(self.absChildren) == 0:
             self.calculateHeight()
             return []
@@ -78,7 +78,6 @@ class AbsNode:
 
         for node in self.absChildren:
             result.extend(node.checkPrefix(frozenMatrix, newparentAbsCols))
-            node.calculateHeight()
 
         self.calculateHeight()
         return result
