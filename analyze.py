@@ -1,5 +1,9 @@
 import math
-
+try:
+    from unionFind import UnionFind
+except:
+    from .unionFind import UnionFind
+from typing import List, Set
 
 def ternary_compare(str1, str2):
     if len(str1) != len(str2):
@@ -11,10 +15,37 @@ def ternary_compare(str1, str2):
     return True
 
 
+def groupOverlappingRows(matrix:List[Set]) -> List[List[Set]]:
+    """ Given a matrix, return the rows of the matrix partitioned into groups,
+        where no two rows from different groups have nonempty intersections.
+    """
+    uf = UnionFind()
+
+    rowDict = {}
+    for rowID, row in enumerate(matrix):
+        for colID in row:
+            uf.union(("R", rowID), ("C", colID))
+
+    components = uf.components()
+
+    groups = [[matrix[tup[1]] for tup in component if tup[0] == "R"] \
+              for component in components]
+    return groups
+
+def transposeMatrix(matrix : List[Set], frozen=False) -> List[Set]:
+    transposed = {}
+    for rowID, row in enumerate(matrix):
+        for colID in row:
+            col = transposed.setdefault(colID, set())
+            col.add(rowID)
+    if frozen:
+        transposed = {colID:frozenset(rowIDs) for colID,rowIDs in transposed.items()}
+    return transposed
+
 def groupIdenticalColumns(elementSets):
     colIDs = set.union(*[set(es) for es in elementSets])
     # transpose the element matrix (so its a collection of columns instead of rows)
-    transposed = {colID:frozenset([rowID for (rowID,row) in enumerate(elementSets) if colID in row]) for colID in colIDs}
+    transposed = transposeMatrix(elementSets, frozen=True)
     # build lists of columnIDs for columns that are identical
     identicalColGroups = {}
     for colID, col in transposed.items():
