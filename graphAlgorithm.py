@@ -218,6 +218,6 @@ def graphHierarchy(matrix, parameters):
             matrix2 = [set(row).intersection(selCols) for row in matrix2]
 
     print("Reaching width: ", widthsum, " (", str(widths), " )")
-    for info in infoList: print(info)
+    #for info in infoList: print(info)
     return supersetsList, absHierarchyList
 
