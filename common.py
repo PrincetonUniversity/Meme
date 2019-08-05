@@ -2,13 +2,14 @@ import os, sys
 import pickle
 import math
 import time
+from collections import deque as Queue
 
-REPO_PYTHON_PATH = os.path.dirname(os.path.realpath(__file__))
+REPO_PATH = os.path.dirname(os.path.realpath(__file__))
 DATA_PATH = os.path.join(REPO_PATH, 'data/')
 PKL_PATH = os.path.join(REPO_PATH, 'pickles/')
 
 from collections.abc import Iterable
-
+from typing import List, Dict, Set, Tuple
 
 VERBOSITY = 2
 def logger(*args, **kwargs):
@@ -156,4 +157,41 @@ def pointerBitsFor(numItems):
     """ Returns the number of bits needed to distinctly identify every element in a set of size 'count'.
     """
     return  (numItems-1).bit_length()
+
+def kraftsInequality(lengths):
+    kraftSum = sum([2**length for length in lengths])
+    return (kraftSum-1).bit_length()
+
+
+def generateIdentifiers(lengths : List[int]) -> Tuple[List[str], List[str]]:
+    """ Given a list of lengths (of clusters or strings or whatever), return (1) a list of variable-length prefix-free identifiers
+        for each length that minimizes the maximum tag length, and (2) a list of identifiers that were unused.
+    """
+
+    minWidth = kraftsInequality(lengths)
+
+    # indices of objects that have no assigned identifiers yet
+    unassignedIndices = [i for i in range(len(lengths))]
+    # sort it in descending order of available identifier widths
+    unassignedIndices.sort(key = lambda index: minWidth - lengths[index], reverse = True)
+    identifierLens = [minWidth - lengths[i] for i in unassignedIndices]
+
+    freeIDs = Queue([''])               # right is head, left is tail
+    assignments = [None]*len(lengths)   # assignments[i] is the identifier assigned to the ith object
+
+    while len(unassignedIndices) > 0:
+        # If we have enough unused identifiers
+        #  OR if the current shortest identifier's length is the limit for the longest uncoded object
+        if len(freeIDs) >= len(unassignedIndices) or len(freeIDs[-1]) == identifierLens[-1]:
+            assignmentIndex = unassignedIndices.pop()
+            identifierLens.pop()
+            assignments[assignmentIndex] = freeIDs.pop()
+        # else, we fork the shortest identifier
+        else:
+            idToSplit= freeIDs.pop()
+            freeIDs.extendleft([idToSplit + c for c in ['0','1']])
+
+    return (assignments, list(freeIDs))
+
+
 

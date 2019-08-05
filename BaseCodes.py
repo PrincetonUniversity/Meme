@@ -33,24 +33,24 @@ class BaseCode(ABC):
         pass
 
     @abstractmethod
-    def allTags(self, decorated : bool = False) -> Dict[FrozenSet, set]:
-        """ Returns a dictionary mapping matrix rows to compressed tags.
-        """
-        pass
-
-    @abstractmethod
     def matchStrings(self, columnID : int, decorated : bool = False) -> List[str]:
         """ Returns a list of ternary strings which, when compared to a row's tag,
             will compare True if the columnID is present in the tag.
         """
         pass
 
-    @abstractmethod
+
+    def allTags(self, decorated : bool = False) -> Dict[FrozenSet, set]:
+        """ Returns a dictionary mapping matrix rows to compressed tags.
+        """
+        return {row : self.tag(row=row, decorated=decorated) for row in self.originalRows}
+
+
     def allMatchStrings(self, decorated : bool = False) -> Dict[int, List[str]]:
         """ Returns a dictionary mapping columnIDs to lists of ternary strings which,
             when compared to a row's tag, will compare True if the columnID is present in the tag.
         """
-        pass
+        return {colID : self.matchStrings(colID, decorated=decorated) for colID in self.columnIDs}
 
 
     def verifyCompression(self) -> bool:
@@ -112,25 +112,14 @@ class NaiveCode(BaseCodeStatic):
     def width(self, includePadding=False):
         return len(self.columnIDs)
 
-    def tag(self, row):
+    def tag(self, row, decorated=False):
         return ''.join(['1' if colID in row else '0' for colID in self.columnIDs])
 
-    def allTags(self):
-        return {row : self.tag(row) for row in self.matrix}
 
-    def matchStrings(self, columnID):
+    def matchStrings(self, columnID, decorated=False):
         bits = ['*'] * len(self.columnIDs)
         bits[self.columnIDs.index(columnID)] = '1'
         return [''.join(bits)]
-
-    def allMatchStrings(self):
-        result = {}
-        bits = ['*'] * len(self.columnIDs)
-        for pos, colID in enumerate(self.columnIDs):
-            bits[pos] = '1'
-            result[colID] = [''.join(bits)]
-            bits[pos] = '*'
-        return result
 
 
 def main():
