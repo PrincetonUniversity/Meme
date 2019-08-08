@@ -15,9 +15,10 @@ class OriginalCodeStatic(BaseCodeStatic):
     maxWidth = -1
 
 
-    def make(self, maxWidth=-1):
+    def make(self, optWidth=True, maxWidth=-1):
         self.supersets = removeSubsets(self.originalRows)
-        self.optimizeWidth()
+        if optWidth:
+            self.optimizeWidth()
 
         self.maxWidth = maxWidth
         if maxWidth != -1:
@@ -130,7 +131,7 @@ class OriginalCodeStatic(BaseCodeStatic):
 def main():
     matrix = [[1,2,3], [3,4,5], [6,7]]
     code = OriginalCodeStatic(matrix=matrix)
-    code.timeMake(maxWidth=2)
+    code.timeMake(maxWidth=2, optWidth=True)
     code.verifyCompression()
     print("Memory of original code:", code.memoryRequired())
 
