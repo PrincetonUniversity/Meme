@@ -1,18 +1,43 @@
 from abc import ABC, abstractmethod
-from typing import Set, FrozenSet, List, Dict, Collection, Tuple
+from typing import Set, FrozenSet, List, Dict, Collection, Tuple, NewType
 from common import recoverRow
+import time
+import logging
+
+
+
+BinaryString   = NewType('BinaryString',  str)
+TernaryString  = NewType('TernaryString', str)
+TernaryStrings = NewType('TernaryStrings', List[TernaryString])
+
+ColumnID       = NewType('ColumnID',      int)
+Row      = NewType('Row',  Collection[ColumnID])
+FixedRow = NewType('FRow', FrozenSet[ColumnID])
+Matrix      = NewType('Matrix',  Collection[Row])
+FixedMatrix = NewType('FMatrix', Collection[FixedRow])
+
+# log levels in decreasing order of verbosity
+#CODE_LOG_LEVEL = logging.DEBUG
+CODE_LOG_LEVEL = logging.INFO
+#CODE_LOG_LEVEL = logging.WARNING
+#CODE_LOG_LEVEL = logging.ERROR
+#CODE_LOG_LEVEL = logging.CRITICAL
 
 
 class BaseCode(ABC):
-    originalRows : List[FrozenSet[int]] = None
-    columnIDs    : Collection[int] = None
-    made         : bool = False
+    originalRows : FixedMatrix = None       # The original rows of the input matrix, deduplicated
+    columnIDs    : Set[ColumnID] = None     # All ColumnIDS present in the original matrix
+    made         : bool = False             # Has the code been built?
+    logger       : logging.Logger = None    # Module logger
 
-    @abstractmethod
-    def __init__(self, matrix : List[Collection[int]] = None, **kwargs) -> None:
+    def __init__(self, matrix : Matrix = None, **kwargs) -> None:
         self.originalRows = list(set([frozenset(row) for row in matrix]))
         self.columnIDs = list(frozenset.union(*self.originalRows))
         self.made = False
+
+
+        logging.basicConfig(level=CODE_LOG_LEVEL)
+        self.logger = logging.getLogger(type(self).__name__)
 
     @abstractmethod
     def make(self, **kwargs) -> None:
@@ -27,42 +52,86 @@ class BaseCode(ABC):
         pass
 
     @abstractmethod
-    def tag(self, row : Collection[int], decorated : bool = False) -> str:
+    def tag(self, row : Row, decorated : bool = False) -> BinaryString:
         """ Returns a compressed tag for the given matrix row.
         """
         pass
 
     @abstractmethod
-    def matchStrings(self, columnID : int, decorated : bool = False) -> List[str]:
+    def matchStrings(self, columnID : ColumnID, decorated : bool = False) -> TernaryStrings:
         """ Returns a list of ternary strings which, when compared to a row's tag,
             will compare True if the columnID is present in the tag.
         """
         pass
 
 
-    def allTags(self, decorated : bool = False) -> Dict[FrozenSet, set]:
+    def allTags(self, decorated : bool = False) -> Dict[FixedRow, BinaryString]:
         """ Returns a dictionary mapping matrix rows to compressed tags.
         """
+        self.logger.debug("allTags of base code class was called.")
         return {row : self.tag(row=row, decorated=decorated) for row in self.originalRows}
 
 
-    def allMatchStrings(self, decorated : bool = False) -> Dict[int, List[str]]:
+    def allMatchStrings(self, decorated : bool = False) -> Dict[BinaryString, TernaryStrings]:
         """ Returns a dictionary mapping columnIDs to lists of ternary strings which,
             when compared to a row's tag, will compare True if the columnID is present in the tag.
         """
+        self.logger.debug("allMatchStrings of base code class was called.")
         return {colID : self.matchStrings(colID, decorated=decorated) for colID in self.columnIDs}
+
+
+    def timeMake(self, **kwargs) -> float:
+        """ Run self.make(**kwargs), and print how long it took.
+        """
+        className = type(self).__name__
+        numRows = len(self.originalRows)
+        numCols = len(self.columnIDs)
+        print("Beginning code make for %4d rows and %4d columns using code class %s." % (numRows, numCols, className))
+        startTime = time.time()
+        self.make(**kwargs)
+        endTime = time.time()
+
+        elapsed = endTime - startTime
+        print("Make done. Took %4.2f seconds." % elapsed)
+        return elapsed
+
+
+    def memoryRequired(self, columnRuleSizes : Dict[ColumnID, List[int]] = None) -> Tuple[int, int]:
+        """ Returns memory required in the switch as a tuple (sramBits, tcamBits).
+            columnRuleSizes is a dictionary which maps columnIDs to policy rule overheads,
+            i.e. if column 1 appears in 4 MAT entries which have bit widths 8,16,16,32 before including the column TCAM check,
+            then columnRuleSizes[1] == [8,16,16,32].
+        """
+        if columnRuleSizes == None:
+            columnRuleSizes = {colID : [0] for colID in self.columnIDs}
+        columnOccurrences = {colID : len(ruleSizes) for colID, ruleSizes in columnRuleSizes.items()}
+
+        queryStrings = self.allMatchStrings(decorated=False)
+        tagWidth = self.width()
+
+        sramBits = 0
+        tcamBits = 0
+        for colID in self.columnIDs:
+            sramBits += sum(columnRuleSizes[colID])
+            tcamBits += tagWidth * columnOccurrences[colID]
+
+        return (sramBits, tcamBits)
+
 
 
     def verifyCompression(self) -> bool:
         """ Verify that every matrix row can be recovered from the compressed tags and ternary match strings.
         """
-        assert self.made
+        assert self.made # it is a programmer error to try to verify a code before it has been built
+        self.logger.debug("Verifying compression...")
 
         queryDict = self.allMatchStrings()
         tagDict = self.allTags()
+
         for row in self.originalRows:
             if row not in tagDict:
                 raise Exception("Row %s does not have an associated tag!" % str(row))
+
         for colID in self.columnIDs:
             colStrings = queryDict.get(colID, None)
             if colStrings == None or len(colStrings) == 0:
@@ -72,7 +141,7 @@ class BaseCode(ABC):
             recovered = recoverRow(tag, queryDict)
             if set(row) != set(recovered):
                 raise Exception("Row %s with tag %s incorrectly decompressed to %s!" % (str(row), str(tag), str(recovered)))
-        print("Compression verified successfully")
+        self.logger.info("Compression verified successfully")
         return True
 
 
@@ -89,7 +158,7 @@ class BaseCodeStaticOrdered(BaseCodeStatic):
 class BaseCodeDynamic(BaseCode):
 
     @abstractmethod
-    def addRow(self, row : Collection[int]) -> Tuple[str, Dict[int,List[str]], Dict[int,List[str]]]:
+    def addRow(self, row : Row) -> Tuple[BinaryString, Dict[ColumnID,TernaryStrings], Dict[ColumnID,TernaryStrings]]:
         """ Add a row to the matrix. Returns the tag for the new row, a dictionary of table entries
             to be added, and a dictionary of table entries to be deleted.
         """
@@ -98,13 +167,6 @@ class BaseCodeDynamic(BaseCode):
 
 
 class NaiveCode(BaseCodeStatic):
-    matrix    : List[FrozenSet[int]] = None
-    columnIDs : List[int] = None
-
-    def __init__(self, matrix):
-        self.matrix = [frozenset(row) for row in matrix]
-
-        super().__init__(matrix)
 
     def make(self):
         self.made = True
@@ -125,8 +187,9 @@ class NaiveCode(BaseCodeStatic):
 def main():
     matrix = [[1,2,3], [3,4,5], [6,7]]
     code = NaiveCode(matrix=matrix)
-    code.make()
+    code.timeMake()
     code.verifyCompression()
+    print("Memory of naive code:", code.memoryRequired())
     pass
 
 
