@@ -73,7 +73,9 @@ def outputTransform(supersets, absRoots, frozenMatrix, absThreshold = None):
     # convert absRoots and supersets to expected formats for MRCode
     absHierarchy = copy.deepcopy(supersets)
     absHierarchy.extend(absRoots)
-    absHierarchy.append(frozenset("E")) # empty code holder
+    # if there is no absolute column, no need to encode an empty code
+    if len(absRoots) != 0:
+        absHierarchy.append(frozenset("E")) # empty code holder
 
     supersets = [(superset, []) for superset in supersets]
     for absNode in absRoots:
@@ -126,6 +128,7 @@ def extractRec(graph, absRoots, absParent, selCols, supersets, threshold):
         else:
             if nx.is_connected(graph):
                 cut = nx.minimum_node_cut(graph)
+                #print(len(cut))
                 selCols.update(cut)
                 graph.remove_nodes_from(cut)
 
@@ -192,6 +195,8 @@ def graphHierarchy(matrix, parameters):
     matrix2 = matrix
 
     while True:
+        # print(sorted(matrix2, key=lambda x: len(x)))
+        # print()
         # call the main agorithm to get supersets, selCols and absRoots
         supersets, selCols, absRoots = extractNodes(matrix2, threshold)
         # construct supersets and absHierarchy;
@@ -218,6 +223,6 @@ def graphHierarchy(matrix, parameters):
             matrix2 = [set(row).intersection(selCols) for row in matrix2]
 
     print("Reaching width: ", widthsum, " (", str(widths), " )")
-    #for info in infoList: print(info)
+    # for info in infoList: print(info)
     return supersetsList, absHierarchyList
 

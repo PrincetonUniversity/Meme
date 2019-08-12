@@ -27,9 +27,9 @@ def compress(filename):
 
     # hierarchy = True makes the MRCode uses biclutering hierarchy algorithm
     mrcode = MRCode(originalSets, hierarchy = True)
-    # parameters is currently a tuple of (Threshold of bicluster size, Goal of tag width)
+    # parameters is curretly a tuple of (Threshold of bicluster size, Goal of tag width)
 
-    threshold = 5
+    threshold = 3
     while threshold < 20:
         mrcode.optimize(parameters = (threshold, None))
         totalMemory = [len(rule) for rules in mrcode.matchStrings().values() for rule in rules]
