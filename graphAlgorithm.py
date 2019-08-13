@@ -13,6 +13,30 @@ except:
     from AbsNode import AbsNode
 
 
+def flatWidth(matrix):
+    """ 
+        Removes all subsets from a list of sets and print width/count of flat tags; not used right now
+    """
+    setList = copy.deepcopy(matrix)  # defensive copy
+    finalAnswer = []                 # matrix after subset merging
+    setList.sort(key=len, reverse=True)
+    i = 0
+
+    while i < len(setList):
+        if len(setList[i]) != 0:
+            finalAnswer.append(setList[i])
+        for j in reversed(range(i+1, len(setList))):
+            if setList[j].issubset(setList[i]):
+                del setList[j]
+        i += 1
+
+    print(finalAnswer)
+    print("tag width, ", bitsRequiredVariableID(finalAnswer))
+    print("num_tags, ", sum([len(superset) for superset in finalAnswer]))
+    print()
+    return
+
+
 def getCodingInformation(absHierarchy, selCols, separatePrefix):
     '''
         Get basic information of encoding
@@ -193,10 +217,10 @@ def graphHierarchy(matrix, parameters):
     supersetsList = []
     absHierarchyList = []
     matrix2 = matrix
+    # matrix.sort(key=len, reverse=True)
+    # print(matrix[0])
 
     while True:
-        # print(sorted(matrix2, key=lambda x: len(x)))
-        # print()
         # call the main agorithm to get supersets, selCols and absRoots
         supersets, selCols, absRoots = extractNodes(matrix2, threshold)
         # construct supersets and absHierarchy;
@@ -221,6 +245,7 @@ def graphHierarchy(matrix, parameters):
             break
         else:
             matrix2 = [set(row).intersection(selCols) for row in matrix2]
+            # flatWidth(matrix2)
 
     print("Reaching width: ", widthsum, " (", str(widths), " )")
     # for info in infoList: print(info)
