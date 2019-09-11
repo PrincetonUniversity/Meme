@@ -1,8 +1,8 @@
-from BaseCodes import BaseCodeStatic, ColumnID, Row, Matrix, BinaryString
+from BaseCodes import BaseCodeStatic, ColumnID, Row, Matrix, FixedMatrix, BinaryString
 from common import generateIdentifiers, kraftsInequality
 from optimize import removeSubsets, minimizeRulesGreedy, minimizeVariableWidthGreedy
 
-from typing import List, Set, Dict, FrozenSet
+from typing import List, Set, Dict, FrozenSet, Collection
 
 # memory requirements are
 #   sum( sum(tagWidth + overhead for overhead in ruleOverheads[elem])*occurrences[elem] for elem in elements)
@@ -79,6 +79,27 @@ class ClusterCode(BaseCodeStatic):
         self.made = True
 
 
+    def unmake(self, *args, **kwargs):
+        self.clusters, self.clusterImplicits = None, None
+        self.clustersMade = False
+
+        self.identifiers, self.freeIdentifiers = None, None
+        self.identifiersMade = False
+        self.made = False
+
+
+    def extractColumns(self, columnIDs : Collection[ColumnID]) -> FixedMatrix:
+        self.unmake()
+
+        columnIDs = frozenset(columnIDs)
+        extractedMatrix = [columnIDs.intersection(row) for row in self.originalRows]
+        self.originalRows = [row.difference_update(columnIDs) for row in self.originalRows]
+
+        self.columnIDs.difference_update(columnIDs)
+        
+        return extractedMatrix
+
+
 
     def width(self):
         if not self.made:
@@ -87,7 +108,7 @@ class ClusterCode(BaseCodeStatic):
 
 
 
-    def indexOfCluster(self, subset):
+    def __indexOfCluster(self, subset):
         for i, cluster in enumerate(self.clusters):
             if cluster.issuperset(subset):
                 return i
@@ -125,16 +146,16 @@ class ClusterCode(BaseCodeStatic):
 
     def tag(self, row, decorated=False):
         assert self.made
-        index = self.indexOfCluster(row)
+        index = self.__indexOfCluster(row)
 
-        partChar = '|' if decorated else ''
+        partChar = '_' if decorated else ''
         return self.buildString(index, subset=row, padChar='0', partChar=partChar)
 
 
     def matchStrings(self, columnID, decorated=False):
         assert self.made
         tagWidth = self.width()
-        partChar = '|' if decorated else ''
+        partChar = '_' if decorated else ''
         outStrings = []
         for i, superset in enumerate(self.supersets):
             if columnID in superset:
@@ -146,7 +167,7 @@ class ClusterCode(BaseCodeStatic):
     def allMatchStrings(self, decorated=False):
         assert self.made
         tagWidth = self.width()
-        partChar = '|' if decorated else ''
+        partChar = '_' if decorated else ''
 
         outStrings = {colID : [] for colID in self.columnIDs}
         for cID, cluster in enumerate(self.clusters):
@@ -195,6 +216,7 @@ def main():
     code.timeMake(maxWidth=4, optWidth=True)
     code.verifyCompression()
     print("Memory of original code:", code.memoryRequired())
+    print("Tag for empty row is", code.tag([]))
 
 
 

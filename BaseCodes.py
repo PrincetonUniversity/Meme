@@ -31,17 +31,26 @@ class BaseCode(ABC):
     logger       : logging.Logger = None    # Module logger
 
     def __init__(self, matrix : Matrix = None, **kwargs) -> None:
+        logging.basicConfig(level=CODE_LOG_LEVEL)
+        self.logger = logging.getLogger(type(self).__name__)
+       
+        self.logger.debug("Base code class init called")
         self.originalRows = list(set([frozenset(row) for row in matrix]))
         self.columnIDs = list(frozenset.union(*self.originalRows))
         self.made = False
 
 
-        logging.basicConfig(level=CODE_LOG_LEVEL)
-        self.logger = logging.getLogger(type(self).__name__)
 
     @abstractmethod
     def make(self, *args, **kwargs) -> None:
         """ Build the code.
+        """
+        pass
+
+
+    @abstractmethod
+    def unmake(self, *args, **kwargs) -> None:
+        """ Reset the code to unbuilt status.
         """
         pass
 
@@ -130,7 +139,7 @@ class BaseCode(ABC):
         """ Verify that every matrix row can be recovered from the compressed tags and ternary match strings.
         """
         assert self.made # it is a programmer error to try to verify a code before it has been built
-        self.logger.debug("Verifying compression...")
+        self.logger.info("Verifying compression...")
 
         queryDict = self.allMatchStrings()
         tagDict = self.allTags()
@@ -177,6 +186,9 @@ class NaiveCode(BaseCodeStatic):
 
     def make(self):
         self.made = True
+
+    def unmake(self):
+        self.made = False
 
     #def width(self, includePadding=False):
     #    return len(self.columnIDs)
