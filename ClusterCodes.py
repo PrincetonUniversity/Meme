@@ -88,14 +88,14 @@ class ClusterCode(BaseCodeStatic):
         self.made = False
 
 
-    def extractColumns(self, columnIDs : Collection[ColumnID]) -> FixedMatrix:
+    def extractColumns(self, colsToExtract : Collection[ColumnID]) -> FixedMatrix:
         self.unmake()
 
-        columnIDs = frozenset(columnIDs)
-        extractedMatrix = [columnIDs.intersection(row) for row in self.originalRows]
-        self.originalRows = [row.difference_update(columnIDs) for row in self.originalRows]
+        colsToExtract = frozenset(colsToExtract)
+        extractedMatrix = [colsToExtract.intersection(row) for row in self.originalRows]
+        self.originalRows = [row.difference(colsToExtract) for row in self.originalRows]
 
-        self.columnIDs.difference_update(columnIDs)
+        self.columnIDs = [colID for colID in self.columnIDs if colID not in colsToExtract]
         
         return extractedMatrix
 
@@ -157,8 +157,8 @@ class ClusterCode(BaseCodeStatic):
         tagWidth = self.width()
         partChar = '_' if decorated else ''
         outStrings = []
-        for i, superset in enumerate(self.supersets):
-            if columnID in superset:
+        for i, cluster in enumerate(self.clusters):
+            if columnID in cluster:
                 outStrings.append(self.buildString(i, subset=[columnID], width=tagWidth, padChar='*', partChar=partChar))
 
         return outStrings
@@ -189,19 +189,19 @@ class OriginalCodeStatic(ClusterCode):
 
 
     def make(self, optWidth=True, maxWidth=-1):
-        supersets = removeSubsets(self.originalRows)
+        clusters = removeSubsets(self.originalRows)
 
         if optWidth:
-            supersets = minimizeVariableWidthGreedy(supersets)
+            clusters = minimizeVariableWidthGreedy(clusters)
 
-        minWidth = kraftsInequality([len(superset) for superset in supersets])
+        minWidth = kraftsInequality([len(cluster) for cluster in clusters])
         if maxWidth != -1:
             if maxWidth >= minWidth:
-                supersets = minimizeRulesGreedy(supersets, {colID:1 for colID in self.columnIDs}, maxWidth)
+                clusters = minimizeRulesGreedy(clusters, {colID:1 for colID in self.columnIDs}, maxWidth)
             else:
                 self.logger.warning("Given maximum tag width is too small! Max given is %d, min is %d" % (maxWidth, minWidth))
 
-        self.setClusters(supersets)
+        self.setClusters(clusters)
 
         self.makeIdentifiers()
 
