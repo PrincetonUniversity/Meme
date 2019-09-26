@@ -15,13 +15,10 @@ print("Beginning record scrape. Results will be saved to", filename)
 stream = BGPStream()
 rec = BGPRecord()
 
-# Consider RIPE RRC 11 only
-#stream.add_filter('collector','rrc11')
-
 # Consider RIB dumps only
 stream.add_filter('record-type', 'ribs')
 
-# Consider this time interval:
+# Only consider the past two hours
 intervalSeconds = int(2 * 60 * 60)
 endTime = int(time.time())
 startTime = endTime - intervalSeconds
@@ -30,23 +27,27 @@ stream.add_interval_filter(startTime,endTime)
 # Start the stream
 stream.start()
 
-prefixes = set([])
 
-# any AS that is along a path to a prefix
+# any AS that is along a path to a prefix should be able to route packets for that prefix,
+# hence I call them "routers"
 prefixRouters : Dict['prefix', Set['ASes']] = defaultdict(set)
+# any AS that is the first hop of a path announced at an IXP is assumed to be a participant
 ixpParticipants = set()
+# anyone in any path anywhere ever
 ases = set()
 
-printPeriod = 10
+printPeriod = 10 # how frequently to print status messages, in seconds
 lastPrintTime = 0
 numRecords = 0
 # Get next record
 while(stream.get_next_record(rec)):
     # Print the record information only if it is not a valid record
     numRecords += 1
-    # for small testing
+    ##### uncomment this for small testing
     if numRecords > 400000:
         break
+    ########
+    # Print periodically so we know it isnt stalled
     currTime = time.time()
     if currTime - lastPrintTime > printPeriod:
         lastPrintTime = currTime
@@ -57,16 +58,14 @@ while(stream.get_next_record(rec)):
     else:
         elem = rec.get_next_elem()
         while(elem):
-            # Print record and elem information
-            #print(rec.project, rec.collector, rec.type, rec.time, rec.status, end=' ')
-            #print(elem.type, elem.peer_address, elem.peer_asn, elem.fields)
+            # if the record is a route, it will have 'next-hop' in the fields
             if 'next-hop' in elem.fields:
                 hop = elem.fields['next-hop']
                 prefix = elem.fields['prefix']
                 
                 asPath = elem.fields['as-path'].split(" ")
-                origin = asPath[-1]
-                advertiser = asPath[0]
+                origin = asPath[-1] # last hop in the path
+                advertiser = asPath[0] # first hop in the path. presumed to be connected to the IXP
 
                 ixpParticipants.add(advertiser)
 
@@ -74,14 +73,14 @@ while(stream.get_next_record(rec)):
                     prefixRouters[prefix].add(asHop)
                     ases.add(asHop)
 
-                prefixes.add(prefix)
+            # Print record and elem information
             #print(rec.project, rec.collector, rec.type, rec.time, rec.status, end=' ')
             #print(elem.type, elem.peer_address, elem.peer_asn, elem.fields)
 
             elem = rec.get_next_elem()
 
 print("Num distinct IXP participants:", len(ixpParticipants))
-print("Num distinct prefixes:", len(prefixes))
+print("Num distinct prefixes:", len(prefixRouters))
 print("Num distinct AS numbers in paths:", len(ases))
 
 avgRouters = sum([len(routers) for routers in prefixRouters.values()]) / len(prefixRouters)
