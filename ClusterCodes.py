@@ -184,7 +184,6 @@ class ClusterCode(BaseCodeStatic):
 class OriginalCodeStatic(ClusterCode):
 
     def __init__(self, matrix=None, **kwargs):
-        print(matrix)
         super().__init__(matrix=matrix, hideImplicits=False, **kwargs)
 
 

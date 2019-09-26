@@ -84,7 +84,7 @@ class MRCode(object):
         """
         if self.hierarchy:
             # Get the heirarchy from biclustering hierarchy algorithm
-            supersetsList, absHierarchyList = graphHierarchy(self.nonShadowElements, parameters)
+            supersetsList, absHierarchyList = graphHierarchy(self.nonShadowElements, **parameters)
             return self.useHierarchyStrategy(supersetsList, absHierarchyList)
         else:
             return self.optimizeVertexCuts(parameters = parameters)
