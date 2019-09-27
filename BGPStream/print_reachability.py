@@ -2,6 +2,7 @@
 
 import pickle, sys, time
 from datetime import datetime
+from collections import Counter
 
 timeString = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
 
@@ -23,10 +24,16 @@ avgRouters = sum([len(routers) for routers in prefixRouters.values()]) / len(pre
 print("Average number of routers for prefixes are", avgRouters)
 
 prefixAnnouncers = {prefix : [AS for AS in routers if AS in ixpParticipants] for prefix,routers in prefixRouters.items()}
-avgAnnouncers = sum([len(announcers) for announcers in prefixAnnouncers.values()]) / len(prefixAnnouncers)
+
+announcersPerPrefix = [len(announcers) for announcers in prefixAnnouncers.values()]
+announcerCounts = Counter(announcersPerPrefix)
+print("Counts of row sizes", announcerCounts)
+avgAnnouncers = sum(announcersPerPrefix) / len(prefixAnnouncers)
 print("Average number of announcers for prefixes are", avgAnnouncers)
 
-matrix = list(prefixAnnouncers.keys())
+matrix = list(prefixAnnouncers.values())
+print("First matrix row is", matrix[0])
+print("Number of matrix rows is", len(matrix))
 matrixFilename = "matrix_%s.pkl" % timeString
 print("Writing matrix to file", matrixFilename)
 with open(matrixFilename, 'wb') as fp:
