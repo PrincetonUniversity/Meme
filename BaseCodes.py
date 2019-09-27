@@ -16,12 +16,14 @@ FixedRow = NewType('FRow', FrozenSet[ColumnID])
 Matrix      = NewType('Matrix',  Collection[Row])
 FixedMatrix = NewType('FMatrix', Collection[FixedRow])
 
-# log levels in decreasing order of verbosity
-#CODE_LOG_LEVEL = logging.DEBUG
-CODE_LOG_LEVEL = logging.INFO
-#CODE_LOG_LEVEL = logging.WARNING
-#CODE_LOG_LEVEL = logging.ERROR
-#CODE_LOG_LEVEL = logging.CRITICAL
+# log levels in increasing order of verbosity
+LOGGING_LEVELS = {0 : logging.CRITICAL,
+                  1 : logging.ERROR,
+                  2 : logging.WARNING,
+                  3 : logging.INFO,
+                  4 : logging.DEBUG}
+
+CODE_LOG_LEVEL = LOGGING_LEVELS[3]
 
 
 class BaseCode(ABC):
@@ -30,7 +32,8 @@ class BaseCode(ABC):
     made         : bool = False             # Has the code been built?
     logger       : logging.Logger = None    # Module logger
 
-    def __init__(self, matrix : Matrix = None, **kwargs) -> None:
+    def __init__(self, matrix : Matrix = None, verbosity=3, **kwargs) -> None:
+        CODE_LOG_LEVEL = LOGGING_LEVELS[verbosity]
         logging.basicConfig(level=CODE_LOG_LEVEL)
         self.logger = logging.getLogger(type(self).__name__)
        
@@ -118,6 +121,7 @@ class BaseCode(ABC):
             i.e. if column 1 appears in 4 MAT entries which have bit widths 8,16,16,32 before including the column TCAM check,
             then columnRuleSizes[1] == [8,16,16,32].
         """
+        assert self.made
         if columnRuleSizes == None:
             columnRuleSizes = {colID : [0] for colID in self.columnIDs}
         columnOccurrences = {colID : len(ruleSizes) for colID, ruleSizes in columnRuleSizes.items()}
@@ -133,13 +137,26 @@ class BaseCode(ABC):
 
         return (sramBits, tcamBits)
 
+    def tableEntriesRequired(self):
+        assert self.made
+        return sum(len(strings) for strings in self.allMatchStrings().values())
+
+    def printInfo(self):
+        assert self.made
+        sramBits, tcamBits = self.memoryRequired()
+        codeWidth = self.width()
+        entries = self.tableEntriesRequired()
+
+        print("Code width is %3d, number of entries is %5d" % (codeWidth, entries))
+        print("Memory required is %4d SRAM bits, %4d TCAM bits" % (sramBits, tcamBits))
+
 
 
     def verifyCompression(self) -> bool:
         """ Verify that every matrix row can be recovered from the compressed tags and ternary match strings.
         """
         assert self.made # it is a programmer error to try to verify a code before it has been built
-        self.logger.info("Verifying compression...")
+        self.logger.debug("Verifying compression...")
 
         queryDict = self.allMatchStrings()
         tagDict = self.allTags()
