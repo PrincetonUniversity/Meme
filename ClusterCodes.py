@@ -92,8 +92,8 @@ class ClusterCode(BaseCodeStatic):
         self.unmake()
 
         colsToExtract = frozenset(colsToExtract)
-        extractedMatrix = [colsToExtract.intersection(row) for row in self.originalRows]
-        self.originalRows = [row.difference(colsToExtract) for row in self.originalRows]
+        extractedMatrix = [colsToExtract.intersection(row) for row in self.matrix]
+        self.matrix = [row.difference(colsToExtract) for row in self.matrix]
 
         self.columnIDs = [colID for colID in self.columnIDs if colID not in colsToExtract]
         
@@ -188,7 +188,7 @@ class OriginalCodeStatic(ClusterCode):
 
 
     def make(self, optWidth=True, maxWidth=-1):
-        clusters = removeSubsets(self.originalRows)
+        clusters = removeSubsets(self.matrix)
 
         if optWidth:
             clusters = minimizeVariableWidthGreedy(clusters)

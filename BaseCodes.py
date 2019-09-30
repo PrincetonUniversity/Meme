@@ -27,7 +27,8 @@ CODE_LOG_LEVEL = LOGGING_LEVELS[3]
 
 
 class BaseCode(ABC):
-    originalRows : FixedMatrix = None       # The original rows of the input matrix, deduplicated
+    originalRows : FixedMatrix = None       # The original rows of the input matrix, deduplicated. DON'T MODIFY
+    matrix       : Matrix = None            # The input matrix, but possibly distorted by optimizations
     columnIDs    : Set[ColumnID] = None     # All ColumnIDS present in the original matrix
     made         : bool = False             # Has the code been built?
     logger       : logging.Logger = None    # Module logger
@@ -40,6 +41,7 @@ class BaseCode(ABC):
         self.logger.debug("Base code class init called")
         self.originalRows = list(set([frozenset(row) for row in matrix]))
         self.columnIDs = list(frozenset.union(*self.originalRows))
+        self.matrix = [set(row) for row in self.originalRows]
         self.made = False
 
 
