@@ -7,6 +7,11 @@ import random
 import argparse
 import pickle
 
+import cProfile
+import pstats
+
+from util import fromPickle, toPickle, printShellDivider
+
 
 
 
@@ -16,7 +21,9 @@ def main():
                  'original':OriginalCodeStatic}
 
     ALL_TESTS = {'simple1':test1,
-                 'simple2':test2}
+                 'simple2':test2,
+                 'timing':timingTest,
+                 'thresholds':testThresholds}
 
     codeChoices = list(ALL_CODES.keys()) + ['all']
     testChoices = list(ALL_TESTS.keys()) + ['all', 'none']
@@ -55,8 +62,6 @@ def main():
         print("Done. Testing...")
         for codeClass in codeClasses:
             baseTest(codeClass, matrix, verbosity=args.verbose)
-
-
     
 
 
@@ -64,12 +69,44 @@ def main():
 def baseTest(CodeClass, matrix, **kwargs):
     """ Verify a code class on a given matrix.
     """
-    print("="*80)
+    printShellDivider(CodeClass.__name__)
     code = CodeClass(matrix=matrix, **kwargs)
     code.timeMake()
     code.verifyCompression()
     code.printInfo()
-    print("="*80)
+    printShellDivider()
+
+
+
+def randomMatrix(rows=100, columns=100, density=0.1):
+    matrixSize = rows * columns 
+
+    matrix = [set() for _ in range(rows)]
+    for _ in range(int(matrixSize * density)):
+        row = random.randint(0, rows-1)
+        col = random.randint(0, columns-1)
+
+        matrix[row].add(col)
+    return matrix
+
+
+
+def testThresholds(CodeClass, **kwargs):
+    if CodeClass != MultiCode:
+        print("Threshold test only applies to MultiCode. Skipping.")
+
+    matrix = fromPickle("matrixfull")
+
+    printShellDivider('Threshold test')
+    for threshold in [5]:
+        code = CodeClass(matrix=matrix)
+
+        code.optimize(variant='hier')
+        code.timeMake()
+        code.verifyCompression()
+        code.printInfo()
+
+    printShellDivider() 
 
 
 
@@ -81,19 +118,32 @@ def test1(CodeClass, **kwargs):
     baseTest(CodeClass, matrix, **kwargs)
 
 
+_timingCodeClass = None
+_timingMatrix = None
+def timingTest(CodeClass, **kwargs):
 
-def test2(CodeClass, rows=100, columns=100, density=0.1, **kwargs):
+    profilerOutputFile = "timingResults"
+
+    matrix = randomMatrix(rows=1000, columns=200, density=0.1)
+
+    global _timingCodeClass
+    global _timingMatrix
+    _timingCodeClass = CodeClass
+    _timingMatrix = matrix 
+    cProfile.run('baseTest(_timingCodeClass, _timingMatrix)', profilerOutputFile)
+    
+    p = pstats.Stats(profilerOutputFile)
+    p.sort_stats('cumulative').print_stats(30)
+    
+
+
+
+
+def test2(CodeClass, **kwargs):
     """ Simple test. Uniformly random sparse matrix.
     """
+    matrix = randomMatrix()
 
-    matrixSize = rows * columns 
-
-    matrix = [set() for _ in range(rows)]
-    for _ in range(int(matrixSize * density)):
-        row = random.randint(0, rows-1)
-        col = random.randint(0, columns-1)
-
-        matrix[row].add(col)
 
     baseTest(CodeClass, matrix, **kwargs)
 

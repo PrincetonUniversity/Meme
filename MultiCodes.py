@@ -6,17 +6,18 @@ import itertools
 
 try:
     from .RSets import RCode
-    from .analyze import groupIdenticalColumns
-    from .graphAlgorithm_new import graphHierarchy
+    from .analyze import groupIdenticalColumns, groupOverlappingRows
+    from .graphAlgorithm import graphHierarchy, allOneCuts
 except:
     from RSets import RCode
-    from analyze import groupIdenticalColumns
-    from graphAlgorithm_new import graphHierarchy
+    from analyze import groupIdenticalColumns, groupOverlappingRows
+    from graphAlgorithm import graphHierarchy, allOneCuts
 
 class MultiCode(BaseCodeStatic):
     subCodeClass    : BaseCode = None
     subCodes        : List[BaseCode] = None
     shadowElements  : Dict[ColumnID, ColumnID] = None # maps shadow elements to the elements they mimic
+    optimized       : bool = False
 
 
     def __init__(self, matrix : Matrix = None, subCodeClass : BaseCode = OriginalCodeStatic, **kwargs) -> None:
@@ -27,6 +28,12 @@ class MultiCode(BaseCodeStatic):
 
         self.subCodeClass = subCodeClass
         self.subCodes = [subCodeClass(matrix=matrix, **kwargs)]
+
+
+    def printInfo(self):
+        super().printInfo()
+        if not self.made: return
+        print("Number of Subcodes: %d, Subcode Widths:" % len(self.subCodes), [subCode.width() for subCode in self.subCodes])
 
 
 
@@ -50,13 +57,31 @@ class MultiCode(BaseCodeStatic):
 
 
 
-    def optimize(self, variant='vcut', **kwargs):
+    def optimize(self, variant='hier', **kwargs):
+        self.logger.info("Optimizing with variant " + variant)
         if variant == 'vcut':
             # Vertex cut
             self.optimizeVertexCuts(**kwargs)
         elif variant == 'hier':
             # Hierarchy
             self.optimizeHierarchy(**kwargs)
+        elif variant == '1cut':
+            self.extractOneCuts(**kwargs)
+        self.optimized = True
+
+
+    def extractOneCuts(self, **parameters):
+        def _getOneCuts(_code):
+            submatrices = groupOverlappingRows(_code.matrix)
+            oneCuts = []
+            for submatrix in submatrices: oneCuts.extend(allOneCuts(submatrix))
+            return oneCuts
+
+        extractions = _getOneCuts(self.subCodes[-1])
+        while len(extractions) > 0:
+            self.spawnSubCode(extractions)
+            if len(self.subCodes[-1].columnIDs) <= 1: break
+            extractions = _getOneCuts(self.subCodes[-1])
 
 
     def optimizeHierarchy(self, **parameters):
@@ -113,7 +138,9 @@ class MultiCode(BaseCodeStatic):
         #    subCode.mergeOverlaps()
 
 
-    def make(self, *args, **kwargs) -> None:
+    def make(self, *args, dontOptimize=False, **kwargs) -> None:
+        if (not self.optimized) and (not dontOptimize): self.optimize()
+
         for subCode in self.subCodes:
             subCode.make(*args, **kwargs)
         self.made = True

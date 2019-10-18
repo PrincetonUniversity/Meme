@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Set, FrozenSet, List, Dict, Collection, Tuple, NewType
-from common import recoverRow
+from util import recoverRow
 import time
 import logging
 
@@ -144,11 +144,14 @@ class BaseCode(ABC):
         return sum(len(strings) for strings in self.allMatchStrings().values())
 
     def printInfo(self):
-        assert self.made
+        print("Uncompressed matrix had %d rows, %d columns" % (len(self.originalRows), len(self.columnIDs)))
+        
+        if not self.made:
+            print("Matrix has not been compressed. No other info available.")
+            return
         sramBits, tcamBits = self.memoryRequired()
         codeWidth = self.width()
         entries = self.tableEntriesRequired()
-
         print("Code width is %3d, number of entries is %5d" % (codeWidth, entries))
         print("Memory required is %4d SRAM bits, %4d TCAM bits" % (sramBits, tcamBits))
 

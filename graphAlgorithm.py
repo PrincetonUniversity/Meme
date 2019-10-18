@@ -4,17 +4,22 @@ import itertools
 import copy
 import time
 import sys
+from typing import List
+
+from cutsOverload import minimum_node_cut
 
 try:
     from .analyze import bitsRequiredVariableID
     from .AbsNode import AbsNode
+    from .BaseCodes import ColumnID
 except:
     from analyze import bitsRequiredVariableID
     from AbsNode import AbsNode
+    from BaseCodes import ColumnID
 
 
 def flatWidth(matrix):
-    """ 
+    """
         Removes all subsets from a list of sets and print width/count of flat tags; not used right now
     """
     setList = copy.deepcopy(matrix)  # defensive copy
@@ -42,7 +47,6 @@ def getCodingInformation(absHierarchy, selCols, separatePrefix):
         Get basic information of encoding
     '''
     supersetGroupings = sorted([len(superset) for superset in absHierarchy])
-    
     absNodeGroupings = sorted([len(superset) for superset in absHierarchy if isinstance(superset, AbsNode)])
     absSupersetGroupings = []
     for node in absHierarchy:
@@ -151,18 +155,52 @@ def extractRec(graph, absRoots, absParent, selCols, supersets, threshold):
             return
         else:
             if nx.is_connected(graph):
-                cut = nx.minimum_node_cut(graph)
-                #print(len(cut))
+                cut = []
+                # Using findOneCut
+                #if len(graph.nodes) > 400:
+                #    print("entering findOneCut...")
+                #    cut = findOneCut(graph, findAll=True)
+                #    print("exit findOneCut")
+                #elif len(graph.nodes) > 250:
+                #    print("entering findOneCut...")
+                #    cut = findOneCut(graph, findAll=False)
+                #    print("exit findOneCut")
+
+                # Using approximate minimum_node_cut
+                if len(graph.nodes) > 150:
+                    #print("entering minimum_node_cut...")
+                    cut = minimum_node_cut(graph, approximate = 2)
+                    #print("exit minimum_node_cut")
+                else:
+                    #print("entering minimum_node_cut...")
+                    cut = minimum_node_cut(graph, approximate = 1)
+                    #print("exit minimum_node_cut")
                 selCols.update(cut)
                 graph.remove_nodes_from(cut)
+                print("cut: ", len(cut))
+
 
     # split into connected components
     # for each connected component, call extractGraphRec().
+
+    #for cc in nx.connected_components(graph):
+    #    print(len(cc))
+    #print()
     for cc in nx.connected_components(graph):
         subgraph = graph.subgraph(cc).copy()
         extractRec(subgraph, absRoots, absParent, selCols, supersets, threshold)
     return
 
+def findOneCut(graph, findAll=True):
+    cut = []
+    for node in graph.nodes:
+        newNodeList = list(graph.nodes)
+        newNodeList.remove(node)
+        if not nx.is_connected(graph.subgraph(newNodeList)):
+            cut.append(node)
+            if not findAll:
+                break
+    return cut
 
 def extractNodes(matrix, threshold = 10):
     '''
@@ -199,17 +237,11 @@ def extractNodes(matrix, threshold = 10):
     return supersets, selCols, absRoots
 
 
-def graphHierarchy(matrix, parameters):
+def graphHierarchy(matrix, threshold = 10, absThreshold = None):
     '''
         Main algorithm. Iterate over the matrix till the selected columns (to the next submatrix) are empty.
         parameters = (threshold, absThreshold)
     '''
-    if parameters != None:
-        threshold = parameters[0]
-        absThreshold = parameters[1]
-    else:
-        threshold = 10
-        absThreshold = None
 
     widthsum = 0
     widths = []
@@ -248,6 +280,36 @@ def graphHierarchy(matrix, parameters):
             # flatWidth(matrix2)
 
     print("Reaching width: ", widthsum, " (", str(widths), " )")
-    # for info in infoList: print(info)
+    for info in infoList: print(info)
     return supersetsList, absHierarchyList
+
+
+
+
+
+def isOneCut(tup) -> (ColumnID, bool):
+    G, columnID = tup
+    H = G.subgraph(G.nodes - [columnID])
+
+    return (columnID, not nx.is_connected(H))
+
+
+def allOneCuts(matrix) -> List[ColumnID]:
+    columnIDs = set()
+    for row in matrix:
+        columnIDs.update(row)
+
+    G = nx.Graph()
+
+    for row in matrix:
+        for i1, i2 in itertools.combinations(row, 2):
+            G.add_edge(i1, i2)
+
+    # if the graph is disconnected then there is no minimum cut
+    if not nx.is_connected(G): return []
+
+    with mp.Pool(mp.cpu_count()) as p:
+        oneCuts = p.map(isOneCut, [(G, colID) for colID in columnIDs])
+
+    return [colID for (colID, colIdCuts) in oneCuts if colIdCuts]
 

@@ -1,7 +1,4 @@
-import os, sys
-import pickle
-import math
-import time
+import os, sys, pickle, math, time, logging
 from collections import deque as Queue
 
 REPO_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -11,44 +8,50 @@ PKL_PATH = os.path.join(REPO_PATH, 'pickles/')
 from collections.abc import Iterable
 from typing import List, Dict, Set, Tuple
 
-VERBOSITY = 2
-def logger(*args, **kwargs):
-    lev = kwargs.get('lev', 2)
-    if lev <= VERBOSITY:
-        print(' '.join([str(x) for x in args]))
+LOGGING_LEVELS = {  0 : logging.CRITICAL,
+                    1 : logging.ERROR,
+                    2 : logging.WARNING,
+                    3 : logging.INFO,
+                    4 : logging.DEBUG}
+
+UTIL_LOG_LEVEL = LOGGING_LEVELS[3]
 
 
-def to_pkl_path(filename):
+logger = logging.getLogger("Util")
+logger.setLevel(UTIL_LOG_LEVEL)
+
+
+def toPicklePath(filename):
     if not filename.endswith(".pickle"):
         filename += ".pickle"
     filepath = os.path.join(PKL_PATH, filename)
     return filepath
 
-def pickle_exists(filename):
-    filepath = to_pkl_path(filename)
+def pickleExists(filename):
+    filepath = toPicklePath(filename)
     return os.path.isfile(filepath)
 
 
-def from_pickle(filename, **kwargs):
-    filepath = to_pkl_path(filename)
-    logger("Loading pickle file", filepath)
+def fromPickle(filename, **kwargs):
+    filepath = toPicklePath(filename)
+    logger.info("Loading pickle file", filepath)
     with open(filepath, 'rb') as fp:
         obj = pickle.load(fp, **kwargs)
-    logger("Done loading", filepath)
+    logger.info("Done loading", filepath)
     return obj
 
 
-def to_pickle(obj, filename, **kwargs):
-    filepath = to_pkl_path(filename)
-    logger("Writing to pickle file", filepath)
+def toPickle(obj, filename, **kwargs):
+    filepath = toPicklePath(filename)
+    logger.info("Writing to pickle file", filepath)
     with open(filepath, 'wb') as fp:
         pickle.dump(obj, fp, **kwargs)
-    logger("Done writing pickle", filepath)
+    logger.info("Done writing pickle", filepath)
 
 
 
 
-def ternary_compare(str1, str2):
+def ternaryCompare(str1, str2):
     if len(str1) != len(str2):
         raise Exception("strings of unequal length compared: %s and %s (len %d and %d)" %(str1, str2, len(str1), len(str2)))
     for (c,d) in zip(str1,str2):
@@ -57,8 +60,8 @@ def ternary_compare(str1, str2):
             return False
     return True
 
-def longest_prefix_match(table, tag):
-    matches = [prefix for prefix in table if ternary_compare(prefix, tag)]
+def longestPrefixMatch(table, tag):
+    matches = [prefix for prefix in table if ternaryCompare(prefix, tag)]
     if len(matches) == 0: return -1
     return table.index(max(matches, key=lambda s:s.index('*') if '*' in s else len(s)))
 
@@ -70,7 +73,7 @@ def recoverRow(tag, queryDict):
         if type(queries) == str or not isinstance(queries, Iterable):
             queries = [queries]
         for query in queries:
-            if ternary_compare(tag, query):
+            if ternaryCompare(tag, query):
                 recovered.add(col)
                 break
     return recovered
@@ -140,17 +143,17 @@ def printAsColumns(items, title='', delim=", "):
     printShellDivider()
 
 
-COMMON_TIMER_CLOCK = None
+UTIL_TIMER_CLOCK = None
 def printTimer(init=False):
-    global COMMON_TIMER_CLOCK
+    global UTIL_TIMER_CLOCK
     currTime = time.time()
-    if COMMON_TIMER_CLOCK == None or init:
+    if UTIL_TIMER_CLOCK == None or init:
         print("Timer initialized.")
     else:
-        elapsedTime = currTime - COMMON_TIMER_CLOCK
+        elapsedTime = currTime - UTIL_TIMER_CLOCK
         elapsedDiscrete = int(math.floor(elapsedTime))
         print("%2d min %5.2f sec elapsed since last timer call." % (elapsedDiscrete // 60, elapsedTime % 60))
-    COMMON_TIMER_CLOCK = currTime
+    UTIL_TIMER_CLOCK = currTime
 
 
 def pointerBitsFor(numItems):

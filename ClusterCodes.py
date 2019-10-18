@@ -1,5 +1,5 @@
 from BaseCodes import BaseCodeStatic, ColumnID, Row, Matrix, FixedMatrix, BinaryString
-from common import generateIdentifiers, kraftsInequality
+from util import generateIdentifiers, kraftsInequality
 from optimize import removeSubsets, minimizeRulesGreedy, minimizeVariableWidthGreedy
 
 from typing import List, Set, Dict, FrozenSet, Collection
@@ -187,7 +187,7 @@ class OriginalCodeStatic(ClusterCode):
         super().__init__(matrix=matrix, hideImplicits=False, **kwargs)
 
 
-    def make(self, optWidth=True, maxWidth=-1):
+    def make(self, optWidth=False, maxWidth=-1, mergeOverlaps=True):
         clusters = removeSubsets(self.matrix)
 
         if optWidth:
