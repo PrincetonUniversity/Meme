@@ -3,11 +3,14 @@ from parse_mrt import mrtCsvToMatrix
 import argparse, os, sys
 import logging
 from MRSets import MRCode
-import pickle
+import pickle, json
 import time
 
+from MatrixParameters import getMatrixStatistics
 
 logging.basicConfig(level=logging.DEBUG)
+
+
 
 """ 
     Need to write prerequisite installation script.
@@ -44,11 +47,12 @@ def get_args():
 
 
 def getCodeStatistics(supersets):
+    logger = logging.getLogger("eval.codeStats")
 
-    print("Total number of groups: ", len(set(supersets)))
+    #logger.info("Total num groups" + str(len(set(supersets))))
     originalElements = list(set.union(*[set(superset) for superset in supersets]))
     originalSets = [frozenset(superset) for superset in supersets]
-    print("Total number of elements: ", len(originalElements))
+    #logger.info("Total num elements" + str(len(originalElements)))
 
     # orderedSets = [supersets[i*2 + 1] for i in range(len(supersets)/2)]
     # maxElement = max(max(superset) for superset in orderedSets)
@@ -60,19 +64,21 @@ def getCodeStatistics(supersets):
     mrcode = MRCode(originalSets, hierarchy = True)
     # parameters is curretly a tuple of (Threshold of bicluster size, Goal of tag width)
 
-    threshold = 4
-    while threshold < 15:
+    for threshold in range(4, 16):
+        info = {}
+        info["threshold"] = threshold
         cur_time = time.time()
         mrcode.optimize(parameters = (threshold, None))
-        print("Shadow Elements:", len(mrcode.shadowElements.keys()))
+        info["Shadow Elements"] = len(mrcode.shadowElements.keys())
         mrcode.verifyCompression()
         totalMemory = [len(rule) for rules in mrcode.matchStrings().values() for rule in rules]
-        print("Chosen threshold: ", threshold)
-        print("Total number of rules: ", len(totalMemory))
-        print("Length of rule:", totalMemory[0])
-        print("Total memory:", sum(totalMemory))
-        threshold += 1
-        print("Running time:", time.time() - cur_time, "seconds")
+        info["Total number of rules"] = len(totalMemory)
+        info["Length of rule"] = totalMemory[0]
+        info["Total memory"] = sum(totalMemory)
+        info["Running time"] = time.time() - cur_time
+        logger.info(json.dumps(info))
+
+
 
     # print("Tag width: ", len(mrcode.tagString(frozenset([]))))
     # print("Tag width: ", len(mrcode.matchStrings(frozenset(['AS8283']))['AS8283'][0]))
@@ -110,7 +116,8 @@ def main():
         with open(args.matrix_pickle, 'rb') as fp:
             matrix = pickle.load(fp)
         print("Done loading")
-    
+  
+    getMatrixStatistics(matrix)
     getCodeStatistics(matrix)
 
 

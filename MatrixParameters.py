@@ -3,13 +3,14 @@ import numpy as np
 import networkx as nx
 import itertools
 from cutsOverload import minimum_node_cut
-from analyze import kraftsBound
+from analyze import kraftsBound, transposeMatrix
 import math
 
 from unionFind import UnionFind
 import sys
-
-
+import logging
+from collections import Counter
+import json
 import heapq
 
 from util import printShellDivider, getShellWidth, shellHistogram
@@ -212,7 +213,9 @@ def breakUpMatrix(matrix):
 def copyMatrix(matrix):
     return [set(row) for row in matrix]
 
-def analyzeMatrix(matrix):
+def getMatrixStatistics(matrix):
+    matrix = [set(row) for row in matrix]
+    logger = logging.getLogger("eval.matrixStats")
     allCols = set()
     for row in matrix:
         allCols.update(row)
@@ -226,32 +229,21 @@ def analyzeMatrix(matrix):
     density = avgRowSize / width
 
 
+    info = {}
+    info["width"] = width
+    info["height"] = height
+    info["avg row size"] = avgRowSize
+    info["density"] = density
 
-    print("Width:", width)
-    print("Height:", height)
-    print("Average row size:", avgRowSize)
-    print("Density:", density)
+    info["row size counts"] = dict(Counter([len(row) for row in matrix]))
+
+    tmatrix = transposeMatrix(matrix)
+    info["col size counts"] = dict(Counter([len(row) for row in tmatrix]))
 
     clusters = getClusters(matrix)
-    maxClusterSize = max([len(cluster) for cluster in clusters])
+    info["cluster size counts"] = dict(Counter([len(cluster) for cluster in clusters]))
 
-    print("Max cluster size before breaking:", maxClusterSize)
-
-
-    print("breaking..")
-
-    matrices = breakUpMatrix(matrix)
-
-    totalSize = 0
-    totalTagSize = 0
-    for i, submatrix in enumerate(matrices):
-        subclustering = getClusters(submatrix)
-        totalTagSize += kraftsBound([len(subcluster) for subcluster in subclustering])
-        maxSubClusterSize = biggest(subclustering)
-        print("Max cluster size of matrix %d: %d" % (i, maxSubClusterSize))
-        totalSize += maxSubClusterSize
-    print("total size of all largest clusters:", totalSize)
-    print("total expected tag size:", totalTagSize)
+    logger.info(json.dumps(info))
 
 
 def main():
@@ -271,7 +263,6 @@ def main():
 
         matrix = copyMatrix(matrix)
         plotDistribution(matrix)
-        #analyzeMatrix(matrix)
 
 if __name__ == "__main__":
     main()

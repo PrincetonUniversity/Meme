@@ -5,6 +5,9 @@ import copy
 import time
 import sys
 from cutsOverload import minimum_node_cut
+import logging
+import json
+
 
 try:
     from .analyze import bitsRequiredVariableID
@@ -54,18 +57,18 @@ def getCodingInformation(absHierarchy, selCols, separatePrefix):
     tagwidth = bitsRequiredVariableID(absHierarchy)
     numabscol = sum([rootNode.getAbsCount() for rootNode in absHierarchy if isinstance(rootNode, AbsNode)])
 
-    info = "Superset groupings\n" + str(supersetGroupings)\
-           + "\nAbsolute node groupings\n" + str(absNodeGroupings) \
-           + "\nSuperset groupings in absolute hierarchy\n" + str(absSupersetGroupings)\
-           + "\nTag width\n" + str(tagwidth) \
-           + "\nSelected columns\n" + str(selCols) \
-           + "\nNumber of absolute columns\n" +  str(numabscol)
+    info = {}
+    info["Superset groupings"]      = str(supersetGroupings)
+    info["Absolute node groupings"] = str(absNodeGroupings)
+    info["Superset groupings in absolute hierarchy"] = str(absSupersetGroupings)
+    info["Tag width"]               = str(tagwidth)
+    info["Selected columns"]        = str(selCols)
+    info["Number of absolute columns"] =  str(numabscol)
 
     if numabscol > 0:
-        info += "\nAbsolute columns:\n" +  str(set.union(*[rootNode.getAbsCols() for rootNode in absHierarchy if isinstance(rootNode, AbsNode)]))
-        info += "\nNumber of absolute columns with own encoding:\n" + str(len(separatePrefix))
-        info += "\nAbsolute columns with own encoding:\n" + str(separatePrefix)
-    info += "\n\n"
+        info["Absolute columns"] = str(set.union(*[rootNode.getAbsCols() for rootNode in absHierarchy if isinstance(rootNode, AbsNode)]))
+        info["Number of absolute columns with own encoding"] = str(len(separatePrefix))
+        info["Absolute columns with own encoding"] = str(separatePrefix)
     return tagwidth, info
 
 
@@ -299,7 +302,9 @@ def graphHierarchy(matrix, parameters):
             # flatWidth(matrix2)
 
     print("Reaching width: ", widthsum, " (", str(widths), " )")
-    for info in infoList: print(info)
+
+    logger = logging.getLogger("eval.graphAlg")
+    logger.info(json.dumps(info))
     return supersetsList, absHierarchyList
 
 
@@ -332,7 +337,7 @@ def graphHierarchy_maxcut(matrix, parameters):
             graph.add_edge(i1, i2)
     supersets1 = []
     for cc in nx.connected_components(graph):
-        print(cc)
+        #print(cc)
         supersets1.append(frozenset(cc))
     absHierarchyList.append(supersets1)
     supersets1 = [(superset, []) for superset in supersets1]
@@ -348,7 +353,7 @@ def graphHierarchy_maxcut(matrix, parameters):
             graph.add_edge(i1, i2)
     supersets2 = []
     for cc in nx.connected_components(graph):
-        print(cc)
+        #print(cc)
         supersets2.append(frozenset(cc))
 
     absHierarchyList.append(supersets2)
