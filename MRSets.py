@@ -10,6 +10,14 @@ except:
     from analyze import groupIdenticalColumns
     from graphAlgorithm import graphHierarchy
 
+def ternary_compare(str1, str2):
+    if len(str1) != len(str2):
+        raise Exception("strings of unequal length compared: %s and %s" %(str1, str2))
+    for (c,d) in zip(str1,str2):
+        # compare every pair of bits. failure short-circuits
+        if not ((c=='*') or (d=='*') or (c==d)):
+            return False
+    return True
 
 
 class MRCode(object):
@@ -84,7 +92,7 @@ class MRCode(object):
         """
         if self.hierarchy:
             # Get the heirarchy from biclustering hierarchy algorithm
-            supersetsList, absHierarchyList = graphHierarchy(self.nonShadowElements, **parameters)
+            supersetsList, absHierarchyList = graphHierarchy(self.nonShadowElements, parameters)
             return self.useHierarchyStrategy(supersetsList, absHierarchyList)
         else:
             return self.optimizeVertexCuts(parameters = parameters)
@@ -252,7 +260,35 @@ class MRCode(object):
         strings = {e:strings[self.shadowElements.get(e,e)] for e in inputElements}
         return strings
 
+    def elemIsInTag(self, elem, tag, queryDict):
+        """ Slow. Essentially simulates a TCAM table.
+        """
 
+        for query in queryDict[elem]:
+            if ternary_compare(query, tag):
+                return True
+        return False
+
+    def setFromTag(self, tag, queryDict):
+        """ Brute-force inverts an encoded set. Slow, should only be used for debugging.
+        """
+        results = set([elem for elem in self.elements if self.elemIsInTag(elem, tag, queryDict)]).union(
+            [elem for elem in self.shadowElements if self.elemIsInTag(elem, tag, queryDict)])
+        return results
+
+    def verifyCompression(self):
+        queryDict = self.matchStrings()
+        for originalSet in self.originalSets:
+            tag = self.tagString(originalSet)
+            recovered = set(self.setFromTag(tag, queryDict))
+            if recovered != set(originalSet):
+                print("True row:", set(originalSet))
+                print("Recovered row:", recovered)
+                for col in set(originalSet):
+                    print(col, self.matchStrings(elements=[col], decorated=False))
+                print("Tag:", self.tagString(originalSet, decorated=False))
+                raise Exception("A row recovered from the compression module was not equal to the original row!")
+        print("Encoding verified successfully.")
 
 
 if __name__=="__main__":
