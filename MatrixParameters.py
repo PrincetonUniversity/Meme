@@ -1,14 +1,18 @@
+import random
 import numpy as np
 import networkx as nx
 import itertools
 from cutsOverload import minimum_node_cut
 from analyze import kraftsBound
+import math
 
 from unionFind import UnionFind
 import sys
 
+
 import heapq
-import random
+
+from util import printShellDivider, getShellWidth, shellHistogram
 
 
 
@@ -18,17 +22,26 @@ def generateMatrix():
     bridging = 0.10 # percent of blocks that overlap with each other
     hierarchy = None # how the hell we gonna implement this
     statics = 0.10 # percent of block attributes that are static
+    skew = None # zipf / log distribution
+    # number of distinct ASes that announce a prefix is skewed: ie many prefixes announced by only a single AS, few prefixes announcd many ASes
 
     width = 100 # number of attributes
     height = 100 # number of rows
 
-
-def generateRow():
     rowDensity = np.random.normal(loc=density, scale=densityDev)
     rowPop = max(1, int(width * rowDensity))
 
 
+
+def plotDistribution(matrix):
+    rowSizes = [len(row) for row in matrix]
+
+    shellHistogram(rowSizes, title="Distribution of row sizes")
+    
+
 def matrixToGraph(matrix):
+    """ Docstring
+    """
     G = nx.Graph()
     for row in matrix:
         for col1, col2 in itertools.combinations(row, 2):
@@ -36,17 +49,40 @@ def matrixToGraph(matrix):
     return G
 
 
-def getClusters(matrix):
+def getClusters(matrix, asRows=False, withAbsolutes=False):
     uf = UnionFind()
-    for row in matrix:
+    rowIDs = set()
+    # use union find to efficiently group overlapping rows
+    for i,row in enumerate(matrix):
         if len(row) < 1: continue
-        lrow = list(row)
-        firstCol = lrow[0]
-        firstColParent = uf.find(firstCol)
-        for col in lrow[1:]:
-            uf.union(firstColParent, col)
+        rowID = ("R", i)
+        rowIDs.add(rowID)
+        rowParent = uf.find(rowID)
+        for col in row:
+            uf.union(rowParent, col)
+    components = uf.components()
 
-    return uf.components()
+    # separate the row IDs from the unionfind components
+    rowGrouping = [None] * len(components)
+    for i, row in enumerate(components):
+        rowGroup = []
+        newRow = []
+        for col in row:
+            if isinstance(col, tuple):
+                rowGroup.append(matrix[col[1]])
+            else:
+                newRow.append(col)
+        components[i] = newRow
+        rowGrouping[i] = rowGroup
+
+    if asRows:
+        return rowGrouping
+    elif withAbsolutes:
+        absolutes = [set.intersection(*rowGroup) for rowGroup in rowGrouping]
+        return (components, absolutes)
+    else:
+        return components
+
 
 
 def extract(matrix, extractions):
@@ -56,6 +92,9 @@ def extract(matrix, extractions):
         row.difference_update(extractions)
 
     return extractMatrix
+
+
+
 
 
 tiebreaker = 0
@@ -136,9 +175,6 @@ def biggest(things):
 
 
 def breakUpMatrix(matrix):
-    G = matrixToGraph(matrix)
-
-
     matrices = [matrix]
     maxClusterSizes = [biggest(getClusters(matrix))]
 
@@ -167,6 +203,7 @@ def breakUpMatrix(matrix):
         maxClusterSizes.append(lenBiggestBridgeCluster)
 
     return matrices
+
 
 
     
@@ -217,8 +254,7 @@ def analyzeMatrix(matrix):
     print("total expected tag size:", totalTagSize)
 
 
-
-if __name__ == "__main__":
+def main():
     for filename in sys.argv[1:]:
         matrix = None
         if filename.endswith(".json"):
@@ -234,4 +270,8 @@ if __name__ == "__main__":
             continue
 
         matrix = copyMatrix(matrix)
-        analyzeMatrix(matrix)
+        plotDistribution(matrix)
+        #analyzeMatrix(matrix)
+
+if __name__ == "__main__":
+    main()

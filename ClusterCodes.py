@@ -1,6 +1,7 @@
 from BaseCodes import BaseCodeStatic, ColumnID, Row, Matrix, FixedMatrix, BinaryString
 from util import generateIdentifiers, kraftsInequality
 from optimize import removeSubsets, minimizeRulesGreedy, minimizeVariableWidthGreedy
+import analyze
 
 from typing import List, Set, Dict, FrozenSet, Collection
 
@@ -48,10 +49,19 @@ class ClusterCode(BaseCodeStatic):
     def setClusters(self, clusters, implicits=None):
         self.made = False
         self.clusters = [set(cluster) for cluster in clusters]
-        if implicits == None or not self.hideImplicits:
-            implicits = [[] for _ in self.clusters]
+        if implicits == None:
+            self.clusterImplicits = [set() for _ in self.clusters]
         else:
-            self.clusterImplicits = list(implicits)
+            self.clusterImplicits = [set(implSet) for implSet in implicits]
+
+        "Ensure some cluster can produce a tag for the empty set"
+        for implicitSet in self.clusterImplicits:
+            if len(implicitSet) == 0:
+                break
+        else:
+            self.clusters.append(set())
+            self.clusterImplicits.append(set())
+
         self.clustersMade = True
 
 
@@ -110,9 +120,10 @@ class ClusterCode(BaseCodeStatic):
 
     def __indexOfCluster(self, subset):
         for i, cluster in enumerate(self.clusters):
-            if cluster.issuperset(subset):
+            if cluster.issuperset(subset) and \
+                    ((not self.hideImplicits) or self.clusterImplicits[i].issubset(subset)):
                 return i
-        return -1
+        return None
 
 
 
@@ -132,9 +143,8 @@ class ClusterCode(BaseCodeStatic):
 
         cluster = self.clusters[ssIndex]
         if self.hideImplicits:
-            cluster = cluster.difference_update(self.clusterImplicits[ssIndex])
-
-
+            cluster = cluster.difference(self.clusterImplicits[ssIndex])
+        
         if mask == None:
             mask = ''.join(['1' if colID in subset else maskNegChar for colID in cluster])
 
@@ -147,7 +157,8 @@ class ClusterCode(BaseCodeStatic):
     def tag(self, row, decorated=False):
         assert self.made
         index = self.__indexOfCluster(row)
-
+        if index == None:
+            raise Exception("COULD NOT FIND INDEX FOR " + str(row))
         partChar = '_' if decorated else ''
         return self.buildString(index, subset=row, padChar='0', partChar=partChar)
 
@@ -159,6 +170,9 @@ class ClusterCode(BaseCodeStatic):
         outStrings = []
         for i, cluster in enumerate(self.clusters):
             if columnID in cluster:
+                subset = [columnID]
+                if columnID in self.clusterImplicits[i]:
+                    subset = []
                 outStrings.append(self.buildString(i, subset=[columnID], width=tagWidth, padChar='*', partChar=partChar))
 
         return outStrings
@@ -171,12 +185,18 @@ class ClusterCode(BaseCodeStatic):
 
         outStrings = {colID : [] for colID in self.columnIDs}
         for cID, cluster in enumerate(self.clusters):
-            maskBits = ['*'] * len(cluster)
-            for i, columnID in enumerate(cluster):
+            explicits = cluster.difference(self.clusterImplicits[cID])
+            maskBits = ['*'] * len(explicits)
+            for i, columnID in enumerate(explicits):
                 maskBits[i] = '1'
                 mask = ''.join(maskBits)
                 outStrings[columnID].append(self.buildString(cID, mask=mask, width=tagWidth, padChar='*', partChar=partChar))
                 maskBits[i] = '*'
+            # now make strings for implicits
+            mask = '*' * len(explicits)
+            for columnID in self.clusterImplicits[cID]:
+                outStrings[columnID].append(self.buildString(cID, mask=mask, width=tagWidth, padChar='*', partChar=partChar))
+
 
         return outStrings
 
@@ -208,15 +228,42 @@ class OriginalCodeStatic(ClusterCode):
 
 
 
+class NewerCodeStatic(ClusterCode):
+    def __init__(self, matrix=None, **kwargs):
+        super().__init__(matrix=matrix, hideImplicits=True, **kwargs)
+
+    def make(self):
+        clusters, implicits = analyze.groupOverlappingRows(self.matrix, asRows=False, withImplicits=True)
+
+        self.setClusters(clusters, implicits)
+
+        self.makeIdentifiers()
+
+        self.made = True
+
+"""
+ have to handle the empty set in the event of implicits
+"""
 
 def main():
-    matrix = [[1,2,3], [3,4,5], [6,7]]
+    matrix = [[1,2,3], [3,4,5], [6,7], []]
+    """
     code = OriginalCodeStatic(matrix=matrix)
     code.timeMake(maxWidth=4, optWidth=True)
     code.verifyCompression()
     print("Memory of original code:", code.memoryRequired())
     print("Tag for empty row is", code.tag([]))
+    """
 
+    code = NewerCodeStatic(matrix=matrix)
+    code.timeMake()
+    #print("tags are")
+    #print(code.allTags(decorated=True))
+    #print("strings are")
+    #print(code.allMatchStrings(decorated=True))
+    code.verifyCompression()
+    print("Memory of original code:", code.memoryRequired())
+    print("Tag for empty row is", code.tag([]))
 
 
 if __name__ == "__main__":

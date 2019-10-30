@@ -23,7 +23,7 @@ LOGGING_LEVELS = {0 : logging.CRITICAL,
                   3 : logging.INFO,
                   4 : logging.DEBUG}
 
-CODE_LOG_LEVEL = LOGGING_LEVELS[3]
+CODE_LOG_LEVEL = LOGGING_LEVELS[4]
 
 
 class BaseCode(ABC):
@@ -33,7 +33,7 @@ class BaseCode(ABC):
     made         : bool = False             # Has the code been built?
     logger       : logging.Logger = None    # Module logger
 
-    def __init__(self, matrix : Matrix = None, verbosity=3, **kwargs) -> None:
+    def __init__(self, matrix : Matrix = None, verbosity=4, **kwargs) -> None:
         CODE_LOG_LEVEL = LOGGING_LEVELS[verbosity]
         logging.basicConfig(level=CODE_LOG_LEVEL)
         self.logger = logging.getLogger(type(self).__name__)

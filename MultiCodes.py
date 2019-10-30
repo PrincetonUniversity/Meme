@@ -1,17 +1,15 @@
 from BaseCodes import BaseCode, BaseCodeStatic, ColumnID, Row, FixedRow, Matrix, FixedMatrix, BinaryString, TernaryStrings
 from typing import List, Collection, Callable, Dict
-from ClusterCodes import OriginalCodeStatic
+from ClusterCodes import OriginalCodeStatic, NewerCodeStatic
 import networkx as nx
 import itertools
+import util
+import analyze
 
-try:
-    from .RSets import RCode
-    from .analyze import groupIdenticalColumns, groupOverlappingRows
-    from .graphAlgorithm import graphHierarchy, allOneCuts
-except:
-    from RSets import RCode
-    from analyze import groupIdenticalColumns, groupOverlappingRows
-    from graphAlgorithm import graphHierarchy, allOneCuts
+from HierarchicalCode import HCode
+from RSets import RCode
+from analyze import groupIdenticalColumns, groupOverlappingRows
+from graphAlgorithm import graphHierarchy, allOneCuts
 
 class MultiCode(BaseCodeStatic):
     subCodeClass    : BaseCode = None
@@ -20,14 +18,14 @@ class MultiCode(BaseCodeStatic):
     optimized       : bool = False
 
 
-    def __init__(self, matrix : Matrix = None, subCodeClass : BaseCode = OriginalCodeStatic, **kwargs) -> None:
+    def __init__(self, matrix : Matrix = None, subCodeClass : BaseCode = NewerCodeStatic, **kwargs) -> None:
         super().__init__(matrix=matrix, **kwargs)
 
 
         self.matrix, self.shadowElements = self.stripShadows(self.originalRows)
 
         self.subCodeClass = subCodeClass
-        self.subCodes = [subCodeClass(matrix=matrix, **kwargs)]
+        self.subCodes = [subCodeClass(matrix=self.matrix, **kwargs)]
 
 
     def printInfo(self):
@@ -57,7 +55,7 @@ class MultiCode(BaseCodeStatic):
 
 
 
-    def optimize(self, variant='hier', **kwargs):
+    def optimize(self, variant='vcut', **kwargs):
         self.logger.info("Optimizing with variant " + variant)
         if variant == 'vcut':
             # Vertex cut
@@ -85,10 +83,9 @@ class MultiCode(BaseCodeStatic):
 
 
     def optimizeHierarchy(self, **parameters):
-        # TODO: port the RCode class used here to the new code class style
         supersetsList, absHierarchyList = graphHierarchy(self.matrix, **parameters)
 
-        self.codes = [RCode(supersets, absHierarchy=absHierarchy) for supersets,absHierarchy in zip(supersetsList, absHierarchyList)]
+        self.codes = [self.subCodeClass(supersets, absHierarchy=absHierarchy) for supersets,absHierarchy in zip(supersetsList, absHierarchyList)]
 
         for code in self.codes:
             code.buildCode()
@@ -104,38 +101,47 @@ class MultiCode(BaseCodeStatic):
         
         self.subCodes.append(self.subCodeClass(newMatrix))
 
+    
+
+    def optimizeVertexCuts(self, **kwargs):
 
 
-    def optimizeVertexCuts(self, threshold = 10, **kwargs):
-        """ Threshold is the maximum size of a connected component we allow.
-        """
+        codeCostFunc = lambda m: analyze.bitsRequiredVariableID(analyze.groupOverlappingRows(m, asRows=False))
+        #codeCostFunc = lambda m: util.longestLen(analyze.groupOverlappingRows(m, asRows=False))
+
+        matrices = [subCode.matrix for subCode in self.subCodes]
+        codeCosts = [codeCostFunc(matrix) for matrix in matrices]
 
         while True:
-            subCode = self.subCodes[-1]
-            matrix = subCode.matrix
+            oldCostSum = sum(codeCosts)
+            self.logger.debug("Before cutting, expected code sizes are: " + str(codeCosts))
+            self.logger.debug("Expected code size sum is " + str(oldCostSum))
 
-            # a node for every column, and an edge for every pair of columns that occur together in any row
-            G = nx.Graph()
-            for row in matrix:
-                for i1, i2 in itertools.combinations(row, 2):
-                    G.add_edge(i1, i2)
-
-            extractions = set()
-            queue = [G.subgraph(nodes) for nodes in nx.connected_components(G)]
-            while len(queue) > 0:
-                cc = queue.pop()
-                if len(cc) < threshold: continue
-                cut = nx.minimum_node_cut(cc)
-                extractions.update(cut)
-                subG = cc.subgraph([n for n in cc if n not in set(cut)])
-                queue.extend([subG.subgraph(nodes) for nodes in nx.connected_components(subG)])
-
-            if len(extractions) == 0:
+            matrixToCut = util.copyMatrix(matrices[-1])
+            bridges = analyze.findBridges(util.matrixToGraph(matrixToCut))
+            # if no bridges are found, exit
+            if len(bridges) == 0:
                 break
-            self.spawnSubCode(subCodeColumns=extractions)
+            bridgeMatrix = util.extractSubmatrix(matrixToCut, bridges)
 
-        #for subCode in self.subCodes:
-        #    subCode.mergeOverlaps()
+            cutMatrixClusters = analyze.groupOverlappingRows(matrixToCut, asRows=False)
+            cutMatrixCodeCost = codeCostFunc(cutMatrixClusters)
+
+            bridgeMatrixClusters = analyze.groupOverlappingRows(bridgeMatrix, asRows=False)
+            bridgeMatrixCodeCost = codeCostFunc(bridgeMatrixClusters)
+
+            newCostSum = sum(codeCosts[:-1]) + cutMatrixCodeCost + bridgeMatrixCodeCost
+            if newCostSum >= oldCostSum: break
+
+            matrices[-1] = matrixToCut
+            matrices.append(bridgeMatrix)
+
+            codeCosts[-1] = cutMatrixCodeCost
+            codeCosts.append(bridgeMatrixCodeCost)
+
+        self.subCodes = [self.subCodeClass(submatrix) for submatrix in matrices]
+
+
 
 
     def make(self, *args, dontOptimize=False, **kwargs) -> None:
@@ -185,6 +191,14 @@ class MultiCode(BaseCodeStatic):
         return outStrs
 
 
+    def verifyCompression(self):
+        for i, subCode in enumerate(self.subCodes):
+            self.logger.info("Verifying subcode %d" % i)
+            subCode.verifyCompression()
+        self.logger.info("All subcodes idependently verified")
+        super().verifyCompression()
+
+
 
 def testMultiCode():
     matrix = [[1,2,3,4],
@@ -192,12 +206,12 @@ def testMultiCode():
               [3,4,6,7]]
 
     code = MultiCode(matrix)
-    code.optimize(threshold=3)
+    code.optimize(variant='vcut')
     code.make()
     code.verifyCompression()
     print("Num subcodes:", code.numSubCodes())
     code = MultiCode(matrix)
-    code.optimize(variant='hier')
+    code.optimize(variant='vcut')
     code.make()
     code.verifyCompression()
     print("Num subcodes:", code.numSubCodes())

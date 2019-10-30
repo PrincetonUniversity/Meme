@@ -1,9 +1,60 @@
-import math
-try:
-    from unionFind import UnionFind
-except:
-    from .unionFind import UnionFind
+import math, heapq
+import networkx as nx
+from unionFind import UnionFind
 from typing import List, Set
+from cutsOverload import minimum_node_cut
+
+
+_tiebreaker = 0
+def findBridges(G):
+    global _tiebreaker
+    _tiebreaker = 0
+    bridges = []
+
+    def _subgraphs(_G):
+        return [_G.subgraph(cc).copy() for cc in nx.connected_components(_G)]
+
+    subgraphMaxHeap = []
+    def _push(*_subgraphs):
+        global _tiebreaker
+        for _subgraph in _subgraphs:
+            heapq.heappush(subgraphMaxHeap, (-len(_subgraph.nodes), _tiebreaker, _subgraph))
+            _tiebreaker += 1
+    def _pop():
+        size, _, sg = heapq.heappop(subgraphMaxHeap)
+        return -size, sg
+
+    _push(*_subgraphs(G))
+
+    lastSumSize = len(G.nodes)
+    while len(subgraphMaxHeap)  > 0:
+        largestClusterSize, subgraph = _pop()
+
+        if largestClusterSize <= 2:
+            break
+
+
+        newSumSize = largestClusterSize + len(bridges) 
+        if newSumSize > lastSumSize:
+            break
+        lastSumSize = newSumSize
+
+        # purely a timing optimization
+        cut = None
+        if len(subgraph) > 150:
+            cut = minimum_node_cut(subgraph, approximate=1)
+        else:
+            cut = minimum_node_cut(subgraph, approximate=2)
+
+        for node in cut:
+            bridges.append(node)
+            subgraph.remove_node(node)
+    
+        _push(*_subgraphs(subgraph))
+
+    return bridges
+
+
 
 def ternary_compare(str1, str2):
     if len(str1) != len(str2):
@@ -15,22 +66,48 @@ def ternary_compare(str1, str2):
     return True
 
 
-def groupOverlappingRows(matrix:List[Set]) -> List[List[Set]]:
-    """ Given a matrix, return the rows of the matrix partitioned into groups,
-        where no two rows from different groups have nonempty intersections.
-    """
-    uf = UnionFind()
 
-    rowDict = {}
+
+
+def groupOverlappingRows(matrix:List[Set], asRows=True, withImplicits=False):
+    """ Given a matrix, return the rows of the matrix partitioned into groups,
+        where no two rows from different groups intersect.
+        Unless asRows is False, then the groups returned are the union of the rows.
+    """
+    G = nx.Graph()
+    colOccurrences = {}
     for rowID, row in enumerate(matrix):
         for colID in row:
-            uf.union(("R", rowID), ("C", colID))
+            G.add_edge(("R", rowID), ("C", colID))
+            colOccurrences[colID] = colOccurrences.get(colID, 0) + 1
 
-    components = uf.components()
+    components = nx.connected_components(G)
 
-    groups = [[matrix[tup[1]] for tup in component if tup[0] == "R"] \
-              for component in components]
-    return groups
+    colGroups = []
+    rowGroups = []
+    for cc in components:
+        colGroup = []
+        rowGroup = []
+        for nodeType, node in cc:
+            if nodeType == "C":
+                colGroup.append(node)
+            else:
+                rowGroup.append(node)
+        colGroups.append(colGroup)
+        rowGroups.append(rowGroup)
+
+    if asRows:
+        returnGroups = rowGroups
+    else:
+        returnGroups = colGroups
+
+    if withImplicits:
+        implicitGroups = [[col for col in colGroup if colOccurrences[col] == len(rowGroup)] \
+                            for (colGroup, rowGroup) in zip(colGroups, rowGroups)]
+        return (returnGroups, implicitGroups)
+    else:
+        return returnGroups
+
 
 def transposeMatrix(matrix : List[Set], frozen=False) -> List[Set]:
     transposed = {}
@@ -41,6 +118,9 @@ def transposeMatrix(matrix : List[Set], frozen=False) -> List[Set]:
     if frozen:
         transposed = {colID:frozenset(rowIDs) for colID,rowIDs in transposed.items()}
     return transposed
+
+
+
 
 def groupIdenticalColumns(elementSets):
     colIDs = set.union(*[set(es) for es in elementSets])
@@ -55,6 +135,7 @@ def groupIdenticalColumns(elementSets):
         else:
             identicalColGroups[col] = [colID]
     return list(identicalColGroups.values())
+
 
 
 
@@ -85,12 +166,16 @@ def bitsRequiredFixedID(supersets):
     return int(logM + maxS)
 
 
+def kraftsBound(lengths):
+    kraftSum = sum(2**length for length in lengths)
+    return (kraftSum-1).bit_length()
+
+
 def bitsRequiredVariableID(supersets):
     """ How many bits are needed to represent any set in this superset grouping?
         Assumes optimal variable-width superset identifiers.
     """
-    kraftSum = sum(2**len(superset) for superset in supersets)
-    return (kraftSum-1).bit_length()
+    return kraftsBound([len(superset) for superset in supersets])
 
 
 def rulesRequired(supersets, ruleCounts):

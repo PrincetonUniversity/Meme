@@ -1,5 +1,6 @@
 *.swp
 
+data/prefix_2_participants.json
 *.json
 *.bak
 *-e

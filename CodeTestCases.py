@@ -20,18 +20,20 @@ def main():
                  'multi':MultiCode, 
                  'original':OriginalCodeStatic}
 
+
     ALL_TESTS = {'simple1':test1,
                  'simple2':test2,
-                 'timing':timingTest,
-                 'thresholds':testThresholds}
+                 'timing':timingTest}
+    #             'thresholds':testThresholds}
 
     codeChoices = list(ALL_CODES.keys()) + ['all']
     testChoices = list(ALL_TESTS.keys()) + ['all', 'none']
 
     parser = argparse.ArgumentParser(description="Test cases for encoding schemes")
-    parser.add_argument('-c', dest='codes', nargs='+', default=["all"], choices=codeChoices, help='Types of codes to test')
-    parser.add_argument('-t', dest='tests', nargs='+', default=["all"], choices=testChoices, help='Unit tests to run on the chosen codes')
-    parser.add_argument('-f', dest='matrixPickles', nargs='+', default=[], help='Pickle files corresponding to matrices to evaluate.')
+    parser.add_argument('-c', dest='codes', nargs='+', default=["multi"], choices=codeChoices, help='Types of codes to test')
+    parser.add_argument('-u', dest='tests', nargs='+', default=["none"], choices=testChoices, help='Unit tests to run on the chosen codes')
+    parser.add_argument('-p', dest='matrixPickles', nargs='+', default=[], help='Pickle files corresponding to matrices to evaluate.')
+    parser.add_argument('-j', dest='matrixJsons', nargs='+', default=[], help='Json files corresponding to matrices to evaluate.')
     parser.add_argument('--verbose', '-v', action='count', default=0)
     args = parser.parse_args()
 
@@ -49,16 +51,29 @@ def main():
     else:
         codeTests = [ALL_TESTS[testName] for testName in args.tests]
 
-
+    """ Unit tests """
     for codeTest in codeTests:
         for codeClass in codeClasses:
             codeTest(codeClass, verbosity=args.verbose)
 
-    for filename in args.matrixPickles:
-        print("Loading matrix from file %s..." %filename)
-        matrix = None
+
+    
+    """ Pickles and Jsons """
+    def pklLoad(filename):
         with open(filename, 'rb') as fp:
             matrix = pickle.load(fp)
+        return matrix
+    def jsonLoad(filename):
+        with open(filename, 'r') as fp:
+            matrix = json.load(fp)
+        return matrix
+
+    matrixFiles = [(pklFile, pklLoad) for pklFile in args.matrixPickles] + \
+                  [(jsonFile, jsonLoad) for jsonFile in args.matrixJsons]
+
+    for filename, loadMethod in matrixFiles:
+        print("Loading matrix from file %s..." %filename)
+        matrix = loadMethod(filename)
         print("Done. Testing...")
         for codeClass in codeClasses:
             baseTest(codeClass, matrix, verbosity=args.verbose)

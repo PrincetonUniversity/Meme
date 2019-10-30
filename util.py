@@ -1,5 +1,6 @@
-import os, sys, pickle, math, time, logging
+import os, sys, pickle, math, time, logging, itertools
 from collections import deque as Queue
+import networkx as nx
 
 REPO_PATH = os.path.dirname(os.path.realpath(__file__))
 DATA_PATH = os.path.join(REPO_PATH, 'data/')
@@ -48,6 +49,32 @@ def toPickle(obj, filename, **kwargs):
         pickle.dump(obj, fp, **kwargs)
     logger.info("Done writing pickle", filepath)
 
+
+
+def extractSubmatrix(matrix, columns):
+    submatrix = []
+    for row in matrix:
+        submatrix.append(row.intersection(columns))
+        row.difference_update(columns)
+
+    return submatrix
+
+
+def matrixToGraph(matrix):
+    """ Docstring
+    """
+    G = nx.Graph()
+    for row in matrix:
+        for col1, col2 in itertools.combinations(row, 2):
+            G.add_edge(col1, col2)
+    return G
+
+
+def copyMatrix(matrix):
+    return [set(row) for row in matrix]
+
+def longestLen(items):
+    return max([len(item) for item in items])
 
 
 
@@ -141,6 +168,44 @@ def printAsColumns(items, title='', delim=", "):
             i += numCols
 
     printShellDivider()
+
+
+
+def shellHistogram(values, numBins=None, barChar='=', title="Histogram"):
+    minVal = min(values)
+    maxVal = max(values)
+    if numBins == None:
+        numBins = maxVal - minVal
+    binWidth = (maxVal - minVal) / numBins
+
+    binCounts = {}
+    for val in values:
+        dstBin = math.floor((val - minVal)/binWidth)
+        count = binCounts.get(dstBin, 0)
+        binCounts[dstBin] = count + 1
+
+
+    binIDWidth = len(str(maxVal))
+    binIDFormatString = "%%%dd" % binIDWidth
+
+    shellWidth = getShellWidth()
+    maxCount = max(binCounts.values())
+    barScalingFactor = (shellWidth - (binIDWidth + 1)) / float(maxCount)
+
+    binIndices = sorted(list(binCounts.keys()))
+
+    printShellDivider(title)
+    print(' '*binIDWidth + '0' +\
+          ('-'*(shellWidth - (binIDWidth+1 +len(str(maxCount))))) +\
+          str(maxCount))
+    for binIndex in binIndices:
+        trueBinID = math.floor(minVal + (binIndex * binWidth))
+        barLength = math.ceil(barScalingFactor * binCounts[binIndex])
+        print(binIDFormatString % (trueBinID), barChar * barLength)
+
+    printShellDivider("End " + title)
+
+
 
 
 UTIL_TIMER_CLOCK = None
