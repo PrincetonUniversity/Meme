@@ -8,8 +8,6 @@ import time
 
 from MatrixParameters import getMatrixStatistics
 
-logging.basicConfig(level=logging.DEBUG)
-
 
 
 """ 
@@ -39,8 +37,8 @@ def get_args():
                         help='Pickle file that contains an attribute matrix')
     parser.add_argument('-i', '---mrt-csv', default=None,
                         help='CSV that contains RIBs in MRT format')
-    parser.add_argument('-o', '--outfile', default='meme_results.pickle',
-                        help='Destination pickle  to which evaluation results will be written')
+    parser.add_argument('-o', '--outfile', default=None,
+                        help='Destination file to which evaluation results will be written. If no file is given, stdout is used.')
     return parser.parse_args()
 
 
@@ -64,7 +62,10 @@ def getCodeStatistics(supersets):
     mrcode = MRCode(originalSets, hierarchy = True)
     # parameters is curretly a tuple of (Threshold of bicluster size, Goal of tag width)
 
-    for threshold in range(4, 16):
+    minThreshold = 4
+    maxThreshold = 15
+    for threshold in range(minThreshold, maxThreshold+1):
+        print("Iteration %d of %d.." % (threshold - minThreshold + 1, maxThreshold-minThreshold+1))
         info = {}
         info["threshold"] = threshold
         cur_time = time.time()
@@ -76,6 +77,7 @@ def getCodeStatistics(supersets):
         info["Length of rule"] = totalMemory[0]
         info["Total memory"] = sum(totalMemory)
         info["Running time"] = time.time() - cur_time
+        info["subcode widths"] = [rcode.widthUsed() for rcode in mrcode.rcodes]
         logger.info(json.dumps(info))
 
 
@@ -89,10 +91,19 @@ def getCodeStatistics(supersets):
 def main():
     args = get_args()
 
+    print("Using MRT filename:", args.mrt_csv)
+    print("Using matrix pickle filename:", args.matrix_pickle)
+    if args.outfile != None:
+        print("Evaluation results will be written to", args.outfile)
+        logging.basicConfig(filename=args.outfile, level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.DEBUG)
+        print("No log file given. Evaluation results going to stdout.")
+
     needMatrix = False
     if (args.mrt_csv == None) or (not os.path.exists(args.mrt_csv)):
         if os.path.exists(args.matrix_pickle):
-            print("No MRT file given. Using existing matrix file.")
+            print("No MRT file given. Using existing matrix file")
         else:
             print("ERROR: MRT and matrix files could not be found! Run script with -h for usage info.")
             exit(1)
@@ -104,15 +115,17 @@ def main():
         matrix_modtime = os.path.getmtime(args.matrix_pickle)
 
         if mrt_modtime > matrix_modtime:
-            print("Given MRT file newer than matrix file.")
+            print("Given MRT file newer than matrix file. Generating new matrix.")
             needMatrix = True
+        else:
+            print("Given MRT file older than matrix file. Skipping matrix generation.")
 
     if needMatrix:
-        print("Generating matrix from given MRT file...")
+        print("Generating matrix from MRT file")
         matrix = mrtCsvToMatrix(args.mrt_csv, args.matrix_pickle)
-        print("Done.")
+        print("Done. Matrix file created.")
     else:
-        print("Loading matrix from", args.matrix_pickle)
+        print("Loading matrix from file.")
         with open(args.matrix_pickle, 'rb') as fp:
             matrix = pickle.load(fp)
         print("Done loading")

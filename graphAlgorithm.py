@@ -301,7 +301,7 @@ def graphHierarchy(matrix, parameters):
             matrix2 = [set(row).intersection(selCols) for row in matrix2]
             # flatWidth(matrix2)
 
-    print("Reaching width: ", widthsum, " (", str(widths), " )")
+    #print("Reaching width: ", widthsum, " (", str(widths), " )")
 
     logger = logging.getLogger("eval.graphAlg")
     logger.info(json.dumps(info))
