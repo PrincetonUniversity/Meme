@@ -25,13 +25,22 @@ class MultiCode(BaseCodeStatic):
         self.matrix, self.shadowElements = self.stripShadows(self.originalRows)
 
         self.subCodeClass = subCodeClass
-        self.subCodes = [subCodeClass(matrix=self.matrix, **kwargs)]
+        self.subCodes = [subCodeClass(matrix=self.matrix)]
 
 
     def printInfo(self):
-        super().printInfo()
         if not self.made: return
-        print("Number of Subcodes: %d, Subcode Widths:" % len(self.subCodes), [subCode.width() for subCode in self.subCodes])
+        #print("Number of Subcodes: %d, Subcode Widths:" % len(self.subCodes), [subCode.width() for subCode in self.subCodes])
+        line = '-'*20
+        header = line + ' %d SubCodes ' % len(self.subCodes) + line
+        print(header)
+        for i, subCode in enumerate(self.subCodes):
+            print("--- SubCode %d " %i, line)
+            subCode.printInfo()
+        print("--- Overall", line)
+        print("Subcode widths:", [subCode.width() for subCode in self.subCodes])
+        super().printInfo()
+        print('-' * len(header))
 
 
 
@@ -109,37 +118,10 @@ class MultiCode(BaseCodeStatic):
         codeCostFunc = lambda m: analyze.bitsRequiredVariableID(analyze.groupOverlappingRows(m, asRows=False))
         #codeCostFunc = lambda m: util.longestLen(analyze.groupOverlappingRows(m, asRows=False))
 
-        matrices = [subCode.matrix for subCode in self.subCodes]
-        codeCosts = [codeCostFunc(matrix) for matrix in matrices]
-
-        while True:
-            oldCostSum = sum(codeCosts)
-            self.logger.debug("Before cutting, expected code sizes are: " + str(codeCosts))
-            self.logger.debug("Expected code size sum is " + str(oldCostSum))
-
-            matrixToCut = util.copyMatrix(matrices[-1])
-            bridges = analyze.findBridges(util.matrixToGraph(matrixToCut))
-            # if no bridges are found, exit
-            if len(bridges) == 0:
-                break
-            bridgeMatrix = util.extractSubmatrix(matrixToCut, bridges)
-
-            cutMatrixClusters = analyze.groupOverlappingRows(matrixToCut, asRows=False)
-            cutMatrixCodeCost = codeCostFunc(cutMatrixClusters)
-
-            bridgeMatrixClusters = analyze.groupOverlappingRows(bridgeMatrix, asRows=False)
-            bridgeMatrixCodeCost = codeCostFunc(bridgeMatrixClusters)
-
-            newCostSum = sum(codeCosts[:-1]) + cutMatrixCodeCost + bridgeMatrixCodeCost
-            if newCostSum >= oldCostSum: break
-
-            matrices[-1] = matrixToCut
-            matrices.append(bridgeMatrix)
-
-            codeCosts[-1] = cutMatrixCodeCost
-            codeCosts.append(bridgeMatrixCodeCost)
-
-        self.subCodes = [self.subCodeClass(submatrix) for submatrix in matrices]
+        submatrices = analyze.dissectMatrix(self.matrix, matrixCostFunc=codeCostFunc)
+        # uncomment the line below this to force all subcodes to have a maximum mask size
+        #submatrices = analyze.dissectMatrix(self.matrix, maxComponentSize=5)
+        self.subCodes = [self.subCodeClass(submatrix) for submatrix in submatrices]
 
 
 

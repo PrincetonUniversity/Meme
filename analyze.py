@@ -3,10 +3,14 @@ import networkx as nx
 from unionFind import UnionFind
 from typing import List, Set
 from cutsOverload import minimum_node_cut
+import logging
+import util
 
+
+logger = logging.getLogger("Analyze")
 
 _tiebreaker = 0
-def findBridges(G):
+def findBridges(G, maxComponentSize=None):
     global _tiebreaker
     _tiebreaker = 0
     bridges = []
@@ -32,10 +36,16 @@ def findBridges(G):
 
         if largestClusterSize <= 2:
             break
+        
+        # if a threshold was given on component sizes, we dont end until we get below it
+        if (maxComponentSize != None) and (largestClusterSize <= maxComponentSize):
+            break
 
-
+        """ if no threshold was given, we instead remove bridges until it appears that the sum
+            (largest_component_size + num_bridges) starts increasing
+        """ 
         newSumSize = largestClusterSize + len(bridges) 
-        if newSumSize > lastSumSize:
+        if (maxComponentSize == None) and (newSumSize > lastSumSize):
             break
         lastSumSize = newSumSize
 
@@ -53,6 +63,41 @@ def findBridges(G):
         _push(*_subgraphs(subgraph))
 
     return bridges
+
+def dissectMatrix(matrix, matrixCostFunc=None, **bridgekwargs):
+    # this matrix cost func will force cutting until no bridge nodes can be found
+    if matrixCostFunc == None:
+        matrixCostFunc = lambda x: -1
+
+
+    matrices = [matrix]
+    matrixCosts = [matrixCostFunc(matrix)]
+
+    while True:
+        oldCostSum = sum(matrixCosts)
+        logger.debug("Before cutting, matrix costs are: " + str(matrixCosts))
+        logger.debug("Matrix cost sum is " + str(oldCostSum))
+
+        matrixToCut = util.copyMatrix(matrices[-1])
+        bridges = findBridges(util.matrixToGraph(matrixToCut), **bridgekwargs)
+        # if no bridges are found, exit
+        if len(bridges) == 0:
+            break
+        bridgeMatrix = util.extractSubmatrix(matrixToCut, bridges)
+
+        cutMatrixCost = matrixCostFunc(matrixToCut)
+        bridgeMatrixCost = matrixCostFunc(bridgeMatrix)
+
+        newCostSum = sum(matrixCosts[:-1]) + cutMatrixCost + bridgeMatrixCost
+        if newCostSum >= oldCostSum: break
+
+        matrices[-1] = matrixToCut
+        matrices.append(bridgeMatrix)
+
+        matrixCosts[-1] = cutMatrixCost
+        matrixCosts.append(bridgeMatrixCost)
+
+    return matrices
 
 
 
