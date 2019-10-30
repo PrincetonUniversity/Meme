@@ -3,7 +3,7 @@ import numpy as np
 import networkx as nx
 import itertools
 from cutsOverload import minimum_node_cut
-from analyze import kraftsBound, transposeMatrix
+from analyze import kraftsBound, transposeMatrix, groupOverlappingRows
 import math
 
 from unionFind import UnionFind
@@ -50,39 +50,6 @@ def matrixToGraph(matrix):
     return G
 
 
-def getClusters(matrix, asRows=False, withAbsolutes=False):
-    uf = UnionFind()
-    rowIDs = set()
-    # use union find to efficiently group overlapping rows
-    for i,row in enumerate(matrix):
-        if len(row) < 1: continue
-        rowID = ("R", i)
-        rowIDs.add(rowID)
-        rowParent = uf.find(rowID)
-        for col in row:
-            uf.union(rowParent, col)
-    components = uf.components()
-
-    # separate the row IDs from the unionfind components
-    rowGrouping = [None] * len(components)
-    for i, row in enumerate(components):
-        rowGroup = []
-        newRow = []
-        for col in row:
-            if isinstance(col, tuple):
-                rowGroup.append(matrix[col[1]])
-            else:
-                newRow.append(col)
-        components[i] = newRow
-        rowGrouping[i] = rowGroup
-
-    if asRows:
-        return rowGrouping
-    elif withAbsolutes:
-        absolutes = [set.intersection(*rowGroup) for rowGroup in rowGrouping]
-        return (components, absolutes)
-    else:
-        return components
 
 
 
@@ -240,7 +207,7 @@ def getMatrixStatistics(matrix, **extraInfo):
     tmatrix = transposeMatrix(matrix)
     info["col size counts"] = dict(Counter([len(row) for row in tmatrix]))
 
-    clusters = getClusters(matrix)
+    clusters = groupOverlappingRows(matrix, asRows=False)
     info["cluster size counts"] = dict(Counter([len(cluster) for cluster in clusters]))
 
     logger.info(json.dumps(info))

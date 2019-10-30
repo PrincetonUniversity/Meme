@@ -80,7 +80,7 @@ def mrtCsvToMatrix(filename, outfile):
     #print("\n count of in ASes: ", len(ASset))
     #print("\n count of intersecting ASes: ", len(ASset.intersection(nextHops)))
 
-    matrixfull = set([frozenset(v) for v in prefixtoAS.values()])
+    matrixfull = [frozenset(v) for v in prefixtoAS.values()]
 
     print("Writing matrix to file", outfile)
     with open(outfile, "wb") as f:

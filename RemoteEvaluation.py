@@ -109,9 +109,9 @@ def matrixTrials(matrix, numTrials, percents):
     for row in matrix:
         allCols.update(row)
     for p, percent in enumerate(percents):
-        print("Percent %d of %d" % (p, len(percents)))
+        print("Percent %d of %d" % (p+1, len(percents)))
         for trial in range(numTrials):
-            print("Trial %d of %d" % (trial, numTrials))
+            print("Trial %d of %d" % (trial+1, numTrials))
             submatrix = randomSubmatrix(matrix, allCols=allCols, percent=percent)
             getMatrixStatistics(matrix, trialNum=trial, percent=percent)
             getCodeStatistics(matrix, trialNum=trial, percent=percent)
@@ -159,6 +159,17 @@ def main():
         with open(args.matrix_pickle, 'rb') as fp:
             matrix = pickle.load(fp)
         print("Done loading")
+
+    print("Overall matrix has %d rows" % len(matrix))
+    print("Getting overall matrix stats")
+    getMatrixStatistics(matrix, matrixName="FullMatrix")
+    print("Done.")
+   
+    print("Deduplicating rows")
+    matrix = list(set([frozenset(row) for row in matrix]))
+    print("Matrix after deduplication has %d rows" % len(matrix))
+   
+    getMatrixStatistics(matrix, matrixName="deduplicated")
 
     matrixTrials(matrix, numTrials=1, percents=[1.0])
 
