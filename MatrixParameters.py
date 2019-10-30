@@ -213,7 +213,7 @@ def breakUpMatrix(matrix):
 def copyMatrix(matrix):
     return [set(row) for row in matrix]
 
-def getMatrixStatistics(matrix):
+def getMatrixStatistics(matrix, **extraInfo):
     matrix = [set(row) for row in matrix]
     logger = logging.getLogger("eval.matrixStats")
     allCols = set()
@@ -229,7 +229,7 @@ def getMatrixStatistics(matrix):
     density = avgRowSize / width
 
 
-    info = {}
+    info = dict(extraInfo)
     info["width"] = width
     info["height"] = height
     info["avg row size"] = avgRowSize
