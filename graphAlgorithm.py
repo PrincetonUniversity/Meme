@@ -303,8 +303,8 @@ def graphHierarchy(matrix, parameters):
 
     #print("Reaching width: ", widthsum, " (", str(widths), " )")
 
-    logger = logging.getLogger("eval.graphAlg")
-    logger.info(json.dumps(info))
+        logger = logging.getLogger("eval.graphAlg")
+        logger.info(json.dumps(info))
     return supersetsList, absHierarchyList
 
 

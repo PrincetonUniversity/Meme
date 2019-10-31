@@ -44,6 +44,8 @@ def get_args():
 
 
 def randomSubmatrix(matrix, allCols = None, percent=0.10):
+    """ Return a submatrix made of a random subset of the columns.
+    """
     if allCols == None:
         # genrate allCols from scratch
         allCols = set()
@@ -87,13 +89,14 @@ def getCodeStatistics(supersets, **extraInfo):
         info["threshold"] = threshold
         cur_time = time.time()
         mrcode.optimize(parameters = (threshold, None))
+        running_time = time.time() - cur_time
         info["Shadow Elements"] = len(mrcode.shadowElements.keys())
         mrcode.verifyCompression()
         totalMemory = [len(rule) for rules in mrcode.matchStrings().values() for rule in rules]
         info["Total number of rules"] = len(totalMemory)
         info["Length of rule"] = totalMemory[0]
         info["Total memory"] = sum(totalMemory)
-        info["Running time"] = time.time() - cur_time
+        info["Running time"] = running_time
         info["subcode widths"] = [rcode.widthUsed() for rcode in mrcode.rcodes]
         logger.info(json.dumps(info))
 
@@ -113,8 +116,8 @@ def matrixTrials(matrix, numTrials, percents):
         for trial in range(numTrials):
             print("Trial %d of %d" % (trial+1, numTrials))
             submatrix = randomSubmatrix(matrix, allCols=allCols, percent=percent)
-            getMatrixStatistics(matrix, trialNum=trial, percent=percent)
-            getCodeStatistics(matrix, trialNum=trial, percent=percent)
+            getMatrixStatistics(submatrix, trialNum=trial, percent=percent)
+            getCodeStatistics(submatrix, trialNum=trial, percent=percent)
     
 
 
