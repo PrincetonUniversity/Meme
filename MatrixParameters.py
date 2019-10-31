@@ -15,6 +15,21 @@ import heapq
 
 from util import printShellDivider, getShellWidth, shellHistogram
 
+import random
+
+def anonymizeMatrix(matrix):
+    # get all columns
+    allCols = set()
+    for row in matrix:
+        allCols.update(row)
+    # shuffle all columns
+    allCols = list(allCols)
+    random.shuffle(allCols)
+    # map the shuffled columns to indices
+    oldColToNewCol = {oldCol:i for i,oldCol in enumerate(allCols)}
+    # convert the columns to their indices
+    newMatrix = [[oldColToNewCol[oldCol] for oldCol in row] for row in matrix]
+    return newMatrix
 
 
 def generateMatrix():
