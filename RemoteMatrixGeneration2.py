@@ -10,7 +10,7 @@ def get_args():
     defaultJsonFile = "matrix_readable.json"
     parser = argparse.ArgumentParser(description="Anonymous route matrix generation script.")
     parser.add_argument('infile',
-                        help='File that contains RIBs (as announcement messages) in MRT format')
+                        help='File that contains RIBs (as announcement messages) in bgpdump format')
     parser.add_argument('-o', '--outfile', default=defaultOutfile,
             help='Destination file to write matrix. Default: ' + defaultOutfile)
     parser.add_argument('-j', '--jsonfile', default=defaultJsonFile,
@@ -77,62 +77,41 @@ def makeReadable(matrixRowCounts):
     
 
 
-
-def mrtToMatrix(filename):
-    """ Given an MRT file containing a list of route announcements, return a binary matrix.
-        Does not anonymize or deduplicate! That must be done separately.
+def bgpdumpToMatrix(filename):
+    """ Takes as input a BGPdump-parsed MRT file. Returns a list of list of prefix announcers.
     """
-    prefixPathIDtoAS = {}
-
-    ASset = set()
+    prefixToAS = {}
     with open(filename, 'r') as fp:
-        AS = ''
-        pathID = ''
-        prefix = ''
-        session = ''
-        flag = 0 # flag = 1 => adding path; flag = 2 => withdrawing path
-
+        AS = None
+        inAnnounceList = False
         for line in fp:
-            line = line.rstrip()
-            if "            Path Segment Value: " in line:
-                AS = line.replace("            Path Segment Value: ", '').split(' ')[0]
-                ASset.add(AS)
-            if "        Path Identifier: " in line:
-                pathID = line.replace("        Path Identifier: ", '')
-            if line == "    NLRI":
-                flag = 1
-            if line == "    Withdrawn Routes":
-                flag = 2
-            if "        Prefix: " in line:
-                prefix = line.replace("        Prefix: ", '')
-                if prefix not in prefixPathIDtoAS:
-                    prefixPathIDtoAS[prefix] = defaultdict(set)
-                if flag == 1:
-                    prefixPathIDtoAS[prefix][pathID].add(AS)
-                if flag == 2:
-                    prefixPathIDtoAS[prefix][pathID] = set([])
+            line = line.strip()
+            if inAnnounceList:
+                if not line.startswith("TIME:") and len(line) > 1: # not an empty line, should be a prefix
+                    assert('.' in line)
+                    announcers = prefixToAS.setdefault(line, [])
+                    announcers.append(AS)
+                else:
+                    inAnnounceList = False
+            elif line.startswith("ASPATH:"):
+                AS = int(line.split()[1])
+            elif line.startswith("ANNOUNCE"):
+                inAnnounceList = True
 
-    prefixtoAS = {prefix : set.union(*list(v.values())) for prefix,v in prefixPathIDtoAS.items()}
-    prefixes = set(prefixtoAS.keys())
-    nextHops = set.union(*list(prefixtoAS.values()))
-    counts = Counter([len(hopset) for hopset in prefixtoAS.values()])
+    return list(prefixToAS.values())
 
-    matrixfull = [frozenset(v) for v in prefixtoAS.values()]
-    print("Parsed matrix has %d rows (prefixes) and %d columns (peers)." % (len(matrixfull), len(ASset)))
-
-    return matrixfull
 
 
 
 def main():
     args = get_args()
 
-    print("Using MRT filename:", args.infile)
+    print("Using bgpdump filename:", args.infile)
     print("Results will be written to pickle file:", args.outfile)
     numSteps = 5
 
-    print("Parsing MRT file.. (step 1 of %d)" % numSteps)
-    matrix = mrtToMatrix(args.infile)
+    print("Parsing bgpdump file.. (step 1 of %d)" % numSteps)
+    matrix = bgpdumpToMatrix(args.infile)
 
     print("Done parsing. Anonymizing matrix.. (step 2 of %d)" % numSteps)
     matrix = anonymizeMatrix(matrix)
