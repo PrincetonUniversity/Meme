@@ -30,6 +30,10 @@ from MatrixParameters import getMatrixStatistics
         - Churn (havent written at all yet)
 """
 
+lenCols = 0
+bestapproxsize = 2000
+bestapproxthreshold = -1
+
 
 def get_args():
     parser = argparse.ArgumentParser(description="MEME Evaluation Script")
@@ -54,18 +58,55 @@ def randomSubmatrix(matrix, allCols = None, percent=0.10):
 
     allCols = list(allCols)
     random.shuffle(allCols)
-
+    print(allCols)
+    print()
     subset = set(allCols[:int(len(allCols) * percent)])
 
     submatrix = [subset.intersection(row) for row in matrix]
     
     return submatrix
 
+def getApproximationParam(supersets, **extraInfo):
+    originalElements = list(set.union(*[set(superset) for superset in supersets]))
+    originalSets = [frozenset(superset) for superset in supersets] 
+    mrcode = MRCode(originalSets, hierarchy = True)
+
+    logger = logging.getLogger("eval.approximationTest")
+    minThreshold = 5
+    maxThreshold = 8
+
+    i = 0
+    result = defaultdict(list)
+    approxsizeList = [150, 0.15 * lenCols, 0.3 * lenCols]
+    approxthresholdList = [1,2,3]
+    approxsize = 150
+    while true:
+        cur_time = time.time()
+        mrcode.optimize(parameters = (threshold, approxsize, approxthreshold, None, False))
+        running_time = time.time() - cur_time
+        
+        if running_time > 60:
+            approxthreshold += 1
+        else:
+            break
+
+    # bestapproxthreshold = approxthreshold
+    # info["Selected Approximation Threshold"] = bestapproxthreshold
+
+    # for approxsize in approxsizeList:
+    #     for threshold in range(minThreshold, maxThreshold+1):
+    #         cur_time = time.time()
+    #         mrcode.optimize(parameters = (threshold, approxsize, approxthreshold, None, False))
+    #         running_time = time.time() - cur_time
+    #         approxthreshold += 1
+    #         totalMemory = [len(rule) for rules in mrcode.matchStrings().values() for rule in rules]
+    #         result[(approxsize, approxthreshold)].append((len(totalMemory[0]), running_time))
+
+    #     bestapproxsize, bestapproxthreshold = 
+    #     logger.info(json.dumps(info))
 
 
 def getCodeStatistics(supersets, **extraInfo):
-    logger = logging.getLogger("eval.codeStats")
-
     #logger.info("Total num groups" + str(len(set(supersets))))
     originalElements = list(set.union(*[set(superset) for superset in supersets]))
     originalSets = [frozenset(superset) for superset in supersets]
@@ -81,14 +122,20 @@ def getCodeStatistics(supersets, **extraInfo):
     mrcode = MRCode(originalSets, hierarchy = True)
     # parameters is curretly a tuple of (Threshold of bicluster size, Goal of tag width)
 
-    minThreshold = 4
-    maxThreshold = 15
+    minThreshold = 3
+    maxThreshold = 18
+    if bestapproxthreshold == -1:
+        minThreshold = 5
+        maxThreshold = 8
+    logger = logging.getLogger("eval.codeStats")
     for threshold in range(minThreshold, maxThreshold+1):
         print("Iteration %d of %d.." % (threshold - minThreshold + 1, maxThreshold-minThreshold+1))
         info = dict(extraInfo)
-        info["threshold"] = threshold
+        info["Threshold"] = threshold
+        info["Approximation starting size"] = bestapproxsize
+        info["Approximation threshold"] = bestapproxthreshold
         cur_time = time.time()
-        mrcode.optimize(parameters = (threshold, None))
+        mrcode.optimize(parameters = (threshold, bestapproxsize, bestapproxthreshold, None, True))
         running_time = time.time() - cur_time
         info["Shadow Elements"] = len(mrcode.shadowElements.keys())
         mrcode.verifyCompression()
@@ -100,17 +147,25 @@ def getCodeStatistics(supersets, **extraInfo):
         info["subcode widths"] = [rcode.widthUsed() for rcode in mrcode.rcodes]
         logger.info(json.dumps(info))
 
-
-
     # print("Tag width: ", len(mrcode.tagString(frozenset([]))))
     # print("Tag width: ", len(mrcode.matchStrings(frozenset(['AS8283']))['AS8283'][0]))
     # print("Tag width: ", mrcode.matchStrings(frozenset(['AS8283']))['AS8283'][0])
 
 
-def matrixTrials(matrix, numTrials, percents):
+def matrixTrials(matrix, numTrials, percents, approxTest=False):
     allCols = set()
     for row in matrix:
         allCols.update(row)
+
+    if approxTest:
+        for p, percent in enumerate(percents):
+            print("Percent %d of %d" % (p+1, len(percents)))
+            for trial in range(numTrials):
+                print("Trial %d of %d" % (trial+1, numTrials))
+                submatrix = randomSubmatrix(matrix, allCols=allCols, percent=percent)
+                getMatrixStatistics(submatrix, trialNum=trial, percent=percent)
+                getApproximationParam(submatrix, trialNum=trial, percent=percent)
+
     for p, percent in enumerate(percents):
         print("Percent %d of %d" % (p+1, len(percents)))
         for trial in range(numTrials):
@@ -163,20 +218,31 @@ def main():
             matrix = pickle.load(fp)
         print("Done loading")
 
+    lenCols = len(set.union(*[set(row) for row in matrix])))
     print("Overall matrix has %d rows" % len(matrix))
+    print("Overall matrix has %d columns" % lenCols)
     print("Getting overall matrix stats")
     getMatrixStatistics(matrix, matrixName="FullMatrix")
     print("Done.")
    
     print("Deduplicating rows")
     matrix = list(set([frozenset(row) for row in matrix]))
-    print("Matrix after deduplication has %d rows" % len(matrix))
-   
-    getMatrixStatistics(matrix, matrixName="deduplicated")
+    print("Matrix after deduplication has %d rows" % len(matrix))   
+    getMatrixStatistics(matrix, matrixName="Deduplicated")
 
-    matrixTrials(matrix, numTrials=1, percents=[1.0])
+    print("Evaluating the ground truth")
+    matrixTrials(matrix, numTrials=2, percents=[1.0])
+    matrixTrials(matrix, numTrials=10, percents=[0.5])
 
+    print("Evaluating the approximation parameters")
+    
+    print("Evaluting the different sizes")
+    matrixTrials(matrix, numTrials=10, percents=[1.0])
+    matrixTrials(matrix, numTrials=20, percents=[0.5])
+    matrixTrials(matrix, numTrials=30, percents=[0.3])
+    matrixTrials(matrix, numTrials=100, percents=[0.1])
 
+    
 if __name__ == "__main__":
     main()
 

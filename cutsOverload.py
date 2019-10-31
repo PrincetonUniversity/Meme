@@ -16,7 +16,7 @@ from networkx.algorithms.connectivity import minimum_st_node_cut
 from networkx.algorithms.connectivity import (build_auxiliary_node_connectivity,
                                         build_auxiliary_edge_connectivity)
 from networkx.algorithms.components import number_connected_components
-
+from numpy import var
 __author__ = '\n'.join(['Jordi Torrents <jtorrents@milnou.net>'])
 
 
@@ -152,42 +152,64 @@ def minimum_node_cut(G, s=None, t=None, flow_func=None, approximate=-1):
     min_cut = set(G[v])
     # Number of components
     min_num_cc = -1
+    min_cc_var = float("inf")
     # Compute st node cuts between v and all its non-neighbors nodes in G.
     for w in set(G) - set(neighbors(v)) - set([v]):
         this_cut = minimum_st_node_cut(G, v, w, **kwargs)
-        if len(this_cut) <= approximate:
-            return this_cut
         if len(min_cut) > len(this_cut):
             min_cut = this_cut
             G_copy = G.copy()
             G_copy.remove_nodes_from(this_cut)
             min_num_cc = number_connected_components(G_copy)
+            min_cc_var = var([len(c) for c in sorted(nx.connected_components(G_copy))])
         if len(min_cut) == len(this_cut):
             G_copy = G.copy()
             G_copy.remove_nodes_from(this_cut)
             this_num_cc = number_connected_components(G_copy)
-            if this_num_cc > min_num_cc:
+            this_cc_var = var([len(c) for c in sorted(nx.connected_components(G_copy))])
+#            if this_num_cc >= min_num_cc:
+            if this_cc_var < min_cc_var:
                 min_cut = this_cut
                 min_num_cc = this_num_cc
-                print(min_num_cc)
+                min_cc_var = this_cc_var
+#            elif this_num_cc == min_num_cc and min_cc_var > this_cc_var:
+#                min_cut = this_cut
+#                min_num_cc = this_num_cc
+#                min_cc_var = this_cc_var
+        if len(min_cut) <= approximate:
+            break
     # Also for non adjacent pairs of neighbors of v.
     for x, y in iter_func(neighbors(v), 2):
         if y in G[x]:
             continue
         this_cut = minimum_st_node_cut(G, x, y, **kwargs)
-        if len(this_cut) <= approximate:
-            return this_cut
         if len(min_cut) > len(this_cut):
             min_cut = this_cut
             G_copy = G.copy()
             G_copy.remove_nodes_from(this_cut)
             min_num_cc = number_connected_components(G_copy)
+            min_cc_var = var([len(c) for c in sorted(nx.connected_components(G_copy))])
         if len(min_cut) == len(this_cut):
             G_copy = G.copy()
             G_copy.remove_nodes_from(this_cut)
             this_num_cc = number_connected_components(G_copy)
-            if this_num_cc > min_num_cc:
+            this_cc_var = var([len(c) for c in sorted(nx.connected_components(G_copy))])
+#            if this_num_cc >= min_num_cc:
+            if this_cc_var < min_cc_var:
                 min_cut = this_cut
                 min_num_cc = this_num_cc
-                print(min_num_cc)
+                min_cc_var = this_cc_var
+#            elif this_num_cc == min_num_cc and min_cc_var > this_cc_var:
+#                min_cut = this_cut
+#                min_num_cc = this_num_cc
+#                min_cc_var = this_cc_var
+        if len(min_cut) <= approximate:
+            break
+
+    if approximate > -1 and len(min_cut) > approximate:
+        info = {}
+        info["Approximation threshold"] = approximate
+        info["Minimum cut"] = len(min_cut)
+        logger = logging.getLogger("cutsOverload.threshold")
+        logger.info(json.dumps(info))
     return min_cut
