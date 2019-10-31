@@ -15,6 +15,7 @@ from networkx.algorithms.connectivity import minimum_st_node_cut
 
 from networkx.algorithms.connectivity import (build_auxiliary_node_connectivity,
                                         build_auxiliary_edge_connectivity)
+from networkx.algorithms.components import number_connected_components
 
 __author__ = '\n'.join(['Jordi Torrents <jtorrents@milnou.net>'])
 
@@ -149,21 +150,44 @@ def minimum_node_cut(G, s=None, t=None, flow_func=None, approximate=-1):
     v = min(G, key=G.degree)
     # Initial node cutset is all neighbors of the node with minimum degree.
     min_cut = set(G[v])
+    # Number of components
+    min_num_cc = -1
     # Compute st node cuts between v and all its non-neighbors nodes in G.
     for w in set(G) - set(neighbors(v)) - set([v]):
         this_cut = minimum_st_node_cut(G, v, w, **kwargs)
-        if len(min_cut) >= len(this_cut):
+        if len(this_cut) <= approximate:
+            return this_cut
+        if len(min_cut) > len(this_cut):
             min_cut = this_cut
-        if len(min_cut) <= approximate:
-            return min_cut
+            G_copy = G.copy()
+            G_copy.remove_nodes_from(this_cut)
+            min_num_cc = number_connected_components(G_copy)
+        if len(min_cut) == len(this_cut):
+            G_copy = G.copy()
+            G_copy.remove_nodes_from(this_cut)
+            this_num_cc = number_connected_components(G_copy)
+            if this_num_cc > min_num_cc:
+                min_cut = this_cut
+                min_num_cc = this_num_cc
+                print(min_num_cc)
     # Also for non adjacent pairs of neighbors of v.
     for x, y in iter_func(neighbors(v), 2):
         if y in G[x]:
             continue
         this_cut = minimum_st_node_cut(G, x, y, **kwargs)
-        if len(min_cut) >= len(this_cut):
+        if len(this_cut) <= approximate:
+            return this_cut
+        if len(min_cut) > len(this_cut):
             min_cut = this_cut
-        if len(min_cut) <= approximate:
-            return min_cut
-
+            G_copy = G.copy()
+            G_copy.remove_nodes_from(this_cut)
+            min_num_cc = number_connected_components(G_copy)
+        if len(min_cut) == len(this_cut):
+            G_copy = G.copy()
+            G_copy.remove_nodes_from(this_cut)
+            this_num_cc = number_connected_components(G_copy)
+            if this_num_cc > min_num_cc:
+                min_cut = this_cut
+                min_num_cc = this_num_cc
+                print(min_num_cc)
     return min_cut
