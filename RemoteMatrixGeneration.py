@@ -1,6 +1,9 @@
 #!/usr/bin/env python3.7
-import random, pickle, json, argparse
+import os, sys, random, pickle, json, argparse, time
 from collections import Counter, defaultdict
+
+
+
 
 
 def get_args():
@@ -10,7 +13,7 @@ def get_args():
     defaultJsonFile = "matrix_readable.json"
     parser = argparse.ArgumentParser(description="Anonymous route matrix generation script.")
     parser.add_argument('infile',
-                        help='File that contains RIBs (as announcement messages) in MRT format')
+                        help='File that contains RIBs (as announcement messages) in bgpdump format')
     parser.add_argument('-o', '--outfile', default=defaultOutfile,
             help='Destination file to write matrix. Default: ' + defaultOutfile)
     parser.add_argument('-j', '--jsonfile', default=defaultJsonFile,
@@ -65,7 +68,7 @@ def makeReadable(matrixRowCounts):
     allCols = list(allCols)
     allCols.sort()
 
-    matrixInfo = {".Note":"Although the matrix is binary, it is represented as lists of column IDs because BGP route matrices are typically extremely sparse. The column IDs denote non-zero positions.",
+    matrixInfo = {".Note":"Although the matrix is binary, it is represented as rows of column IDs to save memory because BGP route matrices are typically extremely sparse. The column IDs denote non-zero positions.",
                   ".Num Unique Rows": len(matrixRowCounts),
                   ".Num Total Rows (prefixes)": numRowsTotal,
                   ".Num Columns (peers)": len(allCols),
@@ -74,65 +77,59 @@ def makeReadable(matrixRowCounts):
 
     matrixInfo['Matrix rows and their counts'] = annotatedRowCounts
     return matrixInfo
-    
 
 
 
-def mrtToMatrix(filename):
-    """ Given an MRT file containing a list of route announcements, return a binary matrix.
-        Does not anonymize or deduplicate! That must be done separately.
+def bgpdumpToMatrix(filename):
+    """ Takes as input a BGPdump-parsed MRT RIB file. Returns a list of list of prefix announcers.
     """
-    prefixPathIDtoAS = {}
-
-    ASset = set()
+    prefixToAS = defaultdict(list)
+    print("Getting number of lines in file %s..." % filename)
+    numLines = int(os.popen("wc -l " + filename, 'r').read().split(' ')[0])
     with open(filename, 'r') as fp:
-        AS = ''
-        pathID = ''
-        prefix = ''
-        session = ''
-        flag = 0 # flag = 1 => adding path; flag = 2 => withdrawing path
+        prefix = None
+        AS = None
+        startTime = time.time()
+        lastTime = 0
+        for i, line in enumerate(fp):
+            currTime = time.time()
+            if currTime - lastTime > 1:
+                lastTime = currTime
+                linesPerSec = max(1, i / (currTime - startTime))
+                timeRemaining = (numLines - i) / linesPerSec
+                sys.stdout.write("\r%d of %d lines read (%.2f %%). ETA %.2f seconds.." % (i, numLines, i * 100 / numLines, timeRemaining))
+                sys.stdout.flush()
 
-        for line in fp:
-            line = line.rstrip()
-            if "            Path Segment Value: " in line:
-                AS = line.replace("            Path Segment Value: ", '').split(' ')[0]
-                ASset.add(AS)
-            if "        Path Identifier: " in line:
-                pathID = line.replace("        Path Identifier: ", '')
-            if line == "    NLRI":
-                flag = 1
-            if line == "    Withdrawn Routes":
-                flag = 2
-            if "        Prefix: " in line:
-                prefix = line.replace("        Prefix: ", '')
-                if prefix not in prefixPathIDtoAS:
-                    prefixPathIDtoAS[prefix] = defaultdict(set)
-                if flag == 1:
-                    prefixPathIDtoAS[prefix][pathID].add(AS)
-                if flag == 2:
-                    prefixPathIDtoAS[prefix][pathID] = set([])
+            line = line.strip().split(' ')
+            if len(line) <= 1 or line[0] == "TIME:":
+                # we're either outside a message block or at the beginning of one
+                prefix = None
+                AS = None
+            elif line[0] == "PREFIX:":
+                prefix = line[1]
+            elif line[0] == "ASPATH:":
+                AS = int(line[1])
 
-    prefixtoAS = {prefix : set.union(*list(v.values())) for prefix,v in prefixPathIDtoAS.items()}
-    prefixes = set(prefixtoAS.keys())
-    nextHops = set.union(*list(prefixtoAS.values()))
-    counts = Counter([len(hopset) for hopset in prefixtoAS.values()])
+            if AS != None and prefix != None:
+                # did we grab both the values that we need?
+                prefixToAS[prefix].append(AS)
+                prefix = None
+                AS = None
+        print('')
 
-    matrixfull = [frozenset(v) for v in prefixtoAS.values()]
-    print("Parsed matrix has %d rows (prefixes) and %d columns (peers)." % (len(matrixfull), len(ASset)))
-
-    return matrixfull
+    return list(prefixToAS.values())
 
 
 
 def main():
     args = get_args()
 
-    print("Using MRT filename:", args.infile)
+    print("Using bgpdump filename:", args.infile)
     print("Results will be written to pickle file:", args.outfile)
     numSteps = 5
 
-    print("Parsing MRT file.. (step 1 of %d)" % numSteps)
-    matrix = mrtToMatrix(args.infile)
+    print("Parsing bgpdump file.. (step 1 of %d)" % numSteps)
+    matrix = bgpdumpToMatrix(args.infile)
 
     print("Done parsing. Anonymizing matrix.. (step 2 of %d)" % numSteps)
     matrix = anonymizeMatrix(matrix)
