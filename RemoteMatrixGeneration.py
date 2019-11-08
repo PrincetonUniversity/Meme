@@ -13,7 +13,7 @@ def get_args():
     defaultJsonFile = "matrix_readable.json"
     parser = argparse.ArgumentParser(description="Anonymous route matrix generation script.")
     parser.add_argument('infile',
-                        help='File that contains RIBs (as announcement messages) in bgpdump format')
+                        help='File that contains RIBs (as TABLE_DUMP_V2 messages) in bgpdump format')
     parser.add_argument('-o', '--outfile', default=defaultOutfile,
             help='Destination file to write matrix. Default: ' + defaultOutfile)
     parser.add_argument('-j', '--jsonfile', default=defaultJsonFile,
