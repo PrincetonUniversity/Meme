@@ -86,20 +86,23 @@ def bgpdumpToMatrix(filename):
     prefixToAS = defaultdict(list)
     print("Getting number of lines in file %s..." % filename)
     numLines = int(os.popen("wc -l " + filename, 'r').read().split(' ')[0])
+    linesPerStatusPrint = int(numLines/300)
+
     with open(filename, 'r') as fp:
         prefix = None
         AS = None
         startTime = time.time()
-        lastTime = 0
+        linesSinceLastStatus = -1
         for i, line in enumerate(fp):
-            currTime = time.time()
-            if currTime - lastTime > 1:
-                lastTime = currTime
-                linesPerSec = max(1, i / (currTime - startTime))
+            ### begin progress bar
+            linesSinceLastStatus += 1
+            if linesSinceLastStatus == linesPerStatusPrint:
+                linesSinceLastStatus = 0
+                linesPerSec = max(1, i / (time.time() - startTime))
                 timeRemaining = (numLines - i) / linesPerSec
                 sys.stdout.write("\r%d of %d lines read (%.2f %%). ETA %.2f seconds.." % (i, numLines, i * 100 / numLines, timeRemaining))
                 sys.stdout.flush()
-
+            ### end progress bar
             line = line.strip().split(' ')
             if len(line) <= 1 or line[0] == "TIME:":
                 # we're either outside a message block or at the beginning of one
@@ -115,7 +118,7 @@ def bgpdumpToMatrix(filename):
                 prefixToAS[prefix].append(AS)
                 prefix = None
                 AS = None
-        print('')
+        print("\r%d lines read in %.2f seconds." % (numLines, time.time() - startTime))
 
     return list(prefixToAS.values())
 
