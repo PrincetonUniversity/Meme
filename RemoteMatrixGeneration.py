@@ -61,19 +61,26 @@ def makeReadable(matrixRowCounts):
     """
     allCols = set()
     numRowsTotal = 0
+    numEntries = 0
     for row, count in matrixRowCounts:
         allCols.update(row)
         numRowsTotal += count
+        numEntries += (len(row) * count)
 
     allCols = list(allCols)
     allCols.sort()
+
+    avgRowSize = numEntries / numRowsTotal
+    density = numEntries / (len(allCols) * numRowsTotal)
 
     matrixInfo = {".Note":"Although the matrix is binary, it is represented as rows of column IDs to save memory because BGP route matrices are typically extremely sparse. The column IDs denote non-zero positions.",
                   ".Num Unique Rows": len(matrixRowCounts),
                   ".Num Total Rows (prefixes)": numRowsTotal,
                   ".Num Columns (peers)": len(allCols),
+                  ".Density (between 0 and 1)" : density,
+                  ".Average row size" : avgRowSize,
                   "Columns (this should just be an contiguous integer range due to anonymization)" : str(allCols)}
-    annotatedRowCounts = [{"Row Members":row, "Row Occurrences":count} for row,count in matrixRowCounts]
+    annotatedRowCounts = [{"Row Members":str(row), "Row Occurrences":count} for row,count in matrixRowCounts]
 
     matrixInfo['Matrix rows and their counts'] = annotatedRowCounts
     return matrixInfo
