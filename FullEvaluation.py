@@ -8,6 +8,8 @@ import random
 from collections import Counter
 from analyze import kraftsBound, transposeMatrix, groupOverlappingRows
 from util import printShellDivider, getShellWidth, shellHistogram
+from ClusterCodes import OriginalCodeStatic
+
 
 """ 
     Need to write prerequisite installation script.
@@ -168,7 +170,28 @@ def matrixTrials(matrix, numTrials, percents):
             submatrix = randomSubmatrix(matrix, allCols=allCols, percent=percent)
             #getMatrixStatistics(submatrix, trialNum=trial, percent=percent)
             getCodeStatistics(submatrix, trialNum=trial, percent=percent)
+
+
+
+def parllelEvaluate(matrix, submatrixProducer, submatrixEvaluator, numTrials, trialParamList):
+
+
     
+
+
+
+def evaluatePathSetsOriginal(matrix):
+    optMerging = False # merge any overlapping clusters
+    maxWidth = 48 # width of an ethernet mac address field
+    optimizeInitialWidth = True
+
+    code = OriginalCodeStatic(matrix)
+    code.make(optWidth=optimizeInitialWidth,
+                maxWidth=maxWidth,
+                mergeOverlaps=optMerging)
+
+    width = code.width()
+    memory = code.memoryRequired()[1]
 
 
 def main():
