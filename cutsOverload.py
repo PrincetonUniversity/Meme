@@ -211,6 +211,5 @@ def minimum_node_cut(G, s=None, t=None, flow_func=None, approximate=-1):
         info = {}
         info["Approximation threshold"] = approximate
         info["Minimum cut"] = len(min_cut)
-        logger = logging.getLogger("cutsOverload.threshold")
-        logger.info(json.dumps(info))
+        print(info)
     return min_cut

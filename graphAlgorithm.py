@@ -172,12 +172,21 @@ def extractRec(graph, absRoots, absParent, selCols, supersets, threshold):
             else:
                 supersets.append(frozenset(graph.nodes()))
             return
+        elif graph.size() == len(graph) * (len(graph) - 1)/2:
+            print("CLIQUE")
+            if absParent != None:
+                absParent.addSuperset(frozenset(graph.nodes()))
+            else:
+                supersets.append(frozenset(graph.nodes()))
+            return
         else:
             if nx.is_connected(graph):
                 cut = []
                 # Approximation: if the graph size is above a threshold, use the approximate minimum_node_cut
                 if len(graph.nodes) > 150:
                     cut = minimum_node_cut(graph, approximate = 2)
+#                elif len(graph.nodes) > 150:
+#                    cut = minimum_node_cut(graph, approximate = 2)
                 else:
                     cut = minimum_node_cut(graph)
                 selCols.update(cut)
@@ -301,10 +310,10 @@ def graphHierarchy(matrix, parameters):
             matrix2 = [set(row).intersection(selCols) for row in matrix2]
             # flatWidth(matrix2)
 
-    #print("Reaching width: ", widthsum, " (", str(widths), " )")
-
         logger = logging.getLogger("eval.graphAlg")
         logger.info(json.dumps(info))
+    print("Reaching width: ", widthsum, " (", str(widths), " )")
+    print(infoList)
     return supersetsList, absHierarchyList
 
 
