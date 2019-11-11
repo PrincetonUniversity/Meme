@@ -1,14 +1,13 @@
 #!/usr/bin/env python3.7
-from parse_mrt import mrtCsvToMatrix
 import argparse, os, sys
 import logging
 from MRSets import MRCode
 import pickle, json
 import time
 import random
-from MatrixParameters import getMatrixStatistics
-
-
+from collections import Counter
+from analyze import kraftsBound, transposeMatrix, groupOverlappingRows
+from util import printShellDivider, getShellWidth, shellHistogram
 
 """ 
     Need to write prerequisite installation script.
@@ -33,13 +32,57 @@ from MatrixParameters import getMatrixStatistics
 
 def get_args():
     parser = argparse.ArgumentParser(description="MEME Evaluation Script")
-    parser.add_argument('-m', '--matrix-pickle', default='announcement_matrix.pickle', 
+    parser.add_argument('matrix_pickle', default='route_matrix.pickle', 
                         help='Pickle file that contains an attribute matrix')
-    parser.add_argument('-i', '---mrt-file', default=None,
-                        help='File that contains RIBs in MRT format')
     parser.add_argument('-o', '--outfile', default=None,
                         help='Destination file to which evaluation results will be written. If no file is given, stdout is used.')
     return parser.parse_args()
+
+def reduplicateMatrix(matrixWithCounts):
+    matrix = []
+    for row, count in matrixWithCounts:
+        matrix.extend([set(row)]*count)
+    return matrix
+
+
+def getMatrixStatistics(matrixWithCounts, **extraInfo):
+    matrix = reduplicateMatrix(matrixWithCounts)
+    logger = logging.getLogger("eval.matrixStats")
+    allCols = set()
+    for row, count in matrixWithCounts:
+        allCols.update(row)
+
+    width = len(allCols)
+    height = sum([count for row, count in matrixWithCounts])
+    numDistinctRows = len(matrixWithCounts)
+
+    rowSizes = []
+    for row, count in matrixWithCounts:
+        rowSizes.extend([len(row)]*count)
+
+    avgRowSize = sum(rowSizes) / len(rowSizes)
+
+    density = avgRowSize / width
+
+
+    info = dict(extraInfo)
+    info["width"] = width
+    info["height"] = height
+    info["distinct rows"] = numDistinctRows
+    info["avg row size"] = avgRowSize
+    info["density"] = density
+    info["max row size"] = max(rowSizes)
+
+    info["row size counts"] = dict(Counter([len(row) for row in matrix]))
+    plotRowSizeDistribution(matrixWithCounts)
+
+    tmatrix = transposeMatrix(matrix)
+    #info["col size counts"] = dict(Counter([len(row) for row in tmatrix]))
+
+    clusters = groupOverlappingRows(matrix, asRows=False)
+    info["cluster size counts"] = dict(Counter([len(cluster) for cluster in clusters]))
+
+    logger.info(json.dumps(info))
 
 
 
@@ -61,6 +104,13 @@ def randomSubmatrix(matrix, allCols = None, percent=0.10):
     
     return submatrix
 
+
+def plotRowSizeDistribution(matrixWithCounts):
+    rowSizes = []
+    for row, count in matrixWithCounts:
+        rowSizes.extend([len(row)]*count)
+
+    shellHistogram(rowSizes, title="Distribution of row sizes")
 
 
 def getCodeStatistics(supersets, **extraInfo):
@@ -116,7 +166,7 @@ def matrixTrials(matrix, numTrials, percents):
         for trial in range(numTrials):
             print("Trial %d of %d" % (trial+1, numTrials))
             submatrix = randomSubmatrix(matrix, allCols=allCols, percent=percent)
-            getMatrixStatistics(submatrix, trialNum=trial, percent=percent)
+            #getMatrixStatistics(submatrix, trialNum=trial, percent=percent)
             getCodeStatistics(submatrix, trialNum=trial, percent=percent)
     
 
@@ -124,7 +174,6 @@ def matrixTrials(matrix, numTrials, percents):
 def main():
     args = get_args()
 
-    print("Using MRT filename:", args.mrt_file)
     print("Using matrix pickle filename:", args.matrix_pickle)
     if args.outfile != None:
         print("Evaluation results will be written to", args.outfile)
@@ -133,46 +182,18 @@ def main():
         logging.basicConfig(level=logging.DEBUG)
         print("No log file given. Evaluation results going to stdout.")
 
-    needMatrix = False
-    if (args.mrt_file == None) or (not os.path.exists(args.mrt_file)):
-        if os.path.exists(args.matrix_pickle):
-            print("No MRT file given. Using existing matrix file")
-        else:
-            print("ERROR: MRT and matrix files could not be found! Run script with -h for usage info.")
-            exit(1)
-    elif not os.path.exists(args.matrix_pickle):
-        print("Matrix file not found.")
-        needMatrix = True
-    else:
-        mrt_modtime = os.path.getmtime(args.mrt_file)
-        matrix_modtime = os.path.getmtime(args.matrix_pickle)
+    print("Loading matrix from file.")
+    with open(args.matrix_pickle, 'rb') as fp:
+        matrixWithCounts = pickle.load(fp)
+    print("Done loading")
 
-        if mrt_modtime > matrix_modtime:
-            print("Given MRT file newer than matrix file. Generating new matrix.")
-            needMatrix = True
-        else:
-            print("Given MRT file older than matrix file. Skipping matrix generation.")
-
-    if needMatrix:
-        print("Generating matrix from MRT file")
-        matrix = mrtCsvToMatrix(args.mrt_file, args.matrix_pickle)
-        print("Done. Matrix file created.")
-    else:
-        print("Loading matrix from file.")
-        with open(args.matrix_pickle, 'rb') as fp:
-            matrix = pickle.load(fp)
-        print("Done loading")
-
-    print("Overall matrix has %d rows" % len(matrix))
     print("Getting overall matrix stats")
-    getMatrixStatistics(matrix, matrixName="FullMatrix")
+    getMatrixStatistics(matrixWithCounts, matrixName="FullMatrix")
     print("Done.")
-   
-    print("Deduplicating rows")
-    matrix = list(set([frozenset(row) for row in matrix]))
-    print("Matrix after deduplication has %d rows" % len(matrix))
-   
-    getMatrixStatistics(matrix, matrixName="deduplicated")
+  
+    matrix = [row for row,count in matrixWithCounts]
+
+    #getMatrixStatistics(matrix, matrixName="deduplicated")
 
     matrixTrials(matrix, numTrials=1, percents=[1.0])
 
