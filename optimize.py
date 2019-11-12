@@ -324,3 +324,58 @@ def minimizeRulesGreedy(supersets, ruleCounts, maxBits):
 
     return supersets
 
+
+
+def minimizeMemoryGreedy(matrix):
+    """ Given a list of supersets, the number of rules needed regarding
+        each participant in an outbound policy, and an upper bound
+        on the number of bits we are willing to use, greedily minimize
+        the number of rules that will result from the superset grouping.
+    """
+    # defensive copy
+    matrix = [set(row) for row in matrix]
+
+    numMatchStrings = sum(len(row) for row in matrix)
+
+    kraftSum = sum(2**len(row) for row in matrix)
+
+    while (len(matrix) > 1):
+
+        currMemoryCost = numMatchStrings * (kraftSum.bit_length())
+        # bestRow1 and bestRow2 are our top choices for merging
+        bestNewMemory = currMemoryCost
+        bestRow1 = None
+        bestRow2 = None
+        bestKraftImpact = None
+
+        # for every pair of sets
+        for row1, row2 in combinations(matrix, 2):
+            # how would a merge alter kraft's inequality?
+            kraftImpact = 2**len(row1.union(row2)) - (2**len(row1) + 2**len(row2))
+
+            # choose the pair with the biggest impact on rules
+            newTagWidth = (kraftSum + kraftImpact).bit_length()
+            newMemoryCost = (numMatchStrings - len(row1.intersection(row2))) * newTagWidth
+
+            if newMemoryCost < bestNewMemory:
+                bestNewMemory = newMemoryCost
+                bestRow1 = row1
+                bestRow2 = row2
+                bestKraftImpact = kraftImpact
+
+        # if the best change is no change, break
+        if (bestNewMemory == currMemoryCost):
+            break
+        # update objective function variables
+        numMatchStrings -= len(bestRow1.intersection(bestRow2))
+        kraftSum += bestKraftImpact
+        # merge the two best sets
+        bestRow1.update(bestRow2)
+        matrix.remove(bestRow2)
+
+    return matrix
+
+
+
+
+

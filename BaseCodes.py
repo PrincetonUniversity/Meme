@@ -99,6 +99,9 @@ class BaseCode(ABC):
         assert self.made
         return {colID : self.matchStrings(colID, decorated=decorated) for colID in self.columnIDs}
 
+    def numMatchStrings(self):
+        return sum([len(strings) for strings in self.allMatchStrings().values()])
+
 
     def timeMake(self, *args, **kwargs) -> float:
         """ Run self.make(*args, **kwargs), and print how long it took.

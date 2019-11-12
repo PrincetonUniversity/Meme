@@ -7,6 +7,7 @@ DATA_PATH = os.path.join(REPO_PATH, 'data/')
 PKL_PATH = os.path.join(REPO_PATH, 'pickles/')
 
 from collections.abc import Iterable
+from collections import defaultdict
 from typing import List, Dict, Set, Tuple
 
 LOGGING_LEVELS = {  0 : logging.CRITICAL,
@@ -171,19 +172,20 @@ def printAsColumns(items, title='', delim=", "):
 
 
 
-def shellHistogram(values, numBins=None, barChar='=', title="Histogram"):
+def shellHistogram(values, numBins=None, barChar='=', title="Histogram", log=False):
     minVal = min(values)
     maxVal = max(values)
     if numBins == None:
         numBins = maxVal - minVal
     binWidth = (maxVal - minVal) / numBins
 
-    binCounts = {}
+    binCounts = defaultdict(int)
     for val in values:
         dstBin = math.floor((val - minVal)/binWidth)
-        count = binCounts.get(dstBin, 0)
-        binCounts[dstBin] = count + 1
+        binCounts[dstBin] += 1
 
+    if log:
+        binCounts = {binID : count.bit_length() for binID, count in binCounts.items()} 
 
     binIDWidth = len(str(maxVal))
     binIDFormatString = "%%%dd" % binIDWidth
@@ -194,6 +196,8 @@ def shellHistogram(values, numBins=None, barChar='=', title="Histogram"):
 
     binIndices = sorted(list(binCounts.keys()))
 
+    if log:
+        title += " (log scale)"
     printShellDivider(title)
     print(' '*binIDWidth + '0' +\
           ('-'*(shellWidth - (binIDWidth+1 +len(str(maxCount))))) +\

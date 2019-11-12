@@ -9,7 +9,7 @@ import math
 from unionFind import UnionFind
 import sys
 import logging
-from collections import Counter
+from collections import Counter, defaultdict
 import json
 import heapq
 
@@ -17,20 +17,18 @@ from util import printShellDivider, getShellWidth, shellHistogram
 
 import random
 
-def anonymizeMatrix(matrix):
-    # get all columns
-    allCols = set()
-    for row in matrix:
-        allCols.update(row)
-    # shuffle all columns
-    allCols = list(allCols)
-    random.shuffle(allCols)
-    # map the shuffled columns to indices
-    oldColToNewCol = {oldCol:i for i,oldCol in enumerate(allCols)}
-    # convert the columns to their indices
-    newMatrix = [[oldColToNewCol[oldCol] for oldCol in row] for row in matrix]
-    return newMatrix
 
+
+def randomMatrix(rows=100, columns=100, density=0.1):
+    matrixSize = rows * columns
+
+    matrix = [set() for _ in range(rows)]
+    for _ in range(int(matrixSize * density)):
+        row = random.randint(0, rows-1)
+        col = random.randint(0, columns-1)
+
+        matrix[row].add(col)
+    return matrix
 
 def generateMatrix():
     density = 0.10 # average percent of rows that are full
@@ -48,12 +46,31 @@ def generateMatrix():
     rowPop = max(1, int(width * rowDensity))
 
 
+def matrixToRowSizeCounts(matrixWithCounts):
+    rowSizes = []
+    for row, count in matrixWithCounts:
+        rowSizes.extend([len(row)]*count)
 
-def plotDistribution(matrix):
-    rowSizes = [len(row) for row in matrix]
+    sizeCounts = dict(Counter(rowSizes))
 
-    shellHistogram(rowSizes, title="Distribution of row sizes")
-    
+    return sizeCounts
+
+
+def plotDistribution(matrixWithCounts, log=False):
+    rowSizes = []
+    for row, count in matrixWithCounts:
+        rowSizes.extend([len(row)]*count)
+
+    shellHistogram(rowSizes, title="Distribution of row sizes", log=log)
+
+
+def distributionParameters(matrixWithCounts):
+    sizeCounts = matrixToRowSizeCounts(matrixWithCounts)
+    pass
+
+
+
+
 
 def matrixToGraph(matrix):
     """ Docstring
@@ -188,10 +205,6 @@ def breakUpMatrix(matrix):
     return matrices
 
 
-
-    
-
-
 def copyMatrix(matrix):
     return [set(row) for row in matrix]
 
@@ -230,21 +243,21 @@ def getMatrixStatistics(matrix, **extraInfo):
 
 def main():
     for filename in sys.argv[1:]:
-        matrix = None
+        matrixWithCounts = None
         if filename.endswith(".json"):
             import json
             with open(filename, 'r') as fp:
-                matrix = json.load(fp)
+                matrixWithCounts =  json.load(fp)
         elif filename.endswith('.pickle') or filename.endswith('.pkl'):
             import pickle
             with open(filename, 'rb') as fp:
-                matrix = pickle.load(fp)
+                matrixWithCounts = pickle.load(fp)
         else:
             print("File format not recognized:", filename)
             continue
 
-        matrix = copyMatrix(matrix)
-        plotDistribution(matrix)
+        print(matrixToRowSizeCounts(matrixWithCounts))
+        plotDistribution(matrixWithCounts, log=True)
 
 if __name__ == "__main__":
     main()

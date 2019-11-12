@@ -1,9 +1,11 @@
 from BaseCodes import BaseCodeStatic, ColumnID, Row, Matrix, FixedMatrix, BinaryString
-from util import generateIdentifiers, kraftsInequality
-from optimize import removeSubsets, minimizeRulesGreedy, minimizeVariableWidthGreedy
+from util import generateIdentifiers, kraftsInequality, printShellDivider
+from optimize import removeSubsets, minimizeRulesGreedy, minimizeVariableWidthGreedy, mergeIntersectingSets, minimizeMemoryGreedy
 import analyze
 
 from typing import List, Set, Dict, FrozenSet, Collection
+
+from MatrixParameters import randomMatrix
 
 # memory requirements are
 #   sum( sum(tagWidth + overhead for overhead in ruleOverheads[elem])*occurrences[elem] for elem in elements)
@@ -146,7 +148,7 @@ class ClusterCode(BaseCodeStatic):
             cluster = cluster.difference(self.clusterImplicits[ssIndex])
         
         if mask == None:
-            mask = ''.join(['1' if colID in subset else maskNegChar for colID in cluster])
+            mask = ''.join(['1' if colID in subset else maskNegChar for colID in sorted(cluster)])
 
         padding = padChar * (width - (len(identifier) + len(mask)))
 
@@ -185,7 +187,8 @@ class ClusterCode(BaseCodeStatic):
 
         outStrings = {colID : [] for colID in self.columnIDs}
         for cID, cluster in enumerate(self.clusters):
-            explicits = cluster.difference(self.clusterImplicits[cID])
+            explicits = list(cluster.difference(self.clusterImplicits[cID]))
+            explicits.sort()
             maskBits = ['*'] * len(explicits)
             for i, columnID in enumerate(explicits):
                 maskBits[i] = '1'
@@ -207,18 +210,28 @@ class OriginalCodeStatic(ClusterCode):
         super().__init__(matrix=matrix, hideImplicits=False, **kwargs)
 
 
-    def make(self, optWidth=False, maxWidth=-1, mergeOverlaps=True):
+    def make(self, optWidth=True, maxWidth=-1, mergeOverlaps=False):
         clusters = removeSubsets(self.matrix)
 
         if optWidth:
+            self.logger.debug("Optimizing width")
             clusters = minimizeVariableWidthGreedy(clusters)
+            self.logger.debug("Done optimizing width.")
 
         minWidth = kraftsInequality([len(cluster) for cluster in clusters])
-        if maxWidth != -1:
+        if mergeOverlaps:
+            clusters = mergeIntersectingSets(clusters)
+        elif maxWidth != -1:
             if maxWidth >= minWidth:
+                self.logger.debug("Optimizing rule count given a maximum tag width")
                 clusters = minimizeRulesGreedy(clusters, {colID:1 for colID in self.columnIDs}, maxWidth)
+                self.logger.debug("Done optimizing rule count.")
             else:
                 self.logger.warning("Given maximum tag width is too small! Max given is %d, min is %d" % (maxWidth, minWidth))
+        else:
+            self.logger.debug("Optimizing memory")
+            clusters = minimizeMemoryGreedy(clusters)
+            self.logger.debug("Done optimizing memory")
 
         self.setClusters(clusters)
 
@@ -245,6 +258,8 @@ class NewerCodeStatic(ClusterCode):
  have to handle the empty set in the event of implicits
 """
 
+
+
 def main():
     matrix = [[1,2,3], [3,4,5], [6,7], []]
     """
@@ -255,15 +270,24 @@ def main():
     print("Tag for empty row is", code.tag([]))
     """
 
-    code = NewerCodeStatic(matrix=matrix)
-    code.timeMake()
-    #print("tags are")
-    #print(code.allTags(decorated=True))
-    #print("strings are")
-    #print(code.allMatchStrings(decorated=True))
-    code.verifyCompression()
-    print("Memory of original code:", code.memoryRequired())
-    print("Tag for empty row is", code.tag([]))
+    while True:
+        try:
+            randMatrix = randomMatrix(rows=10, columns=20, density=0.2)
+
+            code = OriginalCodeStatic(matrix=randMatrix)
+            code.timeMake(maxWidth=8)
+            code.verifyCompression()
+        except:
+            print("Code verification FAILED")
+            printShellDivider("Original Matrix")
+            print(randMatrix)
+            printShellDivider("Clusters")
+            print(code.clusters)
+            printShellDivider("Tags")
+            print(code.allTags(decorated=True))
+            printShellDivider("Strings")
+            print(code.allMatchStrings(decorated=True))
+            raise Exception()
 
 
 if __name__ == "__main__":
