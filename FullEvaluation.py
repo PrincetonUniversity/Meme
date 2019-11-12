@@ -12,6 +12,7 @@ from ClusterCodes import OriginalCodeStatic
 import multiprocessing
 from typing import Callable, List
 import itertools
+from RSets import RCode
 
 """ 
     Need to write prerequisite installation script.
@@ -43,7 +44,7 @@ def get_args():
     return parser.parse_args()
 
 
-
+# Not used
 def deduplicateMatrix(matrix):
     # make the matrix rows hashable
     matrix = [frozenset(row) for row in matrix]
@@ -80,15 +81,16 @@ def getMatrixStatistics(matrixWithCounts, **extraInfo):
 
     avgRowSize = sum(rowSizes) / len(rowSizes)
 
-    density = avgRowSize / width
-
+    densityDup = avgRowSize / width
+    densityNoDup = sum([len(row) for row, count in matrixWithCounts]) / len(matrixWithCounts) / width
 
     info = dict(extraInfo)
     info["width"] = width
     info["height"] = height
     info["distinct rows"] = numDistinctRows
     info["avg row size"] = avgRowSize
-    info["density"] = density
+    info["density dup"] = densityDup
+    info["density no dup"] = densityNoDup
     info["max row size"] = max(rowSizes)
 
     info["row size counts"] = dict(Counter([len(row) for row in matrix]))
@@ -198,32 +200,32 @@ def evaluatePathSetsSingle(matrix, **extraInfo):
     """
 
     optMerging = False # merge any overlapping clusters
-    maxWidth = 48 # width of an ethernet mac address field
     optimizeInitialWidth = True
+    # if maxWidth is -1, pathsets greedily minimizes memory instead of number of match strings
+    maxWidth = -1
 
     code = OriginalCodeStatic(matrix)
-    startTime = time.time()
+    startTime = time.time()    
     code.make(optWidth=optimizeInitialWidth,
-                maxWidth=maxWidth,
+                maxWidth = maxWidth,
                 mergeOverlaps=optMerging)
     runningTime = time.time() - startTime
 
     width = code.width()
     memory = code.memoryRequired()[1]
 
+    numMatchStrings = code.numMatchStrings()
+    tagWidth = code.width()
+
     info = dict(extraInfo)
     info['maxWidth'] = maxWidth
     info['optMerging'] = optMerging
     info['Running time'] = runningTime
-    info['width'] = width
-    info['Total memory'] = memory
-
+    info['Number of match strings'] = numMatchStrings
+    info['Tag width'] = width
+    info['Total memory'] = numMatchStrings * tagWidth
+    
     return info
-
-
-
-
-
 
 def evaluatePathSetsParallel(matrix):
     # generate a bunch of submatrices and evaluate pathsets on all those submatrices
@@ -235,9 +237,7 @@ def evaluatePathSetsParallel(matrix):
                           submatrixProductionParams = policyPercentages) 
 
 
-
-
-def evaluateMemeParallel(matrix, minThreshold=4, maxThreshold=6):
+def evaluateMemeParallel(matrix, minThreshold=4, maxThreshold=8):
     # generate a bunch of 
     thresholds = [[threshold] for threshold in range(minThreshold, maxThreshold)]
     policyPercentages = [[0.05*i] for i in range(1, 6)] # 5%, 10%, ..., 20%
@@ -260,16 +260,19 @@ def evaluateMemeSingle(matrix, threshold=4, **extraInfo):
     mrcode.optimize(parameters = (threshold, None))
     runningTime = time.time() - startTime
     mrcode.verifyCompression()
-    totalMemory = [len(rule) for rules in mrcode.matchStrings().values() for rule in rules]
+
+    codeWidths = [code.widthUsed() for code in mrcode.rcodes]
+    numMatchStrings = len(mrcode.matchStrings())
 
     info = dict(extraInfo)
     info["threshold"] = threshold
-    info["Shadow Elements"] = len(mrcode.shadowElements.keys())
-    info["Total number of rules"] = len(totalMemory)
-    info["Length of rule"] = totalMemory[0]
-    info["Total memory"] = sum(totalMemory)
+    info["Num shadow Elements"] = len(mrcode.shadowElements.keys())
+    info["Number of match strings"] = numMatchStrings
     info["Running time"] = runningTime
-    info["subcode widths"] = [rcode.widthUsed() for rcode in mrcode.rcodes]
+    info["Subcode widths"] = sorted(codeWidths)
+    info["Tag width"] = sum(codeWidths)
+    info["Total memory"] = sum(codeWidths) * numMatchStrings
+    info["Total memory(PISA)"] = sum([rcode.widthUsed()*len(rcode.elements) for rcode in mrcode.rcodes])
 
     return info
 

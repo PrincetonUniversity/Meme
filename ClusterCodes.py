@@ -270,12 +270,12 @@ def main():
     print("Tag for empty row is", code.tag([]))
     """
 
-    while True:
+    for i in range(5):
         try:
-            randMatrix = randomMatrix(rows=10, columns=20, density=0.2)
+            randMatrix = randomMatrix(rows=1000, columns=100, density=0.01)
 
             code = OriginalCodeStatic(matrix=randMatrix)
-            code.timeMake(maxWidth=8)
+            code.timeMake()
             code.verifyCompression()
         except:
             print("Code verification FAILED")
