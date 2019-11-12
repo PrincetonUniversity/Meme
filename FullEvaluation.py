@@ -5,11 +5,13 @@ from MRSets import MRCode
 import pickle, json
 import time
 import random
-from collections import Counter
+from collections import Counter, defaultdict
 from analyze import kraftsBound, transposeMatrix, groupOverlappingRows
 from util import printShellDivider, getShellWidth, shellHistogram
 from ClusterCodes import OriginalCodeStatic
-
+import multiprocessing
+from typing import Callable, List
+import itertools
 
 """ 
     Need to write prerequisite installation script.
@@ -40,11 +42,25 @@ def get_args():
                         help='Destination file to which evaluation results will be written. If no file is given, stdout is used.')
     return parser.parse_args()
 
+
+
+def deduplicateMatrix(matrix):
+    # make the matrix rows hashable
+    matrix = [frozenset(row) for row in matrix]
+    # count row occurrences
+    return [(list(row), count) for row,count in Counter(matrix).items()]
+
+
+
 def reduplicateMatrix(matrixWithCounts):
     matrix = []
     for row, count in matrixWithCounts:
         matrix.extend([set(row)]*count)
     return matrix
+
+
+def allPairs(list1, list2):
+    return [(item1, item2) for item1 in list1 for item2 in list2]
 
 
 def getMatrixStatistics(matrixWithCounts, **extraInfo):
@@ -76,7 +92,6 @@ def getMatrixStatistics(matrixWithCounts, **extraInfo):
     info["max row size"] = max(rowSizes)
 
     info["row size counts"] = dict(Counter([len(row) for row in matrix]))
-    plotRowSizeDistribution(matrixWithCounts)
 
     tmatrix = transposeMatrix(matrix)
     #info["col size counts"] = dict(Counter([len(row) for row in tmatrix]))
@@ -84,17 +99,17 @@ def getMatrixStatistics(matrixWithCounts, **extraInfo):
     clusters = groupOverlappingRows(matrix, asRows=False)
     info["cluster size counts"] = dict(Counter([len(cluster) for cluster in clusters]))
 
-    logger.info(json.dumps(info))
+    return info
 
 
 
-def randomSubmatrix(matrix, allCols = None, percent=0.10):
+def randomSubmatrix(matrixWithCounts, allCols = None, percent=0.10):
     """ Return a submatrix made of a random subset of the columns.
     """
     if allCols == None:
         # genrate allCols from scratch
         allCols = set()
-        for row in matrix:
+        for row, count in matrixWithCounts:
             allCols.update(row)
 
     allCols = list(allCols)
@@ -102,9 +117,10 @@ def randomSubmatrix(matrix, allCols = None, percent=0.10):
 
     subset = set(allCols[:int(len(allCols) * percent)])
 
-    submatrix = [subset.intersection(row) for row in matrix]
+    submatrix = [subset.intersection(row) for row, count in matrixWithCounts]
     
     return submatrix
+
 
 
 def plotRowSizeDistribution(matrixWithCounts):
@@ -115,83 +131,148 @@ def plotRowSizeDistribution(matrixWithCounts):
     shellHistogram(rowSizes, title="Distribution of row sizes")
 
 
-def getCodeStatistics(supersets, **extraInfo):
-    logger = logging.getLogger("eval.codeStats")
 
-    #logger.info("Total num groups" + str(len(set(supersets))))
-    originalElements = list(set.union(*[set(superset) for superset in supersets]))
-    originalSets = [frozenset(superset) for superset in supersets]
-    #logger.info("Total num elements" + str(len(originalElements)))
+def onlyDensestColumns(matrixWithCounts, frac : float):
+    """ Return a submatrix which contains only the densest 'frac' of the columns.
+    """
+    counts = defaultdict(int)
 
-    # orderedSets = [supersets[i*2 + 1] for i in range(len(supersets)/2)]
-    # maxElement = max(max(superset) for superset in orderedSets)
-    # ordering = {i:i for i in range(maxElement+1)}
-    # rcode = RCode(orderedSets)
-    # rcode.optimizeWidth()
+    for row, count in matrixWithCounts:
+        for col in row:
+            counts[col] += count
 
-    # hierarchy = True makes the MRCode uses biclutering hierarchy algorithm
-    mrcode = MRCode(originalSets, hierarchy = True)
-    # parameters is curretly a tuple of (Threshold of bicluster size, Goal of tag width)
 
-    minThreshold = 4
-    maxThreshold = 15
-    for threshold in range(minThreshold, maxThreshold+1):
-        print("Iteration %d of %d.." % (threshold - minThreshold + 1, maxThreshold-minThreshold+1))
-        info = dict(extraInfo)
-        info["threshold"] = threshold
-        cur_time = time.time()
-        mrcode.optimize(parameters = (threshold, None))
-        running_time = time.time() - cur_time
-        info["Shadow Elements"] = len(mrcode.shadowElements.keys())
-        mrcode.verifyCompression()
-        totalMemory = [len(rule) for rules in mrcode.matchStrings().values() for rule in rules]
-        info["Total number of rules"] = len(totalMemory)
-        info["Length of rule"] = totalMemory[0]
-        info["Total memory"] = sum(totalMemory)
-        info["Running time"] = running_time
-        info["subcode widths"] = [rcode.widthUsed() for rcode in mrcode.rcodes]
-        logger.info(json.dumps(info))
+    allCols = list(counts.keys())
+    allCols.sort(reverse=True, key=lambda x:counts[x])
+
+    k = int(len(allCols) * frac)
+
+    kDensest = set(allCols[:k])
+
+    return [(kDensest.intersection(row), count) for row, count in matrixWithCounts]
 
 
 
-    # print("Tag width: ", len(mrcode.tagString(frozenset([]))))
-    # print("Tag width: ", len(mrcode.matchStrings(frozenset(['AS8283']))['AS8283'][0]))
-    # print("Tag width: ", mrcode.matchStrings(frozenset(['AS8283']))['AS8283'][0])
+def parallelTrials(matrix, 
+                  submatrixEvaluator : Callable, # function that evaluates a code on a given submatrix
+                  submatrixEvaluationParams : List[List] = [[]], # list of parameter lists fo evaluating submatrices
+                  submatrixProducer : Callable = onlyDensestColumns, # function that produces a submatrix from a given matrix
+                  submatrixProductionParams : List[List] = [[]] # list of parameter lists for producing submatrices
+                  ):
+    """ Run evaluation experiments in parallel. Runs every combination of matrix evaluation parameters and production parameters.
+    """
+
+    # produce submatrices using the given production function and the given list of production parameters
+    with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
+        submatrices = p.starmap(submatrixProducer, [[matrix] + paramList for paramList in submatrixProductionParams])
+
+    with multiprocessing.Pool(multiprocessing.cpu_count()) as p: 
+        submatrixInfos = p.map(getMatrixStatistics, submatrices)
+
+    for i, submatrixInfo in enumerate(submatrixInfos):
+        submatrixInfo["Matrix ID"] = i
+        submatrixInfo["ParamList"] = submatrixProductionParams[i]
+
+    # now that we've gotten submatrix infos, the row duplicate counts are unneeded
+    submatrices = [[row for row,count in submatrix] for submatrix in submatrices]
+    # take cross product of evaluation parameters and submatrices (evaluate every parameter list on every submatrix)
+    paramPairs = allPairs(range(len(submatrices)), submatrixEvaluationParams)
+
+    newEvalParams = [[submatrices[pair[0]]] + pair[1] for pair in paramPairs]
+    matrixIndices = [pair[0] for pair in paramPairs]
+
+    # evaluate an encoding on each submatrix using the given evaluation function and the given list of evaluation parameters
+    with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
+        evalResults = p.starmap(submatrixEvaluator, newEvalParams)
+
+    for i, matrixIndex in enumerate(matrixIndices):
+        evalResults[i]['Matrix ID'] = matrixIndex
+
+    # return the list of results and matrix descriptions
+    return submatrixInfos, evalResults
 
 
-def matrixTrials(matrix, numTrials, percents):
-    allCols = set()
-    for row in matrix:
-        allCols.update(row)
-    for p, percent in enumerate(percents):
-        print("Percent %d of %d" % (p+1, len(percents)))
-        for trial in range(numTrials):
-            print("Trial %d of %d" % (trial+1, numTrials))
-            submatrix = randomSubmatrix(matrix, allCols=allCols, percent=percent)
-            #getMatrixStatistics(submatrix, trialNum=trial, percent=percent)
-            getCodeStatistics(submatrix, trialNum=trial, percent=percent)
 
+def evaluatePathSetsSingle(matrix, **extraInfo):
+    """ Evaluate a single instance of a pathsets encoding on the given matrix
+    """
 
-
-def parllelEvaluate(matrix, submatrixProducer, submatrixEvaluator, numTrials, trialParamList):
-
-
-    
-
-
-
-def evaluatePathSetsOriginal(matrix):
     optMerging = False # merge any overlapping clusters
     maxWidth = 48 # width of an ethernet mac address field
     optimizeInitialWidth = True
 
     code = OriginalCodeStatic(matrix)
+    startTime = time.time()
     code.make(optWidth=optimizeInitialWidth,
                 maxWidth=maxWidth,
                 mergeOverlaps=optMerging)
+    runningTime = time.time() - startTime
 
     width = code.width()
     memory = code.memoryRequired()[1]
+
+    info = dict(extraInfo)
+    info['maxWidth'] = maxWidth
+    info['optMerging'] = optMerging
+    info['Running time'] = runningTime
+    info['width'] = width
+    info['Total memory'] = memory
+
+    return info
+
+
+
+
+
+
+def evaluatePathSetsParallel(matrix):
+    # generate a bunch of submatrices and evaluate pathsets on all those submatrices
+    policyPercentages = [[0.05*i] for i in range(1, 6)] # 5%, 10%, ..., 20%
+
+    return parallelTrials(matrix = matrix, 
+                          submatrixEvaluator = evaluatePathSetsSingle, 
+                          submatrixProducer = onlyDensestColumns, 
+                          submatrixProductionParams = policyPercentages) 
+
+
+
+
+def evaluateMemeParallel(matrix, minThreshold=4, maxThreshold=6):
+    # generate a bunch of 
+    thresholds = [[threshold] for threshold in range(minThreshold, maxThreshold)]
+    policyPercentages = [[0.05*i] for i in range(1, 6)] # 5%, 10%, ..., 20%
+
+    return parallelTrials(matrix=matrix,
+                          submatrixEvaluator = evaluateMemeSingle,
+                          submatrixEvaluationParams = thresholds,
+                          submatrixProducer = onlyDensestColumns,
+                          submatrixProductionParams = policyPercentages)
+
+
+
+
+def evaluateMemeSingle(matrix, threshold=4, **extraInfo):
+    # hierarchy = True makes the MRCode uses biclutering hierarchy algorithm
+    mrcode = MRCode(matrix, hierarchy = True)
+    # parameters is curretly a tuple of (Threshold of bicluster size, Goal of tag width)
+
+    startTime = time.time()
+    mrcode.optimize(parameters = (threshold, None))
+    runningTime = time.time() - startTime
+    mrcode.verifyCompression()
+    totalMemory = [len(rule) for rules in mrcode.matchStrings().values() for rule in rules]
+
+    info = dict(extraInfo)
+    info["threshold"] = threshold
+    info["Shadow Elements"] = len(mrcode.shadowElements.keys())
+    info["Total number of rules"] = len(totalMemory)
+    info["Length of rule"] = totalMemory[0]
+    info["Total memory"] = sum(totalMemory)
+    info["Running time"] = runningTime
+    info["subcode widths"] = [rcode.widthUsed() for rcode in mrcode.rcodes]
+
+    return info
+
 
 
 def main():
@@ -200,9 +281,7 @@ def main():
     print("Using matrix pickle filename:", args.matrix_pickle)
     if args.outfile != None:
         print("Evaluation results will be written to", args.outfile)
-        logging.basicConfig(filename=args.outfile, level=logging.DEBUG)
     else:
-        logging.basicConfig(level=logging.DEBUG)
         print("No log file given. Evaluation results going to stdout.")
 
     print("Loading matrix from file.")
@@ -211,14 +290,28 @@ def main():
     print("Done loading")
 
     print("Getting overall matrix stats")
+    plotRowSizeDistribution(matrixWithCounts)
     getMatrixStatistics(matrixWithCounts, matrixName="FullMatrix")
     print("Done.")
-  
-    matrix = [row for row,count in matrixWithCounts]
 
-    #getMatrixStatistics(matrix, matrixName="deduplicated")
-
-    matrixTrials(matrix, numTrials=1, percents=[1.0])
+   
+    # Meme
+    submatrixInfos, evalResults = evaluateMemeParallel(matrixWithCounts)
+    printShellDivider("Submatrix Properties")
+    for item in submatrixInfos:
+        print(item)
+    printShellDivider("Meme Eval Results")
+    for item in evalResults:
+        print(item)
+    
+    # PathSets
+    submatrixInfos, evalResults = evaluatePathSetsParallel(matrixWithCounts)
+    printShellDivider("Submatrix Properties")
+    for item in submatrixInfos:
+        print(item)
+    printShellDivider("PathSets Eval Results")
+    for item in evalResults:
+        print(item)
 
 
 if __name__ == "__main__":
