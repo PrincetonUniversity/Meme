@@ -207,9 +207,7 @@ def minimum_node_cut(G, s=None, t=None, flow_func=None, approximate=-1):
         if len(min_cut) <= approximate:
             break
 
+    newthreshold = approximate
     if approximate > -1 and len(min_cut) > approximate:
-        info = {}
-        info["Approximation threshold"] = approximate
-        info["Minimum cut"] = len(min_cut)
-        print(info)
-    return min_cut
+        newthreshold = len(min_cut)
+    return min_cut, newthreshold

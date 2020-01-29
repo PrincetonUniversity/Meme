@@ -16,7 +16,6 @@ except:
     from analyze import bitsRequiredVariableID
     from AbsNode import AbsNode
 
-
 def flatWidth(matrix):
     """
         Removes all subsets from a list of sets and print width/count of flat tags.
@@ -102,7 +101,7 @@ def outputTransform(supersets, absRoots, frozenMatrix, absThreshold = None):
     absHierarchy = copy.deepcopy(supersets)
     absHierarchy.extend(absRoots)
     # if there is no absolute column, no need to encode an empty code
-    if len(absRoots) != 0:
+    if len(absRoots) != 0 and frozenset([]) in frozenMatrix:
         absHierarchy.append(frozenset("E")) # empty code holder
 
     supersets = [(superset, []) for superset in supersets]
@@ -112,7 +111,7 @@ def outputTransform(supersets, absRoots, frozenMatrix, absThreshold = None):
     return supersets, absHierarchy, addSelCols, separatePrefix
 
 
-def extractRec(graph, absRoots, absParent, selCols, supersets, threshold):
+def extractRec(graph, absRoots, absParent, selCols, supersets, threshold, cuts):
     '''
         Recursive function to disconnect graphs into small connected components, 
         by extracting absolute columns (absRoots) and columns for the next matrix (selCols).
@@ -131,22 +130,22 @@ def extractRec(graph, absRoots, absParent, selCols, supersets, threshold):
         else:
             isAbsCol = False
 
-            for node, cols in colTups:
-                # Approximation
-                # if len(cols) < len(maxCols) - 3:
-                #     break
+            # for node, cols in colTups:
+            #     # Approximation
+            #     # if len(cols) < len(maxCols) - 3:
+            #     #     break
 
-                diffCols = allCols.difference(cols)
-                possibleSelCols = []
-                for node2, cols2 in colTups:
-                    if len(diffCols.intersection(cols2)) != 0:
-                        possibleSelCols.append(node2)
-                if len(possibleSelCols) < 3 and len(possibleSelCols) != len(colTups) - 1:
-                    selCols.update(possibleSelCols)
-                    graph.remove_nodes_from(possibleSelCols)
-                    possibleAbsCol = node
-                    isAbsCol = True
-                    break
+            #     diffCols = allCols.difference(cols)
+            #     possibleSelCols = []
+            #     for node2, cols2 in colTups:
+            #         if len(diffCols.intersection(cols2)) != 0:
+            #             possibleSelCols.append(node2)
+            #     if len(possibleSelCols) < 3 and len(possibleSelCols) != len(colTups) - 1:
+            #         selCols.update(possibleSelCols)
+            #         graph.remove_nodes_from(possibleSelCols)
+            #         possibleAbsCol = node
+            #         isAbsCol = True
+            #         break
     else:
         isAbsCol = False
 
@@ -166,14 +165,14 @@ def extractRec(graph, absRoots, absParent, selCols, supersets, threshold):
     #                                   otherwise, if the graph is connected => take out minimum vertex cuts and split;
     #                                                                   else => split.
     else:
-        if len(graph) < threshold:
+        if len(graph) < threshold[0]:
             if absParent != None:
                 absParent.addSuperset(frozenset(graph.nodes()))
             else:
                 supersets.append(frozenset(graph.nodes()))
             return
         elif graph.size() == len(graph) * (len(graph) - 1)/2:
-            print("CLIQUE")
+            # print("CLIQUE")
             if absParent != None:
                 absParent.addSuperset(frozenset(graph.nodes()))
             else:
@@ -181,14 +180,32 @@ def extractRec(graph, absRoots, absParent, selCols, supersets, threshold):
             return
         else:
             if nx.is_connected(graph):
+
                 cut = []
                 # Approximation: if the graph size is above a threshold, use the approximate minimum_node_cut
-                if len(graph.nodes) > 150:
-                    cut = minimum_node_cut(graph, approximate = 2)
-#                elif len(graph.nodes) > 150:
-#                    cut = minimum_node_cut(graph, approximate = 2)
-                else:
-                    cut = minimum_node_cut(graph)
+                # if len(graph.nodes) > 500:
+                #     cut, newthreshold = minimum_node_cut(graph, approximate = threshold[1])
+                #     if threshold[1] < newthreshold:
+                #         print("threshold 1", threshold[1], newthreshold)
+                #         threshold[1] = newthreshold
+                # elif len(graph.nodes) > 400:
+                #     cut, newthreshold = minimum_node_cut(graph, approximate = threshold[2])
+                #     if threshold[2] < newthreshold:
+                #         print("threshold 2", threshold[2], newthreshold)
+                #         threshold[2] = newthreshold 
+                # elif len(graph.nodes) > 300:
+                #     cut, newthreshold = minimum_node_cut(graph, approximate = threshold[3])
+                #     if threshold[3] < newthreshold:
+                #         print("threshold 3", threshold[3], newthreshold)
+                #         threshold[3] = newthreshold
+                # elif len(graph.nodes) > 200:
+                #     cut, newthreshold = minimum_node_cut(graph, approximate = threshold[4])
+                #     if threshold[4] < newthreshold:
+                #         print("threshold 4", threshold[4], newthreshold)
+                #         threshold[4] = newthreshold
+                # else:
+                cut, _ = minimum_node_cut(graph)
+                cuts.append((len(graph), len(cut)))
                 selCols.update(cut)
                 graph.remove_nodes_from(cut)
 
@@ -201,7 +218,7 @@ def extractRec(graph, absRoots, absParent, selCols, supersets, threshold):
     #     print()
     for cc in nx.connected_components(graph):
         subgraph = graph.subgraph(cc).copy()
-        extractRec(subgraph, absRoots, absParent, selCols, supersets, threshold)
+        extractRec(subgraph, absRoots, absParent, selCols, supersets, threshold, cuts)
     return
 
 def findOneCut(graph, findAll=True):
@@ -221,7 +238,7 @@ def findOneCut(graph, findAll=True):
                 break
     return cut
 
-def extractNodes(matrix, threshold = 10):
+def extractNodes(matrix, threshold = [10,5,4,3,2]):
     '''
         Main algorithm: find connected components as grouping (supersets), 
                         select columns for the next submatrix (selcols), 
@@ -229,7 +246,7 @@ def extractNodes(matrix, threshold = 10):
     '''
     if len(matrix) == 0 :
         print("Empty matrix. Skipped!")
-        return [], [], []
+        return [], [], [], []
 
     colMap = defaultdict(list)
     allCols = set([])
@@ -247,17 +264,18 @@ def extractNodes(matrix, threshold = 10):
             graph.add_edge(i1, i2)
 
     if graph.size() == len(graph) * (len(graph) - 1)/2:
-        return [frozenset(graph.nodes())], set([]), []
+        return [frozenset(graph.nodes())], set([]), [], []
 
 
     absRoots = []
     absParent = None
     selCols = set([])
     supersets = []
+    cuts = []
 
-    extractRec(graph, absRoots, absParent, selCols, supersets, threshold)
+    extractRec(graph, absRoots, absParent, selCols, supersets, threshold, cuts)
 
-    return supersets, selCols, absRoots
+    return supersets, selCols, absRoots, cuts
 
 
 def graphHierarchy(matrix, parameters):
@@ -265,7 +283,6 @@ def graphHierarchy(matrix, parameters):
         Main algorithm. Iterate over the matrix till the selected columns (to the next submatrix) are empty.
         parameters = (threshold, absThreshold)
     '''
-
     if parameters != None:
         threshold = parameters[0]
         absThreshold = parameters[1]
@@ -279,13 +296,15 @@ def graphHierarchy(matrix, parameters):
     infoList = []
     supersetsList = []
     absHierarchyList = []
+    cutsList = []
     matrix2 = matrix
     # matrix.sort(key=len, reverse=True)
     # print(matrix[0])
 
     while True:
         # call the main agorithm to get supersets, selCols and absRoots
-        supersets, selCols, absRoots = extractNodes(matrix2, threshold)
+        supersets, selCols, absRoots, cuts = extractNodes(matrix2, [threshold,5,4,3,2])
+        cutsList.append(cuts)
         # construct supersets and absHierarchy;
         # extract additional columns if need to keep the superset tag wid under certain absThreshold;
         # find absolute columns that need its own unique encoding
@@ -314,6 +333,7 @@ def graphHierarchy(matrix, parameters):
         logger.info(json.dumps(info))
     print("Reaching width: ", widthsum, " (", str(widths), " )")
     print(infoList)
+    print(cutsList)
     return supersetsList, absHierarchyList
 
 

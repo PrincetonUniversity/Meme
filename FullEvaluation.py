@@ -79,16 +79,18 @@ def getMatrixStatistics(matrixWithCounts, **extraInfo):
     for row, count in matrixWithCounts:
         rowSizes.extend([len(row)]*count)
 
-    avgRowSize = sum(rowSizes) / len(rowSizes)
+    avgRowSizeDup = sum(rowSizes) / len(rowSizes)
+    densityDup = avgRowSizeDup / width
 
-    densityDup = avgRowSize / width
-    densityNoDup = sum([len(row) for row, count in matrixWithCounts]) / len(matrixWithCounts) / width
+    avgRowSizeNoDup = sum([len(row) for row, count in matrixWithCounts]) / len(matrixWithCounts)
+    densityNoDup = avgRowSizeNoDup / width
 
     info = dict(extraInfo)
     info["width"] = width
     info["height"] = height
     info["distinct rows"] = numDistinctRows
-    info["avg row size"] = avgRowSize
+    info["avg row size dup"] = avgRowSizeDup
+    info["avg row size no dup"] = avgRowSizeNoDup
     info["density dup"] = densityDup
     info["density no dup"] = densityNoDup
     info["max row size"] = max(rowSizes)
@@ -101,6 +103,15 @@ def getMatrixStatistics(matrixWithCounts, **extraInfo):
     clusters = groupOverlappingRows(matrix, asRows=False)
     info["cluster size counts"] = dict(Counter([len(cluster) for cluster in clusters]))
 
+    maxcluster = max(clusters, key = lambda x:len(x))
+    numRowsBridged = 0
+    numRowsBridgedDup = 0
+    for row, count in matrixWithCounts:
+        if len(set(row).intersection(maxcluster)) != 0:
+            numRowsBridgedDup += count
+            numRowsBridged += 1
+    info["num rows in max cluster dup"] = numRowsBridgedDup
+    info["num rows in max cluster no dup"] = numRowsBridged
     return info
 
 
@@ -134,7 +145,7 @@ def plotRowSizeDistribution(matrixWithCounts):
 
 
 
-def onlyDensestColumns(matrixWithCounts, frac : float):
+def onlyDensestColumns(matrixWithCounts, frac : float, rev = True):
     """ Return a submatrix which contains only the densest 'frac' of the columns.
     """
     counts = defaultdict(int)
@@ -145,13 +156,20 @@ def onlyDensestColumns(matrixWithCounts, frac : float):
 
 
     allCols = list(counts.keys())
-    allCols.sort(reverse=True, key=lambda x:counts[x])
+    allCols.sort(reverse=rev, key=lambda x:counts[x])
 
     k = int(len(allCols) * frac)
 
     kDensest = set(allCols[:k])
 
-    return [(kDensest.intersection(row), count) for row, count in matrixWithCounts]
+    kDensestRows = [(frozenset(kDensest.intersection(row)), count) for row, count in matrixWithCounts]
+    results = {}
+    for row, count in kDensestRows:
+        if row in results:
+            results[row] += count
+        else:
+            results[row] = count
+    return [(set(row), count) for row, count in results.items()]
 
 
 
@@ -159,8 +177,8 @@ def parallelTrials(matrix,
                   submatrixEvaluator : Callable, # function that evaluates a code on a given submatrix
                   submatrixEvaluationParams : List[List] = [[]], # list of parameter lists fo evaluating submatrices
                   submatrixProducer : Callable = onlyDensestColumns, # function that produces a submatrix from a given matrix
-                  submatrixProductionParams : List[List] = [[]] # list of parameter lists for producing submatrices
-                  ):
+                  submatrixProductionParams : List[List] = [[]], # list of parameter lists for producing submatrices
+                   parallel = True):
     """ Run evaluation experiments in parallel. Runs every combination of matrix evaluation parameters and production parameters.
     """
 
@@ -179,13 +197,16 @@ def parallelTrials(matrix,
     submatrices = [[row for row,count in submatrix] for submatrix in submatrices]
     # take cross product of evaluation parameters and submatrices (evaluate every parameter list on every submatrix)
     paramPairs = allPairs(range(len(submatrices)), submatrixEvaluationParams)
-
     newEvalParams = [[submatrices[pair[0]]] + pair[1] for pair in paramPairs]
     matrixIndices = [pair[0] for pair in paramPairs]
 
+    print("Evaluation starts...")
     # evaluate an encoding on each submatrix using the given evaluation function and the given list of evaluation parameters
-    with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
-        evalResults = p.starmap(submatrixEvaluator, newEvalParams)
+    if parallel:
+        with multiprocessing.Pool(multiprocessing.cpu_count()) as p:
+            evalResults = p.starmap(submatrixEvaluator, newEvalParams)
+    else:
+        evalResults = [submatrixEvaluator(*paramSet) for paramSet in newEvalParams]
 
     for i, matrixIndex in enumerate(matrixIndices):
         evalResults[i]['Matrix ID'] = matrixIndex
@@ -224,12 +245,66 @@ def evaluatePathSetsSingle(matrix, **extraInfo):
     info['Number of match strings'] = numMatchStrings
     info['Tag width'] = width
     info['Total memory'] = numMatchStrings * tagWidth
-    
+
     return info
+
+def evaluatePathSetsPISASingle(matrix, numTable=5, **extraInfo):
+    """ Evaluate a single instance of a pathsets encoding on the given matrix                                                    
+    """
+
+    optMerging = False # merge any overlapping clusters                                                                          
+    optimizeInitialWidth = True
+    # if maxWidth is -1, pathsets greedily minimizes memory instead of number of match strings
+    maxWidth = -1
+    info = dict(extraInfo)
+    info['maxWidth'] = maxWidth
+    info['optMerging'] = optMerging
+    info['Running time'] = 0
+    info['Number of match strings'] = 0
+    info['Tag width'] = []
+    info['Total memory'] = 0
+
+    allCols = set()
+    for row in matrix:
+        allCols.update(row)
+    allCols = list(allCols) 
+    random.shuffle(allCols)
+
+    partitionSize = int(len(allCols)/numTable)
+    for i in range(numTable):
+        start = i * partitionSize
+        if i == numTable-1:
+            end = len(allCols)+1
+        else:
+            end = (i+1) * partitionSize
+        subset = set(allCols[start:end])
+        submatrix = [subset.intersection(row) for row in matrix]
+
+        code = OriginalCodeStatic(submatrix)
+        startTime = time.time()
+        code.make(optWidth=optimizeInitialWidth,
+                  maxWidth = maxWidth,
+                  mergeOverlaps=optMerging)
+        runningTime = time.time() - startTime
+
+        width = code.width()
+        memory = code.memoryRequired()[1]
+
+        numMatchStrings = code.numMatchStrings()
+        tagWidth = code.width()
+
+        info['Running time'] += runningTime
+        info['Number of match strings'] += numMatchStrings
+        info['Tag width'].append(width)
+        info['Total memory'] += numMatchStrings * tagWidth
+
+    return info
+
+
 
 def evaluatePathSetsParallel(matrix):
     # generate a bunch of submatrices and evaluate pathsets on all those submatrices
-    policyPercentages = [[0.05*i] for i in range(1, 6)] # 5%, 10%, ..., 20%
+    policyPercentages = [[0.05*i] for i in range(1, 21)]
 
     return parallelTrials(matrix = matrix, 
                           submatrixEvaluator = evaluatePathSetsSingle, 
@@ -237,10 +312,10 @@ def evaluatePathSetsParallel(matrix):
                           submatrixProductionParams = policyPercentages) 
 
 
-def evaluateMemeParallel(matrix, minThreshold=4, maxThreshold=8):
+def evaluateMemeParallel(matrix, minThreshold=5, maxThreshold=11):
     # generate a bunch of 
     thresholds = [[threshold] for threshold in range(minThreshold, maxThreshold)]
-    policyPercentages = [[0.05*i] for i in range(1, 6)] # 5%, 10%, ..., 20%
+    policyPercentages = [[0.05*i] for i in range(1, 21)]
 
     return parallelTrials(matrix=matrix,
                           submatrixEvaluator = evaluateMemeSingle,
@@ -248,6 +323,17 @@ def evaluateMemeParallel(matrix, minThreshold=4, maxThreshold=8):
                           submatrixProducer = onlyDensestColumns,
                           submatrixProductionParams = policyPercentages)
 
+
+def evaluatePathSetsPISAParallel(matrix, minTable = 3, maxTable=12):
+    # generate a bunch of
+    numtables = [[numTable] for numTable in range(minTable, maxTable)]
+    policyPercentages = [[0.05*i] for i in range(1, 21)]
+
+    return parallelTrials(matrix=matrix,
+                          submatrixEvaluator = evaluatePathSetsPISASingle,
+                          submatrixEvaluationParams = numtables,
+                          submatrixProducer = onlyDensestColumns,
+                          submatrixProductionParams = policyPercentages)
 
 
 
@@ -271,6 +357,7 @@ def evaluateMemeSingle(matrix, threshold=4, **extraInfo):
     info["Running time"] = runningTime
     info["Subcode widths"] = sorted(codeWidths)
     info["Tag width"] = sum(codeWidths)
+    info["Shadow count"] = len(set(mrcode.shadowElements.keys()))
     info["Total memory"] = sum(codeWidths) * numMatchStrings
     info["Total memory(PISA)"] = sum([rcode.widthUsed()*len(rcode.elements) for rcode in mrcode.rcodes])
 
@@ -290,6 +377,8 @@ def main():
     print("Loading matrix from file.")
     with open(args.matrix_pickle, 'rb') as fp:
         matrixWithCounts = pickle.load(fp)
+        if type(matrixWithCounts) is set:
+            matrixWithCounts = [(row, 1) for row in matrixWithCounts]
     print("Done loading")
 
     print("Getting overall matrix stats")
@@ -297,7 +386,7 @@ def main():
     getMatrixStatistics(matrixWithCounts, matrixName="FullMatrix")
     print("Done.")
 
-   
+    resultDict = {}
     # Meme
     submatrixInfos, evalResults = evaluateMemeParallel(matrixWithCounts)
     printShellDivider("Submatrix Properties")
@@ -306,15 +395,39 @@ def main():
     printShellDivider("Meme Eval Results")
     for item in evalResults:
         print(item)
+
+    resultDict['MemeMatrixInfos'] = submatrixInfos
+    resultDict['MemeEvalResults'] = evalResults
+
+    # # PathSets PISA
+    # submatrixInfos, evalResults = evaluatePathSetsPISAParallel(matrixWithCounts)
+    # printShellDivider("Submatrix Properties")
+    # for item in submatrixInfos:
+    #     print(item)
+    # printShellDivider("PathSets PISA Eval Results")
+    # for item in evalResults:
+    #     print(item)
+
+    # resultDict['PathSetsPISAMatrixInfos'] = submatrixInfos
+    # resultDict['PathSetsPISAEvalResults'] = evalResults
+
     
-    # PathSets
-    submatrixInfos, evalResults = evaluatePathSetsParallel(matrixWithCounts)
-    printShellDivider("Submatrix Properties")
-    for item in submatrixInfos:
-        print(item)
-    printShellDivider("PathSets Eval Results")
-    for item in evalResults:
-        print(item)
+    # # PathSets
+    # submatrixInfos, evalResults = evaluatePathSetsParallel(matrixWithCounts)
+    # printShellDivider("Submatrix Properties")
+    # for item in submatrixInfos:
+    #     print(item)
+    # printShellDivider("PathSets Eval Results")
+    # for item in evalResults:
+    #     print(item)
+
+    # resultDict['PathSetsMatrixInfos'] = submatrixInfos
+    # resultDict['PathSetsEvalResults'] = evalResults
+
+    print("Writing results to pickle")
+    with open(args.outfile, 'wb') as fp:
+        pickle.dump(resultDict, fp)
+    print("Done.")
 
 
 if __name__ == "__main__":

@@ -106,7 +106,14 @@ def compress(filename):
     # print("Tag width: ", len(mrcode.matchStrings(frozenset(['AS8283']))['AS8283'][0]))
     # print("Tag width: ", mrcode.matchStrings(frozenset(['AS8283']))['AS8283'][0])
 
+def compress2():
+    matrix=[{1,2},{1,2,4},{1,2,3},{1,5},{1},{6}]
+    threshold = 3
+    mrcode = MRCode(matrix, hierarchy = True)
+    mrcode.optimize(parameters = (threshold, None))
+    print(mrcode.matchStrings(decorated=True))
 
 
 if __name__ == '__main__':
-    compress("route_matrix_small.pickle")
+    compress2()
+    #compress("fra_v4_master.pickle")
