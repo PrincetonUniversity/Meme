@@ -23,28 +23,30 @@ cd curl-7.65.3/
 sudo ./configure
 sudo make
 sudo make install
-
+sudo ldconfig
 
 ### wandio
-cd ~/src
-curl -O https://research.wand.net.nz/software/wandio/wandio-4.0.0.tar.gz
-tar zxf wandio-4.0.0.tar.gz
-cd wandio-4.0.0/
-sudo ./configure
-sudo make
-sudo make install
+cd ~/src/
+curl -LO https://research.wand.net.nz/software/wandio/wandio-4.2.0.tar.gz
+tar zxf wandio-4.2.0.tar.gz
+cd wandio-4.2.0/
+./configure
+make
+make install
+sudo ldconfig
 
 
 ### bgpstream-core
-cd ~/src
-#curl -O http://bgpstream.caida.org/bundles/caidabgpstreamwebhomepage/dists/bgpstream-1.2.3.tar.gz
-wget http://bgpstream.caida.org/bundles/caidabgpstreamwebhomepage/dists/bgpstream-1.2.3.tar.gz -O bgpstream-1.2.3.tar.gz
-tar zxf bgpstream-1.2.3.tar.gz
-cd bgpstream-1.2.3
-sudo ./configure
+cd ~/src/
+curl -LO https://github.com/CAIDA/libbgpstream/releases/download/v2.0-rc2/libbgpstream-2.0.0-rc2.tar.gz
+tar zxf libbgpstream-2.0.0-rc2.tar.gz
+cd libbgpstream-2.0.0
+sudo ./configure --without-kafka
 sudo make
 sudo make install
 
 
 ### pybgpstream
-sudo -H pip3.7 install pybgpstream
+sudo apt-get install python3-apt
+sudo apt-get install libpython3.7-dev
+sudo -H python3.7 -m pip install pybgpstream
