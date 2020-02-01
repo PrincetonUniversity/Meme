@@ -107,10 +107,13 @@ def compress(filename):
     # print("Tag width: ", mrcode.matchStrings(frozenset(['AS8283']))['AS8283'][0])
 
 def compress2():
-    matrix=[{1,2},{1,2,4},{1,2,3},{1,5},{1},{6}]
-    threshold = 3
-    mrcode = MRCode(matrix, hierarchy = True)
-    mrcode.optimize(parameters = (threshold, None))
+    #˚matrix=[{1},{1,2,3},{2,3},{3,4,7},{3,4,5,6},{4,5,6},{4,5,6,7}]
+    matrix=[{1,2,3,4,7},{4,5,7},{5,6,8,9}]
+    threshold = 4
+    mrcode = MRCode(matrix, hierarchy = True, shadow = False, extraBits = 1)
+    mrcode.optimize(parameters = (threshold, None, False))
+    mrcode.addSuperset({1,6,3,5})
+    mrcode.verifyCompression()
     print(mrcode.matchStrings(decorated=True))
 
 

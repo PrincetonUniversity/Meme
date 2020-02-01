@@ -13,6 +13,7 @@ import multiprocessing
 from typing import Callable, List
 import itertools
 from RSets import RCode
+import numpy as np
 
 """ 
     Need to write prerequisite installation script.
@@ -312,7 +313,7 @@ def evaluatePathSetsParallel(matrix):
                           submatrixProductionParams = policyPercentages) 
 
 
-def evaluateMemeParallel(matrix, minThreshold=5, maxThreshold=11):
+def evaluateMemeParallel(matrix, minThreshold=5, maxThreshold=6):
     # generate a bunch of 
     thresholds = [[threshold] for threshold in range(minThreshold, maxThreshold)]
     policyPercentages = [[0.05*i] for i in range(1, 21)]
@@ -332,6 +333,17 @@ def evaluatePathSetsPISAParallel(matrix, minTable = 3, maxTable=12):
     return parallelTrials(matrix=matrix,
                           submatrixEvaluator = evaluatePathSetsPISASingle,
                           submatrixEvaluationParams = numtables,
+                          submatrixProducer = onlyDensestColumns,
+                          submatrixProductionParams = policyPercentages)
+
+def evaluateMemeUpdateParallel(matrix, minThreshold=5, maxThreshold=6):
+    # generate a bunch of 
+    thresholds = [[threshold] for threshold in range(minThreshold, maxThreshold)]
+    policyPercentages = [[0.05*i] for i in range(20, 21)]
+
+    return parallelTrials(matrix=matrix,
+                          submatrixEvaluator = evaluateMemeUpdateSingle,
+                          submatrixEvaluationParams = thresholds,
                           submatrixProducer = onlyDensestColumns,
                           submatrixProductionParams = policyPercentages)
 
@@ -363,6 +375,43 @@ def evaluateMemeSingle(matrix, threshold=4, **extraInfo):
 
     return info
 
+def evaluateMemeUpdateSingle(matrix, threshold=4, **extraInfo):
+    allCols = set()
+    for row in matrix:
+        allCols.update(row)
+    print(allCols)
+
+    # hierarchy = True makes the MRCode uses biclutering hierarchy algorithm
+    # Disabling siblings
+    # extra 1 bit in each subtag
+    mrcode = MRCode(matrix, hierarchy = True, shadow = False, extraBits = 1)
+    # parameters is curretly a tuple of (Threshold of bicluster size, Goal of tag width, Disabling ancestor)    
+    mrcode.optimize(parameters = (threshold, None, False))
+
+    print("Start adding....")
+    runningTime = []
+    tags = []
+    for i in range(300):
+        startTime = time.time()
+        newSS = random.sample(matrix, k=1)[0]
+        newSS.update(random.sample(allCols, k=1))
+        tag = mrcode.addSuperset(newSS)
+        # mrcode.addSuperset(random.sample(allCols, k=10))
+        runningTime.append(time.time() - startTime)
+        tags.append(tag)
+        print(i, tag, time.time() - startTime)
+        mrcode.verifyCompression()
+    runningTime = np.asarray(runningTime)
+    tags = np.asarray(tags)
+
+    print("Actual Encoding", (tags == 1).sum(), np.average(runningTime[tags == 1]))
+    print("No Encoding", (tags == 0).sum(), np.average(runningTime[tags == 0]))
+    print("Both", tags.shape[0], np.average(runningTime))
+
+    info = dict(extraInfo)
+    info["Running time"] = runningTime
+    return info
+
 
 
 def main():
@@ -387,17 +436,21 @@ def main():
     print("Done.")
 
     resultDict = {}
-    # Meme
-    submatrixInfos, evalResults = evaluateMemeParallel(matrixWithCounts)
-    printShellDivider("Submatrix Properties")
-    for item in submatrixInfos:
-        print(item)
-    printShellDivider("Meme Eval Results")
-    for item in evalResults:
-        print(item)
 
-    resultDict['MemeMatrixInfos'] = submatrixInfos
-    resultDict['MemeEvalResults'] = evalResults
+    # # Meme
+    # submatrixInfos, evalResults = evaluateMemeParallel(matrixWithCounts)
+    # printShellDivider("Submatrix Properties")
+    # for item in submatrixInfos:
+    #     print(item)
+    # printShellDivider("Meme Eval Results")
+    # for item in evalResults:
+    #     print(item)
+
+    # resultDict['MemeMatrixInfos'] = submatrixInfos
+    # resultDict['MemeEvalResults'] = evalResults
+
+    # Meme update
+    evaluateMemeUpdateParallel(matrixWithCounts)
 
     # # PathSets PISA
     # submatrixInfos, evalResults = evaluatePathSetsPISAParallel(matrixWithCounts)

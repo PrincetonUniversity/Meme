@@ -2,13 +2,15 @@ import networkx as nx
 import itertools
 from typing import List,Set,Dict
 try:
-    from .RSets import RCode
+    from .RSets import RCode, SuperSet
     from .analyze import groupIdenticalColumns
     from .graphAlgorithm import graphHierarchy
+    from .optimize import addCodeWords
 except:
-    from RSets import RCode
+    from RSets import RCode, SuperSet
     from analyze import groupIdenticalColumns
     from graphAlgorithm import graphHierarchy
+    from optimize import addCodeWords
 
 def ternary_compare(str1, str2):
     if len(str1) != len(str2):
@@ -28,25 +30,28 @@ class MRCode(object):
     shadowElements : Dict = None # maps elements to elements for which they have identical behavior
     hierarchy : bool = False
     nonShadowElements : Set = None
+    extraBits : int = 0
 
-    def __init__(self, elementSets, hierarchy = False):
+    def __init__(self, elementSets, hierarchy = False, shadow = True, extraBits = 0):
         # remove duplicates
         elementSets = set([frozenset(es) for es in elementSets])
 
         self.originalSets = list(elementSets)
         self.hierarchy = hierarchy
+        self.parameters = None
+        self.extraBits = extraBits
 
         # find shadow elements
         self.shadowElements = {}
-        identicalElementGroups = groupIdenticalColumns(elementSets)
-        # for every set of elements that behave identically, arbitrarily make the first element in the set the "parent" of all the rest. All elements but the parents are now shadows
-        for elemGroup in identicalElementGroups:
-            for elem in elemGroup[1:]:
-                self.shadowElements[elem] = elemGroup[0]
-
-        # remove shadow elements
-        shadows = set(self.shadowElements.keys())
-        elementSets = [es.difference(shadows) for es in elementSets]
+        if shadow:
+            identicalElementGroups = groupIdenticalColumns(elementSets)
+            # for every set of elements that behave identically, arbitrarily make the first element in the set the "parent" of all the rest. All elements but the parents are now shadows
+            for elemGroup in identicalElementGroups:
+                for elem in elemGroup[1:]:
+                    self.shadowElements[elem] = elemGroup[0]
+            # remove shadow elements
+            shadows = set(self.shadowElements.keys())
+            elementSets = [es.difference(shadows) for es in elementSets]
 
         if not hierarchy:
             # we start off with a single code
@@ -80,7 +85,8 @@ class MRCode(object):
         """ A strategy is a list of groupings. A absHierarchy is a list of trees of absolute element dependency. 
             Build rcodes from supersetsList and absHierarchyList
         """
-        self.rcodes = [RCode(supersets, absHierarchy=absHierarchy) for supersets, absHierarchy in zip(supersetsList, absHierarchyList)]
+        self.rcodes = [RCode(supersets, absHierarchy=absHierarchy, extraBits=self.extraBits+i) for i, supersets, absHierarchy 
+                       in zip(range(len(supersetsList)),supersetsList, absHierarchyList)]
         self.elements = {element : i for i, rcode in enumerate(self.rcodes) for element in rcode.elements}
 
         for rcode in self.rcodes:
@@ -90,6 +96,7 @@ class MRCode(object):
     def optimize(self, parameters = None):
         """ TODO: Do something more clever.
         """
+        self.parameters = parameters
         if self.hierarchy:
             # Get the heirarchy from biclustering hierarchy algorithm
             supersetsList, absHierarchyList = graphHierarchy(self.nonShadowElements, parameters)
@@ -106,7 +113,6 @@ class MRCode(object):
             except:
                 raise Exception("Code %d failed to verify!" % i)
         print("MRSets verified successfully")
-
 
     def optimizeRecursiveHeavyHitters(self, threshold=1):
         while self.extractHeavyHitters(1):
@@ -210,6 +216,92 @@ class MRCode(object):
     def width(self):
         return sum(code.widthUsed() for code in self.rcodes)
 
+    # A prototype update function when there is no sibling (shadow = False in init()) 
+    # or ancestor (parameter[2] = False in optimize())
+    def addSuperset(self, superset, parameters = None):
+        if parameters != None: self.parameters = parameters
+        elements = set(superset)
+        self.nonShadowElements.add(frozenset(superset))
+        selCols = [] 
+        # For simplicity, enforce the number of rcodes to be the same as before, but it can be bigger if desired
+        actualChanging = False
+
+        for i, rcode in enumerate(self.rcodes):
+            intersectingClusters = set([ss for ss in rcode.originalSets if len(elements.intersection(ss)) != 0])
+            if len(intersectingClusters) == 1: 
+                intersectingClusters = set()
+            newCols = [set(row) for row in self.nonShadowElements if len(row.intersection(selCols)) != 0]
+            if len(newCols) == 0:
+                newCols = set()
+            else:
+                newCols = set.union(*newCols)
+
+            intersectingClusters.update([ss for ss in rcode.originalSets if len(newCols.intersection(ss)) != 0])
+            if len(intersectingClusters) == 0: 
+                continue
+
+            actualChanging = True
+            for ss in intersectingClusters:
+                rcode.originalSets.remove(ss)
+            for ss in intersectingClusters:
+                ssIndex = rcode.getSupersetIndex(ss)
+                ssCodeword = rcode.supersets[ssIndex].codeword
+                rcode.freeCodes.append(ssCodeword)
+                del rcode.supersets[ssIndex]
+            # merge free codes when possible
+            rcode.freeCodes.sort(key=lambda item: (-len(item), item))
+            mergeFound = True
+            while mergeFound:
+                mergeFound = False
+                codeIndex = 0
+                while True:
+                    if codeIndex + 1 >= len(rcode.freeCodes):
+                        break
+                    if rcode.freeCodes[codeIndex][:-1] == rcode.freeCodes[codeIndex+1][:-1]:
+                        newCode = rcode.freeCodes[codeIndex][:-1]
+                        del rcode.freeCodes[codeIndex]
+                        del rcode.freeCodes[codeIndex]
+                        rcode.freeCodes.insert(codeIndex, newCode)
+                        mergeFound = True
+                    else:
+                        codeIndex += 1
+            changeCols = set.union(*[set(ss) for ss in intersectingClusters])
+            rcode.elements = rcode.elements.difference(changeCols)
+            for elem in changeCols:
+                del rcode.elementWeights[elem]
+            rcode.codeBuilt = False
+
+            changeCols.update(selCols)
+            frozenMatrix = set([frozenset(row.intersection(changeCols)) for row in self.nonShadowElements])
+            if i == len(self.rcodes) - 1:
+                supersetsList, _ = graphHierarchy(frozenMatrix, tuple(list(self.parameters[:3]) + [1, True]))
+                selCols = []
+            else:
+                supersetsList, _ = graphHierarchy(frozenMatrix, tuple(list(self.parameters[:3]) + [2, False]))
+                selCols = supersetsList[1][0]
+
+            newFrozenSupersets = [frozenset(set(vares).union(abses)) for vares, abses in supersetsList[0]]
+            
+            rcode.originalSets.extend(newFrozenSupersets)
+            changeCols = changeCols.difference(selCols)
+            rcode.elements.update(changeCols)
+            for elem in changeCols:
+                rcode.elementWeights[elem] = 1
+
+            #[SuperSet(ss, absoluteGiven = True) for ss in supersetsList[0]]
+            newSupersets = [SuperSet(ss) for ss in newFrozenSupersets]
+            
+            codewordMap, rcode.freeCodes = addCodeWords(newFrozenSupersets, rcode.maxWidth+self.extraBits+i, rcode.freeCodes)
+            supersetMap = {frozenset(superset.variables) : superset for superset in newSupersets}
+            for k,v in codewordMap.items():
+                supersetMap[k].codeword = v
+            rcode.supersets.extend(newSupersets)
+            rcode.codeBuilt = True
+
+        print([rcode.widthUsed() for rcode in self.rcodes])
+        return 1 if actualChanging else 0
+            # expandIfNecessary
+
 
     def tagString(self, elements, decorated=False):
         """ Given a set of elements, returns a string which represents
@@ -250,7 +342,7 @@ class MRCode(object):
 
             if i != 0:
                 lPadding = lPadding + separator
-            if i == len(blankCodes):
+            if i != len(blankCodes) - 1:
                 rPadding = separator + rPadding
 
 
@@ -263,7 +355,6 @@ class MRCode(object):
     def elemIsInTag(self, elem, tag, queryDict):
         """ Slow. Essentially simulates a TCAM table.
         """
-
         for query in queryDict[elem]:
             if ternary_compare(query, tag):
                 return True
@@ -285,8 +376,8 @@ class MRCode(object):
                 print("True row:", set(originalSet))
                 print("Recovered row:", recovered)
                 for col in set(originalSet):
-                    print(col, self.matchStrings(elements=[col], decorated=False))
-                print("Tag:", self.tagString(originalSet, decorated=False))
+                    print(col, self.matchStrings(elements=[col], decorated=True))
+                print("Tag:", self.tagString(originalSet, decorated=True))
                 raise Exception("A row recovered from the compression module was not equal to the original row!")
         print("Encoding verified successfully.")
 

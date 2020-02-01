@@ -7,7 +7,7 @@ except:
     from AbsNode import AbsNode
 
 from itertools import combinations
-from collections import deque as queue
+from collections import deque
 
 
 
@@ -71,6 +71,49 @@ def mergeIntersectingSets(supersets):
         mergedSets.append(mergedSet)
     return mergedSets
 
+def addCodeWords(supersets, minWidth, freeCodesList=['']):
+    """ freeCodesList: long IDs -> short IDs
+    """
+
+    print("Free codes", freeCodesList)
+    print(minWidth)
+    print(supersets)
+
+    # indices of supersets that have no codes yet
+    uncodedIndices = [i for i in range(len(supersets))]
+    # sort it in descending order of available code widths
+    uncodedIndices.sort(key = lambda index: len(supersets[index]))
+    codeLens = [minWidth - len(supersets[i]) for i in uncodedIndices]
+    print(uncodedIndices)
+    print(codeLens)
+    print()
+    assignedCodes = {}
+    # freeCodes: right is head, left is tail
+
+    codeIndex = 0
+    ssIndex = 0
+    while ssIndex < len(uncodedIndices):
+        if codeIndex >= len(freeCodesList):
+            raise Exception("Not enough free codes to assign in this submatrix")
+            # Most likely caused by selCols from the previous submatrix, Can be handled dynamically by: 
+            # 1. adding the unfitted columns to the next submatrix
+            # 2. adding the unfitted column to a spare submatrix
+            # 3. prepending all the existing subtags and substrings by "0" and get a freeCode "1"
+        if len(freeCodesList[codeIndex]) == codeLens[ssIndex]:
+            assignedCodes[supersets[uncodedIndices[ssIndex]]] = freeCodesList[codeIndex]
+            del freeCodesList[codeIndex]
+            ssIndex += 1
+        elif len(freeCodesList[codeIndex]) > codeLens[ssIndex]:
+            codeIndex += 1
+        else:
+            codeToSplit = freeCodesList[codeIndex]
+            del freeCodesList[codeIndex]
+            for code in [codeToSplit + c for c in ['1','0']]:
+                freeCodesList.insert(codeIndex, code)
+
+    print("results know", assignedCodes)
+    return (assignedCodes, freeCodesList)
+
 
 def generateCodeWords(supersets, absHierarchy=False, prefix = ''):
     """ Given a list of supersets of varying with, produce a prefix-free code for labeling those supersets.
@@ -84,12 +127,12 @@ def generateCodeWords(supersets, absHierarchy=False, prefix = ''):
         uncodedIndices.sort(key = lambda index: minWidth - len(supersets[index]), reverse = True)
         codeLens = [minWidth - len(supersets[i]) for i in uncodedIndices]
 
-        freeCodes = queue(['']) # right is head, left is tail
+        freeCodes = deque(['']) # right is head, left is tail
         assignedCodes = ['']*len(supersets)
 
         while len(uncodedIndices) > 0:
             # If we have enough unused codes for all supersets,
-            #  OR if the current shortest codeword length is the limit for the longest uncoded superset
+            # OR if the current shortest codeword length is the limit for the longest uncoded superset
             if len(freeCodes) >= len(uncodedIndices) or len(freeCodes[-1]) == codeLens[-1]:
                 ssIndex = uncodedIndices.pop()
                 codeLens.pop()
@@ -97,10 +140,10 @@ def generateCodeWords(supersets, absHierarchy=False, prefix = ''):
             # else, we split the shortest codeword
             else:
                 codeToSplit = freeCodes.pop()
-                freeCodes.extendleft([codeToSplit + c for c in ['0','1']])
+                freeCodes.extend([codeToSplit + c for c in ['1','0']])
 
         freeCodes = list(freeCodes)
-
+        freeCodes.reverse()
         return (assignedCodes, freeCodes)
     else:
         assignedCodes, freeCodes, absCodes = generateCodeWordsRec(prefix, supersets)
@@ -120,15 +163,15 @@ def generateCodeWordsRec(prefix, supersets):
         minWidth = bitsRequiredVariableID(supersets)
 
     codeLens = [minWidth - len(superset) for superset in supersets]
-    freeCodes = queue(['']) # right is head, left is tail
+    freeCodes = deque(['']) # right is head, left is tail
     assignedCodes = {}
     absCodes = {}
 
     absColCoded= False
     while len(supersets) > 0:
-        # If we have enough unused codes for all supersets,
+        # If we have enough unused codes for all supersets, ===> len(freeCodes) >= len(supersets) or 
         # OR if the current shortest codeword length is the limit for the longest uncoded superset
-        if len(freeCodes) >= len(supersets) or len(freeCodes[-1]) == codeLens[-1]:
+        if len(freeCodes[-1]) == codeLens[-1]:
             codeLens.pop()
             superset = supersets.pop()
             if isinstance(superset, AbsNode):
@@ -146,10 +189,11 @@ def generateCodeWordsRec(prefix, supersets):
         # else, we split the shortest codeword
         else:
             codeToSplit = freeCodes.pop()
-            freeCodes.extendleft([codeToSplit + c for c in ['0','1']])
+            freeCodes.extend([codeToSplit + c for c in ['1','0']])
     if absNode and not absColCoded:
         absCodes[absNode.absCol] = (prefix, prefix)
     freeCodes = list(freeCodes)
+    freeCodes.reverse()
     return assignedCodes, freeCodes, absCodes
 
 
